@@ -1,0 +1,46 @@
+{
+  "schemaVersion": 3,
+  "kind": "sdkwork.app",
+  "app": {
+    "key": "sdkwork-membership-pc",
+    "name": "SDKWork Membership PC",
+    "displayName": "SDKWork Membership PC",
+    "description": "Membership tiers, entitlements, and upgrade flows.",
+    "vendor": "SDKWork",
+    "appType": "APP_REACT",
+    "versionSource": "package.json",
+    "identifiers": {
+      "desktopAppId": "com.sdkwork.membership.pc.desktop",
+      "containerImage": "registry.sdkwork.com/apps/sdkwork-membership-pc"
+    }
+  },
+  "backend": {
+    "profileKey": "backend-root-admin",
+    "ownerMode": "tenant",
+    "grantMode": "current",
+    "platform": "WEB",
+    "tenantId": "100001",
+    "organizationId": "0"
+  },
+  "runtime": {
+    "family": "web",
+    "framework": "react",
+    "runtimes": ["WEB", "BROWSER"],
+    "deliveryModes": ["WEB_URL"],
+    "supportedDeploymentProfiles": ["standalone", "cloud"],
+    "defaultDeploymentProfile": "standalone"
+  },
+  "publish": {
+    "config": {
+      "workspaceRoot": "sdkwork-membership",
+      "managedBy": "sdkwork-membership-workspace"
+    }
+  },
+  "devApp": {
+    "sourceRoot": "apps/sdkwork-membership-pc"
+  },
+  "metadata": {
+    "standardOwner": "sdkwork-membership",
+    "initializedAt": "2026-06-24T00:00:00.000Z"
+  }
+}

@@ -1,0 +1,58 @@
+{
+  "name": "@sdkwork/membership-pc-membership",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "description": "Membership tiers, entitlements, and upgrade flows.",
+  "exports": {
+    ".": {
+      "types": "./src/index.ts",
+      "import": "./src/index.ts",
+      "default": "./src/index.ts"
+    }
+  },
+  "files": [
+    "src",
+    "README.md"
+  ],
+  "scripts": {
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@sdkwork/appbase-pc-react": "workspace:*",
+    "@sdkwork/membership-service": "workspace:*"
+  },
+  "devDependencies": {
+    "@sdkwork/ui-pc-react": "workspace:*",
+    "@types/react": "catalog:",
+    "@types/react-dom": "catalog:",
+    "react": "catalog:",
+    "react-dom": "catalog:",
+    "typescript": "catalog:"
+  },
+  "peerDependencies": {
+    "@sdkwork/appbase-pc-react": "*",
+    "@sdkwork/membership-service": "*",
+    "@sdkwork/ui-pc-react": "*",
+    "react": ">=18.2.0 <20.0.0",
+    "react-dom": ">=18.2.0 <20.0.0"
+  },
+  "peerDependenciesMeta": {
+    "@sdkwork/appbase-pc-react": {
+      "optional": true
+    },
+    "@sdkwork/membership-service": {
+      "optional": true
+    },
+    "@sdkwork/ui-pc-react": {
+      "optional": true
+    }
+  },
+  "sdkwork": {
+    "workspace": "sdkwork-membership",
+    "architecture": "pc-react",
+    "domain": "commerce",
+    "capability": "membership",
+    "status": "ready"
+  }
+}

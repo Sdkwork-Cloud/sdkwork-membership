@@ -1,0 +1,12 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "baseUrl": ".",
+    "paths": {
+      "@sdkwork/membership-pc-core": ["packages/sdkwork-membership-pc-core/src/index.ts"],
+      "@sdkwork/membership-pc-shell": ["packages/sdkwork-membership-pc-shell/src/index.tsx"],
+      "@sdkwork/membership-pc-wallet": ["packages/sdkwork-membership-pc-wallet/src/index.ts"]
+    }
+  },
+  "include": ["src/**/*.ts", "src/**/*.tsx", "packages/**/*.ts", "packages/**/*.tsx"]
+}

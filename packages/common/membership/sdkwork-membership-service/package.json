@@ -1,0 +1,12 @@
+{
+  "name": "@sdkwork/membership-service",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "exports": { ".": "./src/index.ts" },
+  "dependencies": {
+    "@sdkwork/membership-sdk-ports": "workspace:*",
+    "@sdkwork/membership-contracts": "workspace:*",
+    "@sdkwork/utils": "workspace:*"
+  }
+}
