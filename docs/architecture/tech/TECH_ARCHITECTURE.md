@@ -34,7 +34,7 @@ Migration status: **complete**.
 | --- | --- | --- |
 | Domain commands/queries | `sdkwork-commerce-membership-service` | Business validation and ports |
 | SQL repositories | `sdkwork-commerce-membership-repository-sqlx` | Tenant-scoped persistence |
-| HTTP route builders | sdkwork-router-membership-app-api, sdkwork-router-membership-backend-api | `build_*_router` exports without IAM |
+| HTTP route builders | sdkwork-routes-membership-app-api, sdkwork-routes-membership-backend-api | `build_*_router` exports without IAM |
 | IAM / gateway composition | `sdkwork-commerce` | Thin wrappers only |
 | OpenAPI / SDK authority | `sdkwork-commerce/sdks/` | Composed commerce SDK families |
 
@@ -44,8 +44,8 @@ Standard capability workspace:
 
 - `crates/sdkwork-commerce-membership-service/`
 - `crates/sdkwork-commerce-membership-repository-sqlx/`
-- `crates/sdkwork-router-membership-app-api/`
-- `crates/sdkwork-router-membership-backend-api/`
+- `crates/sdkwork-routes-membership-app-api/`
+- `crates/sdkwork-routes-membership-backend-api/`
 - `crates/sdkwork-membership-database-host/`
 - `crates/sdkwork-membership-service-host/`
 - `crates/sdkwork-membership-api-server/`

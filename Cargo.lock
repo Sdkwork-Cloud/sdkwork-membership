@@ -1092,6 +1092,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "112b39cec0b298b6c1999fee3e31427f74f676e4cb9879ed1a121b43661a4154"
 
 [[package]]
+name = "matchers"
+version = "0.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d1525a2a28c7f4fa0fc98bb91ae755d1e2d1505079e05539e35bc876b5d65ae9"
+dependencies = [
+ "regex-automata",
+]
+
+[[package]]
 name = "matchit"
 version = "0.8.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1924,19 +1933,19 @@ dependencies = [
  "sdkwork-commerce-storage-repository-sqlx",
  "sdkwork-iam-context-service",
  "sdkwork-iam-web-adapter",
- "sdkwork-router-account-app-api",
- "sdkwork-router-catalog-app-api",
- "sdkwork-router-inventory-app-api",
- "sdkwork-router-inventory-backend-api",
- "sdkwork-router-invoice-app-api",
- "sdkwork-router-merchandise-app-api",
- "sdkwork-router-order-app-api",
- "sdkwork-router-order-backend-api",
- "sdkwork-router-payment-app-api",
- "sdkwork-router-payment-backend-api",
- "sdkwork-router-promotion-app-api",
- "sdkwork-router-shop-app-api",
- "sdkwork-router-shop-backend-api",
+ "sdkwork-routes-account-app-api",
+ "sdkwork-routes-catalog-app-api",
+ "sdkwork-routes-inventory-app-api",
+ "sdkwork-routes-inventory-backend-api",
+ "sdkwork-routes-invoice-app-api",
+ "sdkwork-routes-merchandise-app-api",
+ "sdkwork-routes-order-app-api",
+ "sdkwork-routes-order-backend-api",
+ "sdkwork-routes-payment-app-api",
+ "sdkwork-routes-payment-backend-api",
+ "sdkwork-routes-promotion-app-api",
+ "sdkwork-routes-shop-app-api",
+ "sdkwork-routes-shop-backend-api",
  "sdkwork-web-axum",
  "sdkwork-web-contract",
  "sdkwork-web-core",
@@ -2341,10 +2350,15 @@ dependencies = [
 name = "sdkwork-iam-bootstrap"
 version = "0.1.0"
 dependencies = [
+ "aes-gcm",
+ "base64",
  "chrono",
+ "rand_core 0.6.4",
  "sdkwork-iam-context-service",
  "sdkwork-iam-module-registry",
+ "sha2",
  "sqlx",
+ "uuid",
 ]
 
 [[package]]
@@ -2380,6 +2394,7 @@ dependencies = [
  "password-hash",
  "rand_core 0.6.4",
  "reqwest",
+ "sdkwork-database-config",
  "sdkwork-database-sqlx",
  "sdkwork-iam-bootstrap",
  "sdkwork-iam-context-service",
@@ -2441,8 +2456,9 @@ version = "0.1.0"
 dependencies = [
  "axum",
  "sdkwork-membership-service-host",
- "sdkwork-router-membership-app-api",
- "sdkwork-router-membership-backend-api",
+ "sdkwork-routes-membership-app-api",
+ "sdkwork-routes-membership-backend-api",
+ "sdkwork-web-bootstrap",
  "tokio",
  "tower-http 0.5.2",
  "tracing",
@@ -2552,7 +2568,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "sdkwork-router-account-app-api"
+name = "sdkwork-routes-account-app-api"
 version = "0.1.0"
 dependencies = [
  "axum",
@@ -2564,6 +2580,7 @@ dependencies = [
  "sdkwork-iam-context-service",
  "sdkwork-iam-web-adapter",
  "sdkwork-web-axum",
+ "sdkwork-web-bootstrap",
  "sdkwork-web-core",
  "serde",
  "serde_json",
@@ -2571,7 +2588,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "sdkwork-router-catalog-app-api"
+name = "sdkwork-routes-catalog-app-api"
 version = "0.1.0"
 dependencies = [
  "axum",
@@ -2582,8 +2599,9 @@ dependencies = [
  "sdkwork-database-sqlx",
  "sdkwork-iam-context-service",
  "sdkwork-iam-web-adapter",
- "sdkwork-router-merchandise-app-api",
+ "sdkwork-routes-merchandise-app-api",
  "sdkwork-web-axum",
+ "sdkwork-web-bootstrap",
  "sdkwork-web-core",
  "serde",
  "serde_json",
@@ -2591,7 +2609,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "sdkwork-router-inventory-app-api"
+name = "sdkwork-routes-inventory-app-api"
 version = "0.1.0"
 dependencies = [
  "axum",
@@ -2603,6 +2621,7 @@ dependencies = [
  "sdkwork-iam-web-adapter",
  "sdkwork-inventory-service-host",
  "sdkwork-web-axum",
+ "sdkwork-web-bootstrap",
  "sdkwork-web-core",
  "serde",
  "serde_json",
@@ -2610,7 +2629,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "sdkwork-router-inventory-backend-api"
+name = "sdkwork-routes-inventory-backend-api"
 version = "0.1.0"
 dependencies = [
  "axum",
@@ -2625,7 +2644,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "sdkwork-router-invoice-app-api"
+name = "sdkwork-routes-invoice-app-api"
 version = "0.1.0"
 dependencies = [
  "axum",
@@ -2637,6 +2656,7 @@ dependencies = [
  "sdkwork-iam-web-adapter",
  "sdkwork-invoice-service-host",
  "sdkwork-web-axum",
+ "sdkwork-web-bootstrap",
  "sdkwork-web-core",
  "serde",
  "serde_json",
@@ -2644,7 +2664,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "sdkwork-router-membership-app-api"
+name = "sdkwork-routes-membership-app-api"
 version = "0.1.0"
 dependencies = [
  "axum",
@@ -2654,13 +2674,14 @@ dependencies = [
  "sdkwork-iam-web-adapter",
  "sdkwork-membership-service-host",
  "sdkwork-web-axum",
+ "sdkwork-web-bootstrap",
  "sdkwork-web-core",
  "serde",
  "serde_json",
 ]
 
 [[package]]
-name = "sdkwork-router-membership-backend-api"
+name = "sdkwork-routes-membership-backend-api"
 version = "0.1.0"
 dependencies = [
  "axum",
@@ -2670,13 +2691,14 @@ dependencies = [
  "sdkwork-iam-web-adapter",
  "sdkwork-membership-service-host",
  "sdkwork-web-axum",
+ "sdkwork-web-bootstrap",
  "sdkwork-web-core",
  "serde",
  "serde_json",
 ]
 
 [[package]]
-name = "sdkwork-router-merchandise-app-api"
+name = "sdkwork-routes-merchandise-app-api"
 version = "0.1.0"
 dependencies = [
  "axum",
@@ -2695,7 +2717,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "sdkwork-router-order-app-api"
+name = "sdkwork-routes-order-app-api"
 version = "0.1.0"
 dependencies = [
  "axum",
@@ -2708,6 +2730,7 @@ dependencies = [
  "sdkwork-iam-web-adapter",
  "sdkwork-order-service-host",
  "sdkwork-web-axum",
+ "sdkwork-web-bootstrap",
  "sdkwork-web-core",
  "serde",
  "serde_json",
@@ -2715,7 +2738,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "sdkwork-router-order-backend-api"
+name = "sdkwork-routes-order-backend-api"
 version = "0.1.0"
 dependencies = [
  "axum",
@@ -2727,6 +2750,7 @@ dependencies = [
  "sdkwork-iam-web-adapter",
  "sdkwork-order-service-host",
  "sdkwork-web-axum",
+ "sdkwork-web-bootstrap",
  "sdkwork-web-core",
  "serde",
  "serde_json",
@@ -2734,7 +2758,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "sdkwork-router-payment-app-api"
+name = "sdkwork-routes-payment-app-api"
 version = "0.1.0"
 dependencies = [
  "axum",
@@ -2748,6 +2772,7 @@ dependencies = [
  "sdkwork-iam-web-adapter",
  "sdkwork-payment-service-host",
  "sdkwork-web-axum",
+ "sdkwork-web-bootstrap",
  "sdkwork-web-core",
  "serde",
  "serde_json",
@@ -2755,7 +2780,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "sdkwork-router-payment-backend-api"
+name = "sdkwork-routes-payment-backend-api"
 version = "0.1.0"
 dependencies = [
  "axum",
@@ -2766,6 +2791,7 @@ dependencies = [
  "sdkwork-iam-web-adapter",
  "sdkwork-payment-service-host",
  "sdkwork-web-axum",
+ "sdkwork-web-bootstrap",
  "sdkwork-web-core",
  "serde",
  "serde_json",
@@ -2773,7 +2799,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "sdkwork-router-promotion-app-api"
+name = "sdkwork-routes-promotion-app-api"
 version = "0.1.0"
 dependencies = [
  "axum",
@@ -2785,6 +2811,7 @@ dependencies = [
  "sdkwork-iam-web-adapter",
  "sdkwork-promotion-service-host",
  "sdkwork-web-axum",
+ "sdkwork-web-bootstrap",
  "sdkwork-web-core",
  "serde",
  "serde_json",
@@ -2792,7 +2819,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "sdkwork-router-shop-app-api"
+name = "sdkwork-routes-shop-app-api"
 version = "0.1.0"
 dependencies = [
  "axum",
@@ -2804,7 +2831,7 @@ dependencies = [
  "sdkwork-database-sqlx",
  "sdkwork-iam-context-service",
  "sdkwork-iam-web-adapter",
- "sdkwork-router-merchandise-app-api",
+ "sdkwork-routes-merchandise-app-api",
  "sdkwork-shop-service-host",
  "sdkwork-web-axum",
  "sdkwork-web-core",
@@ -2815,7 +2842,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "sdkwork-router-shop-backend-api"
+name = "sdkwork-routes-shop-backend-api"
 version = "0.1.0"
 dependencies = [
  "axum",
@@ -2941,6 +2968,23 @@ dependencies = [
  "tokio",
  "tower",
  "tracing",
+]
+
+[[package]]
+name = "sdkwork-web-bootstrap"
+version = "0.1.0"
+dependencies = [
+ "async-trait",
+ "axum",
+ "http",
+ "sdkwork-web-axum",
+ "sdkwork-web-contract",
+ "sdkwork-web-core",
+ "serde",
+ "serde_json",
+ "tokio",
+ "tracing",
+ "tracing-subscriber",
 ]
 
 [[package]]
@@ -3825,10 +3869,14 @@ version = "0.3.23"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "cb7f578e5945fb242538965c2d0b04418d38ec25c79d160cd279bf0731c8d319"
 dependencies = [
+ "matchers",
  "nu-ansi-term",
+ "once_cell",
+ "regex-automata",
  "sharded-slab",
  "smallvec",
  "thread_local",
+ "tracing",
  "tracing-core",
  "tracing-log",
 ]
