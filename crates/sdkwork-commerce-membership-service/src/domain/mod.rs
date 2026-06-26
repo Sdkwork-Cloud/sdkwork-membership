@@ -189,8 +189,8 @@ impl MembershipPackageGroupDraft {
             external_id: input.external_id,
             package_group_no: input.package_group_no,
             name: input.name,
-            description: normalize_optional_text(input.description.as_deref()),
-            billing_cycle: input.billing_cycle,
+        description: crate::validation::normalize_optional_text(input.description.as_deref()),
+        billing_cycle: input.billing_cycle,
             duration_days: input.duration_days,
             sort_weight: input.sort_weight,
         })
@@ -214,7 +214,7 @@ impl MembershipPackageGroupDraft {
             external_id,
             package_group_no: package_group_no.to_string(),
             name: name.to_string(),
-            description: normalize_optional_text(description),
+            description: crate::validation::normalize_optional_text(description),
             billing_cycle,
             duration_days,
             sort_weight,
@@ -277,11 +277,11 @@ impl MembershipPackageDraft {
             package_no: package_no.to_string(),
             package_group_id: package_group_id.to_string(),
             plan_id: plan_id.to_string(),
-            sku_id: normalize_optional_text(sku_id),
+            sku_id: crate::validation::normalize_optional_text(sku_id),
             name: name.to_string(),
-            description: normalize_optional_text(description),
+            description: crate::validation::normalize_optional_text(description),
             price_amount: price_amount.to_string(),
-            original_price_amount: normalize_optional_text(original_price_amount),
+            original_price_amount: crate::validation::normalize_optional_text(original_price_amount),
             currency_code: currency_code.to_string(),
             point_amount,
             duration_days,
@@ -368,7 +368,7 @@ impl MembershipPurchaseDraft {
             owner_user_id: owner_user_id.to_string(),
             package_id,
             payment_method: normalize_optional_payment_method(payment_method)?,
-            coupon_id: normalize_optional_text(coupon_id),
+            coupon_id: crate::validation::normalize_optional_text(coupon_id),
         })
     }
 }
@@ -379,17 +379,10 @@ fn validate_money_amount(field_name: &str, value: &str) -> Result<(), CommerceSe
         .map_err(|message| CommerceServiceError::validation(format!("{field_name}: {message}")))
 }
 
-fn normalize_optional_text(value: Option<&str>) -> Option<String> {
-    value
-        .map(str::trim)
-        .filter(|value| !value.is_empty())
-        .map(str::to_string)
-}
-
 fn normalize_optional_payment_method(
     value: Option<&str>,
 ) -> Result<Option<String>, CommerceServiceError> {
-    let Some(method) = normalize_optional_text(value) else {
+    let Some(method) = crate::validation::normalize_optional_text(value) else {
         return Ok(None);
     };
     let method = method.to_ascii_lowercase();

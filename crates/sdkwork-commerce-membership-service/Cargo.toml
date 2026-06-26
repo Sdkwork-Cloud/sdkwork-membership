@@ -11,3 +11,4 @@ path = "src/lib.rs"
 
 [dependencies]
 sdkwork_commerce_contract_service.workspace = true
+sdkwork-utils-rust.workspace = true

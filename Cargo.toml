@@ -32,7 +32,8 @@ tracing-subscriber = "0.3"
 dotenvy = "0.15"
 thiserror = "1"
 async-trait = "0.1"
-sdkwork_commerce_contract_service = { path = "../sdkwork-commerce/crates/sdkwork-commerce-contract-service", package = "sdkwork-commerce-contract-service" }
+sdkwork_commerce_contract_service = { path = "../sdkwork-account/crates/sdkwork-commerce-contract-service", package = "sdkwork-commerce-contract-service" }
+sdkwork-utils-rust = { path = "../sdkwork-utils/packages/sdkwork-utils-rust", package = "sdkwork-utils-rust" }
 sdkwork-web-core = { path = "../sdkwork-web-framework/crates/sdkwork-web-core" }
 sdkwork-web-axum = { path = "../sdkwork-web-framework/crates/sdkwork-web-axum" }
 sdkwork-web-contract = { path = "../sdkwork-web-framework/crates/sdkwork-web-contract" }
@@ -53,6 +54,6 @@ sdkwork_routes_membership_app_api = { path = "crates/sdkwork-routes-membership-a
 sdkwork_routes_membership_backend_api = { path = "crates/sdkwork-routes-membership-backend-api", package = "sdkwork-routes-membership-backend-api" }
 sdkwork_membership_database_host = { path = "crates/sdkwork-membership-database-host", package = "sdkwork-membership-database-host" }
 sdkwork_membership_service_host = { path = "crates/sdkwork-membership-service-host", package = "sdkwork-membership-service-host" }
-sdkwork_commerce_api_server = { path = "../sdkwork-commerce/crates/sdkwork-commerce-api-server", package = "sdkwork-commerce-api-server" }
-sdkwork_commerce_bootstrap_manifest = { path = "../sdkwork-commerce/crates/sdkwork-commerce-bootstrap-manifest", package = "sdkwork-commerce-bootstrap-manifest" }
-sdkwork_commerce_storage_repository_sqlx = { path = "../sdkwork-commerce/crates/sdkwork-commerce-storage-repository-sqlx", package = "sdkwork-commerce-storage-repository-sqlx" }
+sdkwork_commerce_api_server = { path = "../sdkwork-clawrouter/vendor/sdkwork-commerce/crates/sdkwork-commerce-api-server", package = "sdkwork-commerce-api-server" }
+sdkwork_commerce_bootstrap_manifest = { path = "../sdkwork-clawrouter/vendor/sdkwork-commerce/crates/sdkwork-commerce-bootstrap-manifest", package = "sdkwork-commerce-bootstrap-manifest" }
+sdkwork_commerce_storage_repository_sqlx = { path = "../sdkwork-clawrouter/vendor/sdkwork-commerce/crates/sdkwork-commerce-storage-repository-sqlx", package = "sdkwork-commerce-storage-repository-sqlx" }

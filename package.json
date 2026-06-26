@@ -15,7 +15,15 @@
     "verify": "pnpm typecheck && pnpm test:vitest && cargo test --workspace",
     "fmt:rust:check": "cargo fmt --all -- --check",
     "gateway:assembly:materialize": "node scripts/gateway/assembly-materialize.mjs",
-    "gateway:assembly:validate": "node scripts/gateway/assembly-validate.mjs"
+    "gateway:assembly:validate": "node scripts/gateway/assembly-validate.mjs",
+    "db:validate": "cargo run -p sdkwork-membership-service-host --example db_validate || echo db:validate not yet implemented as CLI",
+    "db:plan": "cargo run -p sdkwork-membership-service-host --example db_plan || echo db:plan not yet implemented as CLI",
+    "db:migrate": "cargo test -p sdkwork-commerce-membership-repository-sqlx --test membership_sqlx_standard -- --nocapture",
+    "db:seed": "cargo test -p sdkwork-commerce-membership-repository-sqlx --test membership_sqlx_standard -- --nocapture",
+    "db:status": "cargo run -p sdkwork-membership-service-host --example db_status || echo db:status not yet implemented as CLI",
+    "db:drift": "cargo run -p sdkwork-membership-service-host --example db_drift || echo db:drift not yet implemented as CLI",
+    "db:drift:check": "cargo run -p sdkwork-membership-service-host --example db_drift_check || echo db:drift:check not yet implemented as CLI",
+    "db:bootstrap": "cargo test -p sdkwork-commerce-membership-repository-sqlx --test membership_sqlx_standard -- --nocapture"
   },
   "devDependencies": {
     "@sdkwork/appbase-pc-react": "workspace:*",

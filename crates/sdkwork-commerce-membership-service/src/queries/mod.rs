@@ -43,8 +43,8 @@ impl MembershipPackageGroupListQuery {
 
         Ok(Self {
             tenant_id: tenant_id.to_string(),
-            organization_id: normalize_optional_text(organization_id),
-            billing_cycle: normalize_optional_text(billing_cycle),
+            organization_id: crate::validation::normalize_optional_text(organization_id),
+            billing_cycle: crate::validation::normalize_optional_text(billing_cycle),
         })
     }
 }
@@ -60,16 +60,10 @@ impl MembershipPackageListQuery {
 
         Ok(Self {
             tenant_id: tenant_id.to_string(),
-            organization_id: normalize_optional_text(organization_id),
-            package_group_id: normalize_optional_text(package_group_id),
-            plan_id: normalize_optional_text(plan_id),
+            organization_id: crate::validation::normalize_optional_text(organization_id),
+            package_group_id: crate::validation::normalize_optional_text(package_group_id),
+            plan_id: crate::validation::normalize_optional_text(plan_id),
         })
     }
 }
 
-fn normalize_optional_text(value: Option<&str>) -> Option<String> {
-    value
-        .map(str::trim)
-        .filter(|value| !value.is_empty())
-        .map(str::to_string)
-}

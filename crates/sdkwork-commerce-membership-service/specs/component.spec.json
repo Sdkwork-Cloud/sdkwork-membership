@@ -6,10 +6,10 @@
     "displayName": "SDKWork Commerce Membership",
     "version": "0.1.0",
     "type": "rust-crate",
-    "root": "sdkwork-commerce/crates/sdkwork-commerce-membership-service",
-    "domain": "iam",
-    "declaredDomain": null,
-    "capability": "commerce",
+    "root": "crates/sdkwork-commerce-membership-service",
+    "domain": "commerce",
+    "declaredDomain": "commerce",
+    "capability": "membership",
     "status": "stable",
     "languages": [
       "rust"

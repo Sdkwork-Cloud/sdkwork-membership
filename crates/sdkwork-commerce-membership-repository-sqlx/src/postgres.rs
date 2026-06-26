@@ -393,27 +393,28 @@ impl AppMembershipStore for PostgresCommerceMembershipStore {
 
     fn load_daily_reward_status<'a>(
         &'a self,
-        _subject: Option<AppMembershipSubject>,
+        subject: Option<AppMembershipSubject>,
     ) -> AppMembershipReadFuture<'a, AppMembershipDailyRewardStatusResponse> {
-        Box::pin(async {
-            Ok(AppMembershipDailyRewardStatusResponse {
-                can_claim: false,
-                claimed_today: false,
-                consecutive_days: 0,
-                total_days: 0,
-            })
+        Box::pin(async move {
+            let Some(subject) = subject else {
+                return Ok(AppMembershipDailyRewardStatusResponse {
+                    can_claim: false,
+                    claimed_today: false,
+                    consecutive_days: 0,
+                    total_days: 0,
+                });
+            };
+            load_daily_reward_status_pg(&self.pool, subject).await
         })
     }
 
     fn claim_daily_reward<'a>(
         &'a self,
-        _subject: AppMembershipSubject,
-        _requested_at: String,
+        subject: AppMembershipSubject,
+        requested_at: String,
     ) -> AppMembershipReadFuture<'a, AppMembershipDailyRewardResponse> {
-        Box::pin(async {
-            Err(CommerceServiceError::conflict(
-                "membership daily reward is unavailable without reward configuration",
-            ))
+        Box::pin(async move {
+            claim_daily_reward_pg(&self.pool, subject, requested_at).await
         })
     }
 
@@ -423,7 +424,15 @@ impl AppMembershipStore for PostgresCommerceMembershipStore {
     ) -> AppMembershipReadFuture<'a, AppMembershipPrivilegeUsageResponse> {
         Box::pin(async move {
             let benefits = load_benefits(&self.pool, subject, None).await?;
-            Ok(privilege_usage_from_benefits(&benefits))
+            let mut usage = privilege_usage_from_benefits(&benefits);
+            if let Some(subject) = subject {
+                if let Ok(actual) = load_privilege_usage_pg(&self.pool, subject).await {
+                    usage.speed_up_used = actual.speed_up_used;
+                    usage.priority_queue_used = actual.priority_queue_used;
+                    usage.exclusive_model_used = actual.exclusive_model_used;
+                }
+            }
+            Ok(usage)
         })
     }
 
@@ -2822,4 +2831,274 @@ fn none_when_read_model_is_missing(
     } else {
         Err(sql_error(error))
     }
+}
+
+// ── Daily reward helpers ──
+
+const DAILY_REWARD_BASE_POINTS: i64 = 10;
+const DAILY_REWARD_WEEKLY_BONUS: i64 = 50;
+const DAILY_REWARD_BIWEEKLY_BONUS: i64 = 100;
+const DAILY_REWARD_MONTHLY_BONUS: i64 = 500;
+
+fn daily_reward_points(consecutive_days: i64) -> i64 {
+    let day = consecutive_days.max(1);
+    if day % 30 == 0 {
+        DAILY_REWARD_MONTHLY_BONUS
+    } else if day % 14 == 0 {
+        DAILY_REWARD_BIWEEKLY_BONUS
+    } else if day % 7 == 0 {
+        DAILY_REWARD_WEEKLY_BONUS
+    } else {
+        DAILY_REWARD_BASE_POINTS
+    }
+}
+
+async fn load_daily_reward_status_pg(
+    pool: &PgPool,
+    subject: AppMembershipSubject,
+) -> AppMembershipResult<AppMembershipDailyRewardStatusResponse> {
+    let row = sqlx::query(
+        r#"
+        SELECT
+            CAST(reward_date AS TEXT) AS reward_date,
+            CAST(consecutive_days AS BIGINT) AS consecutive_days,
+            CAST(total_days AS BIGINT) AS total_days,
+            CAST(CURRENT_DATE AS TEXT) AS today,
+            CASE WHEN reward_date = CURRENT_DATE THEN 1 ELSE 0 END AS is_today
+        FROM commerce_membership_daily_reward
+        WHERE tenant_id = $1
+          AND (organization_id = 0 OR organization_id = $2)
+          AND user_id = $3
+          AND reward_date >= CURRENT_DATE - INTERVAL '2 days'
+        ORDER BY reward_date DESC
+        LIMIT 1
+        "#,
+    )
+    .bind(subject.tenant_id)
+    .bind(subject.organization_id)
+    .bind(subject.user_id)
+    .fetch_optional(pool)
+    .await
+    .or_else(none_when_read_model_is_missing)?;
+
+    let Some(row) = row else {
+        return Ok(AppMembershipDailyRewardStatusResponse {
+            can_claim: true,
+            claimed_today: false,
+            consecutive_days: 0,
+            total_days: 0,
+        });
+    };
+
+    let is_today: i64 = row.try_get("is_today").unwrap_or(0);
+    let consecutive_days = integer_cell(&row, "consecutive_days");
+    let total_days = integer_cell(&row, "total_days");
+
+    Ok(AppMembershipDailyRewardStatusResponse {
+        can_claim: is_today == 0,
+        claimed_today: is_today != 0,
+        consecutive_days,
+        total_days,
+    })
+}
+
+async fn claim_daily_reward_pg(
+    pool: &PgPool,
+    subject: AppMembershipSubject,
+    requested_at: String,
+) -> AppMembershipResult<AppMembershipDailyRewardResponse> {
+    let last_row = sqlx::query(
+        r#"
+        SELECT
+            CAST(reward_date AS TEXT) AS reward_date,
+            CAST(consecutive_days AS BIGINT) AS consecutive_days,
+            CAST(total_days AS BIGINT) AS total_days,
+            CAST(CURRENT_DATE AS TEXT) AS today
+        FROM commerce_membership_daily_reward
+        WHERE tenant_id = $1
+          AND (organization_id = 0 OR organization_id = $2)
+          AND user_id = $3
+          AND reward_date >= CURRENT_DATE - INTERVAL '1 day'
+        ORDER BY reward_date DESC
+        LIMIT 1
+        "#,
+    )
+    .bind(subject.tenant_id)
+    .bind(subject.organization_id)
+    .bind(subject.user_id)
+    .fetch_optional(pool)
+    .await
+    .or_else(none_when_read_model_is_missing)?;
+
+    let today = current_date_from_pool(pool).await;
+    let (prev_consecutive, prev_total, prev_date) = last_row
+        .as_ref()
+        .map(|row| {
+            (
+                integer_cell(row, "consecutive_days"),
+                integer_cell(row, "total_days"),
+                string_cell(row, "reward_date"),
+            )
+        })
+        .unwrap_or((0, 0, String::new()));
+
+    if prev_date == today {
+        return Err(CommerceServiceError::conflict(
+            "membership daily reward has already been claimed today",
+        ));
+    }
+
+    let yesterday = yesterday_date_from_pool(pool).await;
+    let new_consecutive = if prev_date == yesterday {
+        prev_consecutive + 1
+    } else {
+        1
+    };
+    let new_total = prev_total + 1;
+    let reward_points = daily_reward_points(new_consecutive);
+    let reward_id = format!("daily-reward-{}-{}-{}", subject.tenant_id, subject.user_id, today);
+    let reward_uuid = format!("dr-{}-{}-{}", subject.tenant_id, subject.user_id, today);
+    let idempotency_key = format!(
+        "daily-reward-{}-{}-{}",
+        subject.tenant_id, subject.user_id, today
+    );
+
+    sqlx::query(
+        r#"
+        INSERT INTO commerce_membership_daily_reward
+            (id, uuid, tenant_id, organization_id, user_id, reward_date,
+             reward_points, consecutive_days, total_days, status, idempotency_key, created_at)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, 'claimed', $10, $11)
+        ON CONFLICT (tenant_id, user_id, reward_date) DO NOTHING
+        "#,
+    )
+    .bind(&reward_id)
+    .bind(&reward_uuid)
+    .bind(subject.tenant_id)
+    .bind(subject.organization_id)
+    .bind(subject.user_id)
+    .bind(&today)
+    .bind(reward_points)
+    .bind(new_consecutive)
+    .bind(new_total)
+    .bind(&idempotency_key)
+    .bind(&requested_at)
+    .execute(pool)
+    .await
+    .map_err(|error| {
+        if is_missing_postgres_read_model(&error) {
+            CommerceServiceError::conflict(
+                "membership daily reward is unavailable without reward table migration",
+            )
+        } else {
+            store_error("failed to insert daily reward", error)
+        }
+    })?;
+
+    Ok(AppMembershipDailyRewardResponse {
+        reward_points,
+        claimed_at: Some(requested_at),
+        message: format!("claimed {reward_points} points for day {new_consecutive}"),
+        consecutive_days: new_consecutive,
+    })
+}
+
+async fn current_date_from_pool(pool: &PgPool) -> String {
+    sqlx::query_scalar::<_, String>("SELECT CAST(CURRENT_DATE AS TEXT)")
+        .fetch_one(pool)
+        .await
+        .unwrap_or_else(|_| {
+            format_timestamp_date(std::time::SystemTime::now())
+        })
+}
+
+async fn yesterday_date_from_pool(pool: &PgPool) -> String {
+    sqlx::query_scalar::<_, String>("SELECT CAST(CURRENT_DATE - INTERVAL '1 day' AS TEXT)")
+        .fetch_one(pool)
+        .await
+        .unwrap_or_default()
+}
+
+fn format_timestamp_date(time: std::time::SystemTime) -> String {
+    let secs = time
+        .duration_since(std::time::UNIX_EPOCH)
+        .map(|d| d.as_secs())
+        .unwrap_or(0);
+    let days = secs / 86400;
+    let (year, month, day) = epoch_days_to_ymd(days as i64);
+    format!("{year:04}-{month:02}-{day:02}")
+}
+
+fn epoch_days_to_ymd(days_since_epoch: i64) -> (i64, u32, u32) {
+    let mut days = days_since_epoch;
+    let mut year = 1970i64;
+    loop {
+        let leap = is_leap_year(year);
+        let year_days = if leap { 366 } else { 365 };
+        if days >= year_days {
+            days -= year_days;
+            year += 1;
+        } else {
+            break;
+        }
+    }
+    let leap = is_leap_year(year);
+    let month_days = [31, if leap { 29 } else { 28 }, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
+    let mut month = 0u32;
+    let mut day = days as u32;
+    while (month as usize) < 12 && day >= month_days[month as usize] {
+        day -= month_days[month as usize];
+        month += 1;
+    }
+    (year, month + 1, day + 1)
+}
+
+fn is_leap_year(year: i64) -> bool {
+    (year % 4 == 0 && year % 100 != 0) || year % 400 == 0
+}
+
+// ── Privilege usage helpers ──
+
+async fn load_privilege_usage_pg(
+    pool: &PgPool,
+    subject: AppMembershipSubject,
+) -> AppMembershipResult<AppMembershipPrivilegeUsageResponse> {
+    let rows = sqlx::query(
+        r#"
+        SELECT
+            benefit_code,
+            CAST(used_count AS BIGINT) AS used_count,
+            CAST(usage_limit AS BIGINT) AS usage_limit
+        FROM commerce_membership_privilege_usage
+        WHERE tenant_id = $1
+          AND (organization_id = 0 OR organization_id = $2)
+          AND user_id = $3
+          AND period_end >= CURRENT_DATE
+        "#,
+    )
+    .bind(subject.tenant_id)
+    .bind(subject.organization_id)
+    .bind(subject.user_id)
+    .fetch_all(pool)
+    .await
+    .or_else(empty_rows_when_read_model_is_missing)?;
+
+    let mut response = AppMembershipPrivilegeUsageResponse::default();
+    for row in &rows {
+        let benefit_code = string_cell(row, "benefit_code");
+        let used = integer_cell(row, "used_count");
+        match benefit_code.as_str() {
+            "priority_speed_up" => {
+                response.speed_up_used = used;
+            }
+            "priority_queue" => {
+                response.priority_queue_used = used;
+            }
+            "ai_quota" | "exclusive_model" => {
+                response.exclusive_model_used = used;
+            }
+            _ => {}
+        }
+    }
+    Ok(response)
 }

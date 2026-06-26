@@ -59,7 +59,7 @@ fn membership_domain_contract_uses_standard_plan_and_package_terms() {
 #[test]
 fn validates_membership_plan_definition_and_surface_visibility() {
     let plan = MembershipPlanDraft::new(
-        "tenant-1",
+        "100001",
         "membership-plan-pro",
         "Pro member",
         30,
@@ -71,7 +71,7 @@ fn validates_membership_plan_definition_and_surface_visibility() {
     assert_eq!(plan.validity_days, 30);
     assert!(plan.visible_surfaces.contains(&CommerceSurfaceProfile::App));
     assert!(MembershipPlanDraft::new(
-        "tenant-1",
+        "100001",
         "membership-plan-pro",
         "Pro member",
         0,
@@ -117,7 +117,7 @@ fn validates_membership_status_lifecycle() {
 #[test]
 fn membership_activation_requires_paid_order_and_idempotency() {
     let activation = MembershipActivationDraft::new(
-        "tenant-1",
+        "100001",
         "order-1",
         "payment-1",
         "user-1",
@@ -129,7 +129,7 @@ fn membership_activation_requires_paid_order_and_idempotency() {
     assert_eq!(activation.owner_user_id, "user-1");
     assert_eq!(activation.payment_id, "payment-1");
     assert!(MembershipActivationDraft::new(
-        "tenant-1",
+        "100001",
         "order-1",
         "",
         "user-1",
@@ -142,11 +142,11 @@ fn membership_activation_requires_paid_order_and_idempotency() {
 #[test]
 fn entitlement_grants_are_bound_to_membership_and_quota() {
     let grant =
-        EntitlementGrantDraft::new("tenant-1", "membership-1", "model-quota", 1000).unwrap();
+        EntitlementGrantDraft::new("100001", "membership-1", "model-quota", 1000).unwrap();
 
     assert_eq!(grant.entitlement_code, "model-quota");
     assert_eq!(grant.quantity, 1000);
-    assert!(EntitlementGrantDraft::new("tenant-1", "membership-1", "model-quota", 0).is_err());
+    assert!(EntitlementGrantDraft::new("100001", "membership-1", "model-quota", 0).is_err());
 }
 
 #[test]
@@ -171,8 +171,8 @@ fn membership_repository_contract_exposes_required_commands() {
 #[test]
 fn validates_membership_package_group_catalog_shape() {
     let group = MembershipPackageGroupDraft::from_input(MembershipPackageGroupDraftInput {
-        tenant_id: "tenant-1".to_string(),
-        organization_id: "org-1".to_string(),
+        tenant_id: "100001".to_string(),
+        organization_id: "0".to_string(),
         external_id: 1,
         package_group_no: "membership-month".to_string(),
         name: "Monthly purchase".to_string(),
@@ -189,8 +189,8 @@ fn validates_membership_package_group_catalog_shape() {
     assert_eq!(group.duration_days, 30);
     assert!(
         MembershipPackageGroupDraft::from_input(MembershipPackageGroupDraftInput {
-            tenant_id: "tenant-1".to_string(),
-            organization_id: "org-1".to_string(),
+            tenant_id: "100001".to_string(),
+            organization_id: "0".to_string(),
             external_id: 0,
             package_group_no: "membership-month".to_string(),
             name: "Monthly purchase".to_string(),
@@ -203,8 +203,8 @@ fn validates_membership_package_group_catalog_shape() {
     );
     assert!(
         MembershipPackageGroupDraft::from_input(MembershipPackageGroupDraftInput {
-            tenant_id: "tenant-1".to_string(),
-            organization_id: "org-1".to_string(),
+            tenant_id: "100001".to_string(),
+            organization_id: "0".to_string(),
             external_id: 1,
             package_group_no: String::new(),
             name: "Monthly purchase".to_string(),
@@ -220,8 +220,8 @@ fn validates_membership_package_group_catalog_shape() {
 #[test]
 fn validates_membership_package_catalog_shape_and_prices() {
     let package = MembershipPackageDraft::new(
-        "tenant-1",
-        "org-1",
+        "100001",
+        "0",
         303,
         "membership-month-pro",
         "membership-package-group-month",
@@ -249,8 +249,8 @@ fn validates_membership_package_catalog_shape_and_prices() {
     assert_eq!(package.tags, vec!["monthly", "advanced"]);
 
     assert!(MembershipPackageDraft::new(
-        "tenant-1",
-        "org-1",
+        "100001",
+        "0",
         303,
         "membership-month-pro",
         "membership-package-group-month",
@@ -269,8 +269,8 @@ fn validates_membership_package_catalog_shape_and_prices() {
     )
     .is_err());
     assert!(MembershipPackageDraft::new(
-        "tenant-1",
-        "org-1",
+        "100001",
+        "0",
         303,
         "membership-month-pro",
         "membership-package-group-month",
@@ -293,10 +293,10 @@ fn validates_membership_package_catalog_shape_and_prices() {
 #[test]
 fn membership_package_queries_keep_group_and_region_independent() {
     let group_query =
-        MembershipPackageGroupListQuery::new("tenant-1", Some("org-1"), Some("month")).unwrap();
+        MembershipPackageGroupListQuery::new("100001", Some("0"), Some("month")).unwrap();
     let package_query = MembershipPackageListQuery::new(
-        "tenant-1",
-        Some("org-1"),
+        "100001",
+        Some("0"),
         Some("membership-package-group-month"),
         Some("membership-plan-pro"),
     )
@@ -316,14 +316,14 @@ fn membership_package_queries_keep_group_and_region_independent() {
 #[test]
 fn membership_purchase_uses_package_id_and_payment_method_only() {
     let purchase =
-        MembershipPurchaseDraft::new("tenant-1", "org-1", "user-1", 303, Some("wechat_pay"), None)
+        MembershipPurchaseDraft::new("100001", "0", "user-1", 303, Some("wechat_pay"), None)
             .unwrap();
 
     assert_eq!(purchase.package_id, 303);
     assert_eq!(purchase.payment_method.as_deref(), Some("wechat_pay"));
     assert!(MembershipPurchaseDraft::new(
-        "tenant-1",
-        "org-1",
+        "100001",
+        "0",
         "user-1",
         0,
         Some("wechat_pay"),
@@ -333,8 +333,8 @@ fn membership_purchase_uses_package_id_and_payment_method_only() {
     for legacy_method in ["wechat", "wechatpay", "stripe"] {
         assert!(
             MembershipPurchaseDraft::new(
-                "tenant-1",
-                "org-1",
+                "100001",
+                "0",
                 "user-1",
                 303,
                 Some(legacy_method),

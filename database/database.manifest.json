@@ -1,0 +1,39 @@
+{
+  "schemaVersion": 1,
+  "kind": "sdkwork.database.module",
+  "moduleId": "membership",
+  "serviceCode": "MEMBERSHIP",
+  "displayName": "Membership Database",
+  "owner": "sdkwork-membership",
+  "engines": ["postgres", "sqlite"],
+  "defaultEngine": "postgres",
+  "tablePrefix": "commerce_",
+  "contractVersion": "1.1.0",
+  "baselineStrategy": "migrations-only",
+  "modules": [
+    {
+      "name": "membership_extension",
+      "description": "Membership-owned extension tables (daily reward, privilege usage, change log)",
+      "migration": "0001_membership_extension_tables",
+      "owner": "sdkwork-membership"
+    }
+  ],
+  "lifecycle": {
+    "autoMigrate": false,
+    "seedOnBoot": false,
+    "defaultSeedLocale": "zh-CN",
+    "defaultSeedProfile": "standard",
+    "activeSeedLocales": ["zh-CN"],
+    "driftCheckIntervalSec": 60
+  },
+  "paths": {
+    "contract": "contract/schema.yaml",
+    "migrations": "migrations",
+    "seeds": "seeds",
+    "driftPolicy": "drift/policy.yaml"
+  },
+  "spi": {
+    "provider": "default",
+    "hooks": []
+  }
+}

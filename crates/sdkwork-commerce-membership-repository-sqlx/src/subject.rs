@@ -1,5 +1,6 @@
 use axum::Extension;
 use sdkwork_iam_context_service::IamAppContext;
+use sdkwork_utils_rust::number::parse_int;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) struct NumericRuntimeSubject {
@@ -26,7 +27,7 @@ pub(crate) fn numeric_runtime_subject_from_extension(
 }
 
 fn parse_non_negative_context_i64(value: &str, field_name: &'static str) -> Result<i64, String> {
-    let parsed = value.trim().parse::<i64>().map_err(|_| {
+    let parsed = parse_int(value).ok_or_else(|| {
         format!("authenticated runtime context {field_name} must be a non-negative integer")
     })?;
     if parsed < 0 {
@@ -38,7 +39,7 @@ fn parse_non_negative_context_i64(value: &str, field_name: &'static str) -> Resu
 }
 
 fn parse_positive_context_i64(value: &str, field_name: &'static str) -> Result<i64, String> {
-    let parsed = value.trim().parse::<i64>().map_err(|_| {
+    let parsed = parse_int(value).ok_or_else(|| {
         format!("authenticated runtime context {field_name} must be a positive integer")
     })?;
     if parsed <= 0 {

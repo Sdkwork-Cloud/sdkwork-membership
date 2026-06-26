@@ -1,0 +1,243 @@
+schema_version: 1
+kind: sdkwork.database.schema
+module_id: membership
+contract_version: 1.1.0
+owner_team: sdkwork-membership
+compliance_level: L2
+engines:
+  - postgres
+  - sqlite
+table_prefix: commerce_
+tables:
+  # ── Membership-owned tables (extension tables) ──
+  - name: commerce_membership_daily_reward
+    profile: user_entity+event_log
+    compliance_level: L2
+    system_of_record: true
+    write_owner: sdkwork-membership
+    description: Daily check-in reward tracking per user with consecutive-day computation.
+
+  - name: commerce_membership_privilege_usage
+    profile: user_entity
+    compliance_level: L2
+    system_of_record: true
+    write_owner: sdkwork-membership
+    description: Per-period privilege consumption tracker for membership benefits.
+
+  - name: commerce_membership_change_log
+    profile: audit_log
+    compliance_level: L3
+    system_of_record: true
+    write_owner: sdkwork-membership
+    description: Immutable audit log for membership status transitions and plan changes.
+
+  # ── Commerce platform tables (shared, created by commerce initial migration) ──
+  # The tables below are created and owned by the commerce platform (T0).
+  # The membership capability reads and writes to them via repository adapters.
+  # They are registered here for contract visibility and drift detection.
+
+  - name: membership_plan
+    profile: tenant_entity+dictionary_entity
+    compliance_level: L2
+    system_of_record: true
+    write_owner: sdkwork-commerce-platform
+    description: Membership plan definitions (free, pro, max, vip) with rank ordering.
+
+  - name: membership_plan_version
+    profile: tenant_entity+snapshot
+    compliance_level: L2
+    system_of_record: true
+    write_owner: sdkwork-commerce-platform
+    description: Published plan versions with lifecycle management.
+
+  - name: membership_plan_benefit
+    profile: relation_entity
+    compliance_level: L2
+    system_of_record: true
+    write_owner: sdkwork-commerce-platform
+    description: Plan-version to benefit-definition association with grant policies.
+
+  - name: membership_package_group
+    profile: tenant_entity+dictionary_entity
+    compliance_level: L2
+    system_of_record: true
+    write_owner: sdkwork-commerce-platform
+    description: Billing-cycle-based package grouping for display and sorting.
+
+  - name: membership_package
+    profile: tenant_entity
+    compliance_level: L2
+    system_of_record: true
+    write_owner: sdkwork-commerce-platform
+    description: Purchasable membership packages with pricing, duration, and SKU references.
+
+  - name: membership_subscription
+    profile: user_entity
+    compliance_level: L3
+    system_of_record: true
+    write_owner: sdkwork-commerce-platform
+    description: User membership subscription records with status lifecycle.
+
+  - name: membership_period
+    profile: tenant_entity+event_log
+    compliance_level: L3
+    system_of_record: true
+    write_owner: sdkwork-commerce-platform
+    description: Subscription billing periods tracking start/end and source order.
+
+  - name: benefit_definition
+    profile: tenant_entity+dictionary_entity
+    compliance_level: L2
+    system_of_record: true
+    write_owner: sdkwork-commerce-platform
+    description: Canonical benefit catalog (quota, counter, flag, discount types).
+
+  - name: entitlement_account
+    profile: user_entity
+    compliance_level: L3
+    system_of_record: true
+    write_owner: sdkwork-commerce-platform
+    description: Per-user benefit balance accounts with frozen tracking.
+
+  - name: entitlement_grant
+    profile: user_entity+event_log
+    compliance_level: L3
+    system_of_record: true
+    write_owner: sdkwork-commerce-platform
+    description: Benefit grant records linked to membership subscriptions.
+
+  - name: entitlement_ledger_entry
+    profile: ledger_entry
+    compliance_level: L3
+    system_of_record: true
+    write_owner: sdkwork-commerce-platform
+    description: Immutable entitlement balance change ledger entries.
+
+  # ── Commerce platform shared tables (read/write via port interfaces) ──
+  - name: commerce_product_spu
+    profile: tenant_entity
+    compliance_level: L2
+    system_of_record: true
+    write_owner: sdkwork-commerce-platform
+    description: Product SPU catalog for membership and recharge products.
+    reference_only: true
+
+  - name: commerce_product_sku
+    profile: tenant_entity
+    compliance_level: L2
+    system_of_record: true
+    write_owner: sdkwork-commerce-platform
+    description: Product SKU variants for membership packages and recharge packages.
+    reference_only: true
+
+  - name: commerce_order
+    profile: tenant_entity
+    compliance_level: L3
+    system_of_record: true
+    write_owner: sdkwork-commerce-platform
+    description: Commerce order records for membership purchases.
+    reference_only: true
+
+  - name: commerce_order_item
+    profile: tenant_entity
+    compliance_level: L3
+    system_of_record: true
+    write_owner: sdkwork-commerce-platform
+    description: Order line items for membership purchases.
+    reference_only: true
+
+  - name: commerce_order_amount_breakdown
+    profile: tenant_entity
+    compliance_level: L3
+    system_of_record: true
+    write_owner: sdkwork-commerce-platform
+    description: Order amount breakdown (original, discount, payable).
+    reference_only: true
+
+  - name: commerce_payment_intent
+    profile: tenant_entity
+    compliance_level: L3
+    system_of_record: true
+    write_owner: sdkwork-commerce-platform
+    description: Payment intent records for membership purchases.
+    reference_only: true
+
+  - name: commerce_payment_attempt
+    profile: tenant_entity+event_log
+    compliance_level: L3
+    system_of_record: true
+    write_owner: sdkwork-commerce-platform
+    description: Payment attempt records with provider and callback tracking.
+    reference_only: true
+
+  - name: commerce_account
+    profile: user_entity
+    compliance_level: L3
+    system_of_record: true
+    write_owner: sdkwork-commerce-platform
+    description: User asset accounts (points, cash) with available and frozen balances.
+    reference_only: true
+
+  - name: commerce_account_ledger_entry
+    profile: ledger_entry
+    compliance_level: L3
+    system_of_record: true
+    write_owner: sdkwork-commerce-platform
+    description: Immutable account balance change ledger entries.
+    reference_only: true
+
+  - name: commerce_payment_method
+    profile: tenant_entity+dictionary_entity
+    compliance_level: L2
+    system_of_record: true
+    write_owner: sdkwork-commerce-platform
+    description: Payment method catalog (wechat_pay, alipay, paypal, etc.).
+    reference_only: true
+
+  - name: commerce_payment_provider
+    profile: tenant_entity+dictionary_entity
+    compliance_level: L2
+    system_of_record: true
+    write_owner: sdkwork-commerce-platform
+    description: Payment provider catalog with supported countries and currencies.
+    reference_only: true
+
+  - name: commerce_payment_provider_account
+    profile: tenant_entity
+    compliance_level: L3
+    system_of_record: true
+    write_owner: sdkwork-commerce-platform
+    description: Provider merchant accounts with secret references.
+    reference_only: true
+
+  - name: commerce_payment_channel
+    profile: tenant_entity
+    compliance_level: L2
+    system_of_record: true
+    write_owner: sdkwork-commerce-platform
+    description: Payment channels linking provider accounts to methods and scenes.
+    reference_only: true
+
+  - name: commerce_payment_route_rule
+    profile: tenant_entity
+    compliance_level: L2
+    system_of_record: true
+    write_owner: sdkwork-commerce-platform
+    description: Payment routing rules with priority and filtering conditions.
+    reference_only: true
+
+  - name: commerce_recharge_package
+    profile: tenant_entity
+    compliance_level: L2
+    system_of_record: true
+    write_owner: sdkwork-commerce-platform
+    description: Points recharge packages with bonus and SKU references.
+    reference_only: true
+
+  - name: commerce_exchange_rule
+    profile: tenant_entity+dictionary_entity
+    compliance_level: L2
+    system_of_record: true
+    write_owner: sdkwork-commerce-platform
+    description: Asset exchange rules (cash to points) with rate configuration.
+    reference_only: true

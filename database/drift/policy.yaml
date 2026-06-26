@@ -1,0 +1,26 @@
+# Drift policy for membership database module.
+# Severity defaults align with DATABASE_FRAMEWORK_SPEC.md section 9.2.
+
+rules:
+  - code: missing_table
+    severity: error
+  - code: extra_table
+    severity: warn
+  - code: missing_column
+    severity: error
+  - code: extra_column
+    severity: warn
+  - code: type_mismatch
+    severity: error
+  - code: missing_index
+    severity: warn
+  - code: extra_index
+    severity: info
+  - code: missing_constraint
+    severity: error
+  - code: migration_pending
+    severity: error
+  - code: migration_unknown
+    severity: error
+  - code: checksum_mismatch
+    severity: error
