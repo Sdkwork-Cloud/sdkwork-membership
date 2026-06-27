@@ -6,10 +6,10 @@
     "displayName": "SDKWork Commerce Membership Sqlx",
     "version": "0.1.0",
     "type": "rust-crate",
-    "root": "sdkwork-commerce/crates/sdkwork-commerce-membership-repository-sqlx",
-    "domain": "iam",
+    "root": "crates/sdkwork-commerce-membership-repository-sqlx",
+    "domain": "commerce",
     "declaredDomain": null,
-    "capability": "commerce",
+    "capability": "membership",
     "status": "stable",
     "languages": [
       "rust"

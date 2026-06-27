@@ -2295,6 +2295,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "sdkwork-database-id"
+version = "0.1.0"
+dependencies = [
+ "sdkwork-database-config",
+ "sdkwork-database-sqlx",
+ "sdkwork-id-core",
+ "sqlx",
+ "tokio",
+ "tracing",
+]
+
+[[package]]
 name = "sdkwork-database-lifecycle"
 version = "0.1.0"
 dependencies = [
@@ -2356,9 +2368,9 @@ dependencies = [
  "base64",
  "chrono",
  "rand_core 0.6.4",
+ "sdkwork-database-id",
  "sdkwork-iam-context-service",
  "sdkwork-iam-module-registry",
- "sdkwork-id-core",
  "sha2",
  "sqlx",
  "uuid",
@@ -2889,6 +2901,7 @@ name = "sdkwork-rpc-client"
 version = "0.1.0"
 dependencies = [
  "async-trait",
+ "rand 0.9.4",
  "sdkwork-discovery-rpc-proto",
  "sdkwork-rpc-core",
  "sdkwork-rpc-discovery",
@@ -2921,6 +2934,7 @@ name = "sdkwork-rpc-discovery"
 version = "0.1.0"
 dependencies = [
  "prost-types",
+ "rand 0.9.4",
  "sdkwork-discovery-rpc-proto",
  "sdkwork-rpc-core",
  "sdkwork-utils-rust",
@@ -2968,11 +2982,14 @@ dependencies = [
 name = "sdkwork-utils-rust"
 version = "0.10.0"
 dependencies = [
+ "aes-gcm",
  "base64",
  "chrono",
+ "hkdf",
  "hmac",
  "rand 0.8.6",
  "regex",
+ "serde",
  "serde_json",
  "sha2",
  "urlencoding",

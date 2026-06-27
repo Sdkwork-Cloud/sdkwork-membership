@@ -7,7 +7,7 @@
   "scripts": {
     "dev": "pnpm --dir apps/sdkwork-membership-pc dev",
     "build": "pnpm --dir apps/sdkwork-membership-pc build",
-    "start": "cargo run -p sdkwork-membership-api-server --bin membership-server",
+    "start": "cargo run -p sdkwork-membership-standalone-gateway --bin membership-server",
     "test": "pnpm test:node && pnpm test:vitest && cargo test --workspace",
     "test:node": "node --test --test-reporter=spec tests/static/placeholder.test.mjs",
     "test:vitest": "vitest run --config vitest.config.ts --configLoader native --pool vmThreads",

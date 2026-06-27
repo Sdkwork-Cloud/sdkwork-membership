@@ -22,10 +22,10 @@ sdkwork-membership crates (L2 business)
   sdkwork-routes-membership-backend-api        — backend-api route adapter
   sdkwork-membership-database-host             — database lifecycle bootstrap
   sdkwork-membership-service-host              — in-process service container
-  sdkwork-membership-api-server                — HTTP process entry point
+  sdkwork-membership-standalone-gateway                — HTTP process entry point
   sdkwork-membership-gateway-assembly          — route assembly manifest
        -> consumed by
-sdkwork-commerce (T0 platform) via sibling Cargo.toml path dependencies
+composition applications (sdkwork-mall, etc.) via workspace path dependencies
 ```
 
 ## 2. Technology Choices
@@ -35,7 +35,7 @@ sdkwork-commerce (T0 platform) via sibling Cargo.toml path dependencies
 - **sdkwork-database** for connection pools, lifecycle orchestration, and SPI (`DATABASE_FRAMEWORK_SPEC.md`)
 - **sdkwork-utils-rust** for cross-language utility functions — eliminates duplicate validation, string, and number helpers (`GENERIC_UTILS_SCOPE.md`)
 - **sdkwork-iam-web-adapter** for `WebRequestContext` resolution and IAM token validation
-- **Sibling path dependencies** from `sdkwork-commerce/Cargo.toml` — no duplicated domain crates
+- **Sibling path dependencies** from this repository's `Cargo.toml` — cross-T1 references use `sdkwork_commerce_*` crate names per `sdkwork-<domain>-<capability>-service` naming
 
 ## 3. System Boundaries And Modules
 
@@ -47,7 +47,7 @@ sdkwork-commerce (T0 platform) via sibling Cargo.toml path dependencies
 | Backend API routes | `sdkwork-routes-membership-backend-api` | `/backend/v3/api/membership` route adapter with `WebRequestContext` |
 | Database lifecycle | `sdkwork-membership-database-host` | Pool creation, `DefaultDatabaseModule`, migration orchestration |
 | Service container | `sdkwork-membership-service-host` | In-process service container (no HTTP listener) |
-| API server | `sdkwork-membership-api-server` | Process startup, route mounting, HTTP listener, health |
+| API server | `sdkwork-membership-standalone-gateway` | Process startup, route mounting, HTTP listener, health |
 | Gateway assembly | `sdkwork-membership-gateway-assembly` | Route inventory manifest, assembly bootstrap |
 
 ## 4. Web Framework Integration
@@ -143,7 +143,7 @@ sdkwork-membership/
     sdkwork-routes-membership-backend-api/     — backend-api routes
     sdkwork-membership-database-host/          — database bootstrap
     sdkwork-membership-service-host/           — service container
-    sdkwork-membership-api-server/             — HTTP process
+    sdkwork-membership-standalone-gateway/             — HTTP process
     sdkwork-membership-gateway-assembly/       — route assembly
   packages/common/membership/                  — TypeScript contracts and SDK ports
   apps/sdkwork-membership-pc/                  — PC application root
@@ -173,8 +173,8 @@ sdkwork-membership/
 ## 12. Deployment And Runtime Topology
 
 - Local development: `cargo test --workspace` in this repository.
-- Independent deployment: `sdkwork-membership-api-server` binary `membership-server`.
-- Platform composition: `sdkwork-commerce` service host may merge capability routers into the commerce HTTP surface.
+- Independent deployment: `sdkwork-membership-standalone-gateway` binary `membership-server`.
+- Platform composition: composition applications (sdkwork-mall, etc.) consume per-T1 SDKs via workspace paths. The `sdkwork-commerce` monolith has been dissolved.
 - Environment variables follow `ENVIRONMENT_SPEC.md` with `MEMBERSHIP` service code prefix.
 
 ## 13. Verification

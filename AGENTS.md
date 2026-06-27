@@ -13,7 +13,7 @@ Read `../sdkwork-specs/SOUL.md` before executing tasks in this root.
 - Backend API prefix: `/backend/v3/api/membership`
 - PC application root: `apps/sdkwork-membership-pc/`
 
-Commerce platform consumes this repo via sibling `Cargo.toml [workspace.dependencies]` paths. Do not duplicate these crates under `sdkwork-commerce/crates/`.
+This is a **T1 commerce capability repository**. The `sdkwork-commerce` monolith has been dissolved (see `../sdkwork-specs/MIGRATION_SPEC.md` §8). This repository is self-contained with its own API server, persistence, IAM middleware, and SDK surfaces.
 
 ## Verification
 

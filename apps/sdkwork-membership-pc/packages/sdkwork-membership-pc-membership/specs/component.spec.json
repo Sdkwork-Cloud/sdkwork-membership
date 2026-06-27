@@ -6,9 +6,9 @@
     "displayName": "SDKWork Membership PC React",
     "version": "0.1.0",
     "type": "react-package",
-    "root": "sdkwork-commerce/apps/sdkwork-commerce-pc/packages/sdkwork-membership-pc-membership",
-    "domain": "iam",
-    "declaredDomain": "iam",
+    "root": "apps/sdkwork-membership-pc/packages/sdkwork-membership-pc-membership",
+    "domain": "commerce",
+    "declaredDomain": "commerce",
     "capability": "membership",
     "status": "ready",
     "languages": [

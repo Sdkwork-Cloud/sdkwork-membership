@@ -6,7 +6,7 @@ SDKWork commerce **membership** capability building-block repository (domain `co
 - Composition consumer: `../sdkwork-clawrouter/vendor/sdkwork-commerce` (archived transitional platform snapshot)
 - Domain service: `crates/sdkwork-commerce-membership-service/`
 - Repository SQL: `crates/sdkwork-commerce-membership-repository-sqlx/`
-- HTTP API server: `crates/sdkwork-membership-api-server/`
+- HTTP API server: `crates/sdkwork-membership-standalone-gateway/`
 
 ## Quick start
 

@@ -721,7 +721,7 @@ async fn sqlite_purchase_creates_order_payment_membership_and_entitlements() {
             subject: AppMembershipSubject {
                 tenant_id: 100001,
                 organization_id: 0,
-                user_id: 30,
+                user_id: 1,
             },
             package_id: 301,
             order_uuid: "order-membership-301".to_owned(),
@@ -773,7 +773,7 @@ async fn sqlite_purchase_creates_order_payment_membership_and_entitlements() {
     .expect("membership row");
     assert_eq!("100001", membership.0);
     assert_eq!("0", membership.1);
-    assert_eq!("30", membership.2);
+    assert_eq!("1", membership.2);
     assert_eq!("seed-membership-plan-pro", membership.3);
     assert_eq!("301", membership.4);
     assert_eq!("pending_activation", membership.5);
@@ -823,7 +823,7 @@ async fn sqlite_purchase_accumulates_existing_entitlement_accounts_for_same_subj
             subject: AppMembershipSubject {
                 tenant_id: 100001,
                 organization_id: 0,
-                user_id: 30,
+                user_id: 1,
             },
             package_id: 301,
             order_uuid: "order-membership-first-301".to_owned(),
@@ -851,7 +851,7 @@ async fn sqlite_purchase_accumulates_existing_entitlement_accounts_for_same_subj
             subject: AppMembershipSubject {
                 tenant_id: 100001,
                 organization_id: 0,
-                user_id: 30,
+                user_id: 1,
             },
             package_id: 301,
             order_uuid: "order-membership-second-301".to_owned(),
@@ -885,7 +885,7 @@ async fn sqlite_purchase_accumulates_existing_entitlement_accounts_for_same_subj
     assert_eq!(first_accounts.len() as i64, second_grant_count);
 
     let ledger_count: i64 = sqlx::query_scalar(
-        "SELECT COUNT(1) FROM entitlement_ledger_entry WHERE tenant_id = '100001' AND subject_type = 'user' AND subject_id = '30' AND business_type = 'membership_grant'",
+        "SELECT COUNT(1) FROM entitlement_ledger_entry WHERE tenant_id = '100001' AND subject_type = 'user' AND subject_id = '1' AND business_type = 'membership_grant'",
     )
     .fetch_one(&pool)
     .await
@@ -1243,11 +1243,11 @@ async fn sqlite_admin_membership_router_manages_standard_membership_catalog() {
 
     let memberships = request_json(
         router.clone(),
-        signed_request("GET", "/backend/v3/api/memberships/members?user_id=30", ""),
+        signed_request("GET", "/backend/v3/api/memberships/members?user_id=1", ""),
     )
     .await;
     assert_eq!("membership-admin", memberships["data"]["items"][0]["id"]);
-    assert_eq!("30", memberships["data"]["items"][0]["ownerUserId"]);
+    assert_eq!("1", memberships["data"]["items"][0]["ownerUserId"]);
     assert_eq!("pro", memberships["data"]["items"][0]["planCode"]);
     assert_eq!(Value::Null, memberships["data"]["items"][0]["levelCode"]);
 
@@ -1355,7 +1355,7 @@ async fn seed_membership_for_admin(pool: &SqlitePool) {
         INSERT INTO membership_subscription
             (id, tenant_id, organization_id, subscription_no, subject_type, subject_id, owner_user_id, plan_id, plan_version_id, package_id, current_period_id, source_order_id, source_payment_intent_id, status, starts_at, expires_at, grace_until, cancel_at_period_end, request_no, idempotency_key, created_at, updated_at)
         VALUES
-            ('membership-admin', '100001', '0', 'membership-admin', 'user', '30', '30', 'seed-membership-plan-pro', 'seed-membership-plan-version-pro-v1', '301', 'membership-admin-period-1', 'membership-order-admin', 'membership-payment-admin', 'active', '2026-05-01 00:00:00', '2026-06-01 00:00:00', NULL, 0, 'membership-admin', 'membership-admin', '2026-05-01 00:00:00', '2026-05-01 00:00:00')
+            ('membership-admin', '100001', '0', 'membership-admin', 'user', '1', '1', 'seed-membership-plan-pro', 'seed-membership-plan-version-pro-v1', '301', 'membership-admin-period-1', 'membership-order-admin', 'membership-payment-admin', 'active', '2026-05-01 00:00:00', '2026-06-01 00:00:00', NULL, 0, 'membership-admin', 'membership-admin', '2026-05-01 00:00:00', '2026-05-01 00:00:00')
         "#,
     )
     .execute(pool)
@@ -1366,7 +1366,7 @@ async fn seed_membership_for_admin(pool: &SqlitePool) {
         INSERT INTO entitlement_grant
             (id, tenant_id, organization_id, grant_no, benefit_id, subject_type, subject_id, source_type, source_id, grant_policy, granted_quantity, status, starts_at, expires_at, request_no, idempotency_key, created_at, updated_at)
         VALUES
-            ('membership-entitlement-admin-grant', '100001', '0', 'membership-entitlement-admin-grant', 'seed-benefit-ai-quota', 'user', '30', 'membership_subscription', 'membership-admin', 'membership_plan', '10', 'active', '2026-05-01 00:00:00', '2026-06-01 00:00:00', 'membership-entitlement-admin', 'membership-entitlement-admin', '2026-05-01 00:00:00', '2026-05-01 00:00:00')
+            ('membership-entitlement-admin-grant', '100001', '0', 'membership-entitlement-admin-grant', 'seed-benefit-ai-quota', 'user', '1', 'membership_subscription', 'membership-admin', 'membership_plan', '10', 'active', '2026-05-01 00:00:00', '2026-06-01 00:00:00', 'membership-entitlement-admin', 'membership-entitlement-admin', '2026-05-01 00:00:00', '2026-05-01 00:00:00')
         "#,
     )
     .execute(pool)
@@ -1377,7 +1377,7 @@ async fn seed_membership_for_admin(pool: &SqlitePool) {
         INSERT INTO entitlement_account
             (id, tenant_id, organization_id, account_no, benefit_id, subject_type, subject_id, total_granted, total_used, balance, status, expires_at, version, created_at, updated_at)
         VALUES
-            ('membership-entitlement-admin', '100001', '0', 'membership-entitlement-admin', 'seed-benefit-ai-quota', 'user', '30', '10', '0', '10', 'active', '2026-06-01 00:00:00', 0, '2026-05-01 00:00:00', '2026-05-01 00:00:00')
+            ('membership-entitlement-admin', '100001', '0', 'membership-entitlement-admin', 'seed-benefit-ai-quota', 'user', '1', '10', '0', '10', 'active', '2026-06-01 00:00:00', 0, '2026-05-01 00:00:00', '2026-05-01 00:00:00')
         "#,
     )
     .execute(pool)
@@ -1391,7 +1391,7 @@ async fn seed_speed_up_membership(pool: &SqlitePool) {
         INSERT INTO membership_subscription
             (id, tenant_id, organization_id, subscription_no, subject_type, subject_id, owner_user_id, plan_id, plan_version_id, package_id, current_period_id, source_order_id, source_payment_intent_id, status, starts_at, expires_at, grace_until, cancel_at_period_end, request_no, idempotency_key, created_at, updated_at)
         VALUES
-            ('membership-speed-up', '100001', '0', 'membership-speed-up', 'user', '30', '30', 'seed-membership-plan-pro', 'seed-membership-plan-version-pro-v1', '301', 'membership-speed-up-period-1', 'membership-order-speed-up', 'membership-payment-speed-up', 'active', '2026-05-01 00:00:00', '2026-06-01 00:00:00', NULL, 0, 'membership-speed-up', 'membership-speed-up', '2026-05-01 00:00:00', '2026-05-01 00:00:00')
+            ('membership-speed-up', '100001', '0', 'membership-speed-up', 'user', '1', '1', 'seed-membership-plan-pro', 'seed-membership-plan-version-pro-v1', '301', 'membership-speed-up-period-1', 'membership-order-speed-up', 'membership-payment-speed-up', 'active', '2026-05-01 00:00:00', '2026-06-01 00:00:00', NULL, 0, 'membership-speed-up', 'membership-speed-up', '2026-05-01 00:00:00', '2026-05-01 00:00:00')
         "#,
     )
     .execute(pool)
@@ -1402,7 +1402,7 @@ async fn seed_speed_up_membership(pool: &SqlitePool) {
         INSERT INTO entitlement_grant
             (id, tenant_id, organization_id, grant_no, benefit_id, subject_type, subject_id, source_type, source_id, grant_policy, granted_quantity, status, starts_at, expires_at, request_no, idempotency_key, created_at, updated_at)
         VALUES
-            ('membership-entitlement-speed-up-grant', '100001', '0', 'membership-entitlement-speed-up-grant', 'seed-benefit-priority-speed-up', 'user', '30', 'membership_subscription', 'membership-speed-up', 'membership_plan', '1', 'active', '2026-05-01 00:00:00', '2026-06-01 00:00:00', 'membership-entitlement-speed-up', 'membership-entitlement-speed-up', '2026-05-01 00:00:00', '2026-05-01 00:00:00')
+            ('membership-entitlement-speed-up-grant', '100001', '0', 'membership-entitlement-speed-up-grant', 'seed-benefit-priority-speed-up', 'user', '1', 'membership_subscription', 'membership-speed-up', 'membership_plan', '1', 'active', '2026-05-01 00:00:00', '2026-06-01 00:00:00', 'membership-entitlement-speed-up', 'membership-entitlement-speed-up', '2026-05-01 00:00:00', '2026-05-01 00:00:00')
         "#,
     )
     .execute(pool)
@@ -1413,7 +1413,7 @@ async fn seed_speed_up_membership(pool: &SqlitePool) {
         INSERT INTO entitlement_account
             (id, tenant_id, organization_id, account_no, benefit_id, subject_type, subject_id, total_granted, total_used, balance, status, expires_at, version, created_at, updated_at)
         VALUES
-            ('membership-entitlement-speed-up', '100001', '0', 'membership-entitlement-speed-up', 'seed-benefit-priority-speed-up', 'user', '30', '1', '0', '1', 'active', '2026-06-01 00:00:00', 0, '2026-05-01 00:00:00', '2026-05-01 00:00:00')
+            ('membership-entitlement-speed-up', '100001', '0', 'membership-entitlement-speed-up', 'seed-benefit-priority-speed-up', 'user', '1', '1', '0', '1', 'active', '2026-06-01 00:00:00', 0, '2026-05-01 00:00:00', '2026-05-01 00:00:00')
         "#,
     )
     .execute(pool)
@@ -1427,7 +1427,7 @@ async fn seed_points_history(pool: &SqlitePool) {
         INSERT INTO commerce_account
             (id, tenant_id, organization_id, owner_user_id, asset_type, currency_code, available_amount, frozen_amount, version, status, created_at, updated_at)
         VALUES
-            ('membership-points-account-history', '100001', '0', '30', 'points', 'PTS', '60', '0', 1, 'active', '2026-05-01 00:00:00', '2026-05-01 00:00:00')
+            ('membership-points-account-history', '100001', '0', '1', 'points', 'PTS', '60', '0', 1, 'active', '2026-05-01 00:00:00', '2026-05-01 00:00:00')
         "#,
     )
     .execute(pool)
@@ -1444,7 +1444,7 @@ async fn seed_points_history(pool: &SqlitePool) {
             INSERT INTO commerce_account_ledger_entry
                 (id, tenant_id, organization_id, account_id, owner_user_id, asset_type, direction, amount, balance_after, business_type, transaction_no, request_no, idempotency_key, source_type, source_id, remark, created_at)
             VALUES
-                (?1, '100001', '0', 'membership-points-account-history', '30', 'points', 'credit', ?2, ?3, 'membership_points', ?1, ?1, ?1, 'membership', ?1, ?1, ?4)
+                (?1, '100001', '0', 'membership-points-account-history', '1', 'points', 'credit', ?2, ?3, 'membership_points', ?1, ?1, ?1, 'membership', ?1, ?1, ?4)
             "#,
         )
         .bind(id)
@@ -1464,7 +1464,7 @@ async fn membership_entitlement_accounts_for_subject(pool: &SqlitePool) -> Vec<(
         FROM entitlement_account
         WHERE tenant_id = '100001'
           AND subject_type = 'user'
-          AND subject_id = '30'
+          AND subject_id = '1'
         ORDER BY benefit_id
         "#,
     )
@@ -1525,7 +1525,7 @@ fn standard_context() -> IamAppContext {
     IamAppContext::new(
         "100001",
         None,
-        "30",
+        "1",
         "session-30",
         "app-1",
         Environment::Test,
@@ -1540,7 +1540,7 @@ fn admin_backend_context() -> IamAppContext {
     IamAppContext::new(
         "100001",
         Some("1"),
-        "30",
+        "1",
         "session-30",
         "app-1",
         Environment::Test,

@@ -1,12 +1,12 @@
 [package]
-name = "sdkwork-membership-api-server"
+name = "sdkwork-membership-standalone-gateway"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
 publish.workspace = true
 
 [[bin]]
-name = "membership-server"
+name = "sdkwork-membership-standalone-gateway"
 path = "src/main.rs"
 
 [dependencies]
