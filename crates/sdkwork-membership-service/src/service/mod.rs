@@ -1,0 +1,47 @@
+use sdkwork_contract_service::CommerceServiceContract;
+
+pub fn membership_service_contract() -> CommerceServiceContract {
+    CommerceServiceContract::new(
+        "membership",
+        "commerce.membership",
+        vec![
+            "memberships.plans.create",
+            "memberships.plans.update",
+            "memberships.plans.delete",
+            "memberships.packages.create",
+            "memberships.packages.update",
+            "memberships.packages.delete",
+            "memberships.packageGroups.create",
+            "memberships.packageGroups.update",
+            "memberships.packageGroups.delete",
+            "memberships.purchases.create",
+            "memberships.purchases.renew",
+            "memberships.purchases.upgrade",
+            "memberships.points.dailyRewards.create",
+            "memberships.privileges.speedUps.create",
+            "memberships.members.status.update",
+        ],
+        vec![
+            "memberships.current.retrieve",
+            "memberships.current.status.retrieve",
+            "memberships.benefits.list",
+            "memberships.packageGroups.list",
+            "memberships.packageGroups.retrieve",
+            "memberships.packageGroups.packages.list",
+            "memberships.packages.list",
+            "memberships.packages.retrieve",
+            "memberships.plans.list",
+            "memberships.points.balance.retrieve",
+            "memberships.points.history.list",
+            "memberships.points.dailyRewards.status.retrieve",
+            "memberships.privileges.usage.retrieve",
+            "memberships.members.list",
+            "memberships.entitlements.list",
+        ],
+        vec![
+            crate::ports::MEMBERSHIP_REPOSITORY_PORT,
+            crate::ports::IDEMPOTENCY_REPOSITORY_PORT,
+        ],
+        true,
+    )
+}

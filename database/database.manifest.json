@@ -8,8 +8,8 @@
   "engines": ["postgres", "sqlite"],
   "defaultEngine": "postgres",
   "tablePrefix": "commerce_",
-  "contractVersion": "1.1.0",
-  "baselineStrategy": "migrations-only",
+  "contractVersion": "1.0.0",
+  "baselineStrategy": "baseline-plus-migrations",
   "modules": [
     {
       "name": "membership_extension",
@@ -19,7 +19,7 @@
     }
   ],
   "lifecycle": {
-    "autoMigrate": false,
+    "autoMigrate": true,
     "seedOnBoot": false,
     "defaultSeedLocale": "zh-CN",
     "defaultSeedProfile": "standard",

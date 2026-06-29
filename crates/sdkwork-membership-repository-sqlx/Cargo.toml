@@ -1,0 +1,32 @@
+[package]
+name = "sdkwork-membership-repository-sqlx"
+version = "0.1.0"
+edition = "2021"
+license = "UNLICENSED"
+description = "SDKWork commerce Membership SQLx integration and reusable seed installation."
+
+[lib]
+path = "src/lib.rs"
+
+[dependencies]
+axum = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+sqlx = { workspace = true }
+sdkwork_contract_service.workspace = true
+# NOTE: sdkwork-commerce has been deleted, the following crates are no longer available:
+# - sdkwork_commerce_api_server
+# - sdkwork_commerce_bootstrap_manifest
+# - sdkwork_commerce_storage_repository_sqlx
+sdkwork-database-config.workspace = true
+sdkwork-database-sqlx.workspace = true
+sdkwork-web-core.workspace = true
+sdkwork-web-axum.workspace = true
+sdkwork-iam-web-adapter.workspace = true
+sdkwork_iam_context_service.workspace = true
+sdkwork-utils-rust.workspace = true
+
+[dev-dependencies]
+http-body-util = "0.1"
+tokio = { workspace = true }
+tower = { workspace = true, features = ["util"] }

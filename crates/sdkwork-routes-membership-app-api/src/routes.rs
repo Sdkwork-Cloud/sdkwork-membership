@@ -1,5 +1,5 @@
 use axum::Router;
-use sdkwork_commerce_membership_repository_sqlx::{
+use sdkwork_membership_repository_sqlx::{
     app_membership_router_with_postgres_pool, app_membership_router_with_sqlite_pool,
 };
 use sdkwork_database_sqlx::DatabasePool;

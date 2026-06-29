@@ -12,8 +12,8 @@ path = "src/lib.rs"
 axum = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
-sdkwork_commerce_membership_service.workspace = true
-sdkwork_commerce_membership_repository_sqlx.workspace = true
+sdkwork_membership_service.workspace = true
+sdkwork_membership_repository_sqlx.workspace = true
 sdkwork_membership_service_host.workspace = true
 sdkwork_database_sqlx.workspace = true
 sdkwork-web-core.workspace = true

@@ -16,8 +16,8 @@ sdkwork-specs (L0)
 sdkwork-web-framework + sdkwork-database + sdkwork-utils (L1 frameworks)
        -> extended by
 sdkwork-membership crates (L2 business)
-  sdkwork-commerce-membership-service          — domain rules, commands, ports
-  sdkwork-commerce-membership-repository-sqlx  — SQLx persistence, seed data
+  sdkwork-membership-service          — domain rules, commands, ports
+  sdkwork-commerce (deleted)-membership-repository-sqlx  — SQLx persistence, seed data
   sdkwork-routes-membership-app-api            — app-api route adapter
   sdkwork-routes-membership-backend-api        — backend-api route adapter
   sdkwork-membership-database-host             — database lifecycle bootstrap
@@ -41,8 +41,8 @@ composition applications (sdkwork-mall, etc.) via workspace path dependencies
 
 | Layer | Owner crate | Responsibility |
 | --- | --- | --- |
-| Domain commands/queries | `sdkwork-commerce-membership-service` | Business validation, domain models, ports, service contracts |
-| SQL repositories | `sdkwork-commerce-membership-repository-sqlx` | Tenant-scoped persistence, row mapping, seed installation |
+| Domain commands/queries | `sdkwork-membership-service` | Business validation, domain models, ports, service contracts |
+| SQL repositories | `sdkwork-commerce (deleted)-membership-repository-sqlx` | Tenant-scoped persistence, row mapping, seed installation |
 | App API routes | `sdkwork-routes-membership-app-api` | `/app/v3/api/membership` route adapter with `WebRequestContext` |
 | Backend API routes | `sdkwork-routes-membership-backend-api` | `/backend/v3/api/membership` route adapter with `WebRequestContext` |
 | Database lifecycle | `sdkwork-membership-database-host` | Pool creation, `DefaultDatabaseModule`, migration orchestration |
@@ -137,8 +137,8 @@ sdkwork-membership/
     drift/policy.yaml
     fixtures/
   crates/
-    sdkwork-commerce-membership-service/       — domain rules
-    sdkwork-commerce-membership-repository-sqlx/ — SQLx persistence
+    sdkwork-membership-service/       — domain rules
+    sdkwork-commerce (deleted)-membership-repository-sqlx/ — SQLx persistence
     sdkwork-routes-membership-app-api/         — app-api routes
     sdkwork-routes-membership-backend-api/     — backend-api routes
     sdkwork-membership-database-host/          — database bootstrap
@@ -174,7 +174,7 @@ sdkwork-membership/
 
 - Local development: `cargo test --workspace` in this repository.
 - Independent deployment: `sdkwork-membership-standalone-gateway` binary `membership-server`.
-- Platform composition: composition applications (sdkwork-mall, etc.) consume per-T1 SDKs via workspace paths. The `sdkwork-commerce` monolith has been dissolved.
+- Platform composition: composition applications (sdkwork-mall, etc.) consume per-T1 SDKs via workspace paths. The `sdkwork-commerce (deleted)` monolith has been dissolved.
 - Environment variables follow `ENVIRONMENT_SPEC.md` with `MEMBERSHIP` service code prefix.
 
 ## 13. Verification
