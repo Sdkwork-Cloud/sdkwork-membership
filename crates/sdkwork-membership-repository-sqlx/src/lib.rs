@@ -1,9 +1,9 @@
 mod admin_router;
+pub mod catalog;
 mod postgres;
 mod read_model;
-mod request_identity;
+pub mod response;
 mod router;
-// mod seed; // Temporarily disabled - requires deleted sdkwork_commerce_bootstrap_manifest
 mod shared;
 mod sqlite;
 mod subject;
@@ -15,19 +15,10 @@ pub use admin_router::{
 };
 pub use postgres::PostgresCommerceMembershipStore;
 pub use router::{
-    app_membership_router, app_membership_router_with_postgres_pool,
-    app_membership_router_with_sqlite_pool, app_membership_router_with_store,
-    TimestampMembershipEntityIdGenerator,
+    app_membership_router, app_membership_router_with_builtin_catalog,
+    app_membership_router_with_postgres_pool, app_membership_router_with_sqlite_pool,
+    app_membership_router_with_store, TimestampMembershipEntityIdGenerator,
 };
-// NOTE: seed module temporarily disabled due to deleted sdkwork_commerce_bootstrap_manifest dependency
-// pub use seed::{
-//     postgres_commerce_experience_seed_complete, repair_sqlite_commerce_experience_seed,
-//     repair_sqlite_commerce_experience_seed_from_report, sqlite_commerce_experience_seed_complete,
-//     sqlite_commerce_experience_seed_integrity_report, upsert_postgres_commerce_experience_seed,
-//     upsert_postgres_payment_center_seed, upsert_sqlite_commerce_experience_seed,
-//     upsert_sqlite_payment_center_seed, CommerceExperienceSeedIntegrityIssue,
-//     CommerceExperienceSeedIntegrityReport,
-// };
 pub use sqlite::SqliteCommerceMembershipStore;
 pub use types::{
     AdminMembershipEntitlementItem, AdminMembershipFuture, AdminMembershipMemberItem,
@@ -48,5 +39,5 @@ pub use types::{
     ListAdminMembershipPackageGroupsQuery, ListAdminMembershipPackagesQuery,
     ListAdminMembershipPlansQuery, SubmitMembershipPurchaseCommand,
     UpdateAdminMembershipMemberStatusCommand, UpdateAdminMembershipPackageCommand,
-    UpdateAdminMembershipPackageGroupCommand,     UpdateAdminMembershipPlanCommand,
+    UpdateAdminMembershipPackageGroupCommand, UpdateAdminMembershipPlanCommand,
 };

@@ -11,6 +11,7 @@ import {
   formatSdkworkMembershipPriceWasLabel,
   formatSdkworkMembershipStatusLabel,
   formatSdkworkMembershipUsageLabel,
+  formatSdkworkMembershipTemplate,
   normalizeSdkworkMembershipLocale,
   type SdkworkMembershipMessages,
   type SdkworkMembershipMessagesOverrides,
@@ -20,7 +21,9 @@ export interface SdkworkMembershipIntlValue {
   copy: SdkworkMembershipMessages;
   formatDuration: (value: number | null) => string;
   formatIncludedPoints: (value: number) => string;
+  formatPointsToNext: (value: number, level: string) => string;
   formatPriceWas: (value: string) => string;
+  formatSave: (percent: number) => string;
   formatStatus: (value: "active" | "free" | "guest") => string;
   formatUsage: (used: number | null, limit: number | null) => string;
   locale: string;
@@ -46,8 +49,20 @@ function createSdkworkMembershipIntlValue(
     formatIncludedPoints(value) {
       return formatSdkworkMembershipIncludedPointsLabel(value, resolvedLocale);
     },
+    formatPointsToNext(value, level) {
+      return formatSdkworkMembershipTemplate(
+        createSdkworkMembershipMessages(resolvedLocale, overrides).format.pointsToNext,
+        { level, value: String(value) },
+      );
+    },
     formatPriceWas(value) {
       return formatSdkworkMembershipPriceWasLabel(value, resolvedLocale, overrides);
+    },
+    formatSave(percent) {
+      return formatSdkworkMembershipTemplate(
+        createSdkworkMembershipMessages(resolvedLocale, overrides).common.save,
+        { percent: String(percent) },
+      );
     },
     formatStatus(value) {
       return formatSdkworkMembershipStatusLabel(value, resolvedLocale, overrides);

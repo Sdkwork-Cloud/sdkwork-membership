@@ -141,8 +141,7 @@ fn membership_activation_requires_paid_order_and_idempotency() {
 
 #[test]
 fn entitlement_grants_are_bound_to_membership_and_quota() {
-    let grant =
-        EntitlementGrantDraft::new("100001", "membership-1", "model-quota", 1000).unwrap();
+    let grant = EntitlementGrantDraft::new("100001", "membership-1", "model-quota", 1000).unwrap();
 
     assert_eq!(grant.entitlement_code, "model-quota");
     assert_eq!(grant.quantity, 1000);
@@ -321,26 +320,13 @@ fn membership_purchase_uses_package_id_and_payment_method_only() {
 
     assert_eq!(purchase.package_id, 303);
     assert_eq!(purchase.payment_method.as_deref(), Some("wechat_pay"));
-    assert!(MembershipPurchaseDraft::new(
-        "100001",
-        "0",
-        "user-1",
-        0,
-        Some("wechat_pay"),
-        None
-    )
-    .is_err());
+    assert!(
+        MembershipPurchaseDraft::new("100001", "0", "user-1", 0, Some("wechat_pay"), None).is_err()
+    );
     for legacy_method in ["wechat", "wechatpay", "stripe"] {
         assert!(
-            MembershipPurchaseDraft::new(
-                "100001",
-                "0",
-                "user-1",
-                303,
-                Some(legacy_method),
-                None
-            )
-            .is_err(),
+            MembershipPurchaseDraft::new("100001", "0", "user-1", 303, Some(legacy_method), None)
+                .is_err(),
             "membership purchase must reject legacy payment method alias {legacy_method}"
         );
     }

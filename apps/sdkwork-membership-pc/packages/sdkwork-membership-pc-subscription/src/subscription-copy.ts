@@ -20,6 +20,7 @@ export interface SdkworkSubscriptionMessages {
     checkoutErrorTitle: string;
     description: string;
     lockedBadge: string;
+    safePaymentLabel: string;
     signInRequiredDescription: string;
     signInRequiredTitle: string;
     title: string;
@@ -29,6 +30,40 @@ export interface SdkworkSubscriptionMessages {
     days: string;
     flexibleDuration: string;
     points: string;
+  };
+  compareTable: {
+    categoryGeneration: string;
+    categorySpeed: string;
+    categorySupport: string;
+    dailyPoints: string;
+    description: string;
+    discount20Off: string;
+    featureHeader: string;
+    freePlan: string;
+    history7Days: string;
+    history30Days: string;
+    history90Days: string;
+    historyForever: string;
+    historyRetention: string;
+    noWatermark: string;
+    planBasic: string;
+    planPremium: string;
+    planStandard: string;
+    pointsDaily: string;
+    pointsPerMonth: string;
+    refundGuarantee: string;
+    seedanceVip: string;
+    seedancePro: string;
+    standardSpeed: string;
+    supportDedicated: string;
+    supportEarlyAccess: string;
+    title: string;
+    videoDuration: string;
+    vipLane: string;
+    apiAccess: string;
+    image2K: string;
+    image4K: string;
+    fastLane: string;
   };
   couponList: {
     description: string;
@@ -51,13 +86,28 @@ export interface SdkworkSubscriptionMessages {
   hero: {
     availablePlansLabel: string;
     currentLevelLabel: string;
+    currentPointsLabel: string;
+    currentStatusLabel: string;
+    dailyPointsLabel: string;
     description: string;
     eyebrow: string;
-    freeMembershipActive: string;
+    freeTierLabel: string;
+    freeUserTitle: string;
+    freeUserTitleHighlight: string;
+    freeUserTitleSuffix: string;
+    guestDescription: string;
+    memberBadgeLabel: string;
+    memberDescription: string;
     membershipBalanceLabel: string;
+    pointsUnit: string;
     premiumMembershipActive: string;
     readyForPremiumActivation: string;
+    remainingDaysLabel: string;
+    thanksForSupportLabel: string;
     title: string;
+    totalSpentLabel: string;
+    upgradeBadgeLabel: string;
+    welcomeBackLabel: string;
   };
   levelGrid: {
     empty: string;
@@ -66,8 +116,14 @@ export interface SdkworkSubscriptionMessages {
     title: string;
   };
   page: {
+    agreementText: string;
+    confirmOrderTitle: string;
+    confirmOrderDescription: string;
+    durationLabel: string;
     errorTitle: string;
+    includedPointsLabel: string;
     loading: string;
+    title: string;
   };
   paymentMethods: {
     alipayLabel: string;
@@ -92,12 +148,20 @@ export interface SdkworkSubscriptionMessages {
     currentBalanceLabel: string;
     currentPlanButton: string;
     currentTag: string;
+    dailyRewardsTag: string;
     entryTier: string;
     freeBaselineButton: string;
+    freeDescription: string;
+    freePlanName: string;
+    freeTierBadge: string;
+    freeUseButton: string;
     freeMembershipDescription: string;
     freeMembershipTitle: string;
     noPlans: string;
     noRecurringCharge: string;
+    recommendedBadge: string;
+    savingsLabel: string;
+    selectPlanButton: string;
     signInToActivatePremiumCheckout: string;
     title: string;
     titleEyebrow: string;
@@ -216,6 +280,7 @@ const EN_US_MESSAGES: SdkworkSubscriptionMessages = {
     checkoutErrorTitle: "Checkout error",
     description: "Package details, coupon state, and payment rail stay synchronized with the selected subscription package.",
     lockedBadge: "Locked checkout",
+    safePaymentLabel: "Secure payment",
     signInRequiredDescription: "Membership checkout requires an authenticated session.",
     signInRequiredTitle: "Sign in required",
     title: "Checkout summary",
@@ -225,6 +290,40 @@ const EN_US_MESSAGES: SdkworkSubscriptionMessages = {
     days: "days",
     flexibleDuration: "Flexible duration",
     points: "points",
+  },
+  compareTable: {
+    categoryGeneration: "AI Generation",
+    categorySpeed: "Speed & Privileges",
+    categorySupport: "Service & Support",
+    dailyPoints: "Daily bonus points",
+    description: "Compare benefits across all tiers to find the right plan.",
+    discount20Off: "20% off",
+    featureHeader: "Benefit",
+    freePlan: "Free",
+    history7Days: "7 days",
+    history30Days: "30 days",
+    history90Days: "90 days",
+    historyForever: "Unlimited",
+    historyRetention: "History retention",
+    noWatermark: "Watermark-free export",
+    planBasic: "Basic",
+    planPremium: "Premium",
+    planStandard: "Standard",
+    pointsDaily: "50/day",
+    pointsPerMonth: "{count}/month",
+    refundGuarantee: "Money-back guarantee",
+    seedanceVip: "Seedance 2.0 VIP",
+    seedancePro: "Seedance 1.5 Pro",
+    standardSpeed: "Standard generation lane",
+    supportDedicated: "Dedicated support",
+    supportEarlyAccess: "Early access to new features",
+    title: "Plan comparison",
+    videoDuration: "Video generation length",
+    vipLane: "VIP priority lane",
+    apiAccess: "API quota",
+    image2K: "2K image generation",
+    image4K: "4K HD image generation",
+    fastLane: "Fast generation lane",
   },
   couponList: {
     description: "Apply the strongest eligible offer before payment.",
@@ -247,13 +346,28 @@ const EN_US_MESSAGES: SdkworkSubscriptionMessages = {
   hero: {
     availablePlansLabel: "Available plans",
     currentLevelLabel: "Current level",
+    currentPointsLabel: "Current points",
+    currentStatusLabel: "Current status",
+    dailyPointsLabel: "Daily login rewards",
     description: "Select a membership plan, apply the best coupon, and lock one premium checkout flow that any SDKWORK desktop app can embed.",
     eyebrow: "Premium checkout",
-    freeMembershipActive: "Free membership active",
+    freeTierLabel: "Free user",
+    freeUserTitle: "Unlock ",
+    freeUserTitleHighlight: "unlimited creation",
+    freeUserTitleSuffix: " potential",
+    guestDescription: "Join membership to unlock all AI models, faster generation speeds, and exclusive point quotas, unleashing your creative potential.",
+    memberBadgeLabel: "VIP",
+    memberDescription: "Your membership benefits are about to expire. Renew now to continue enjoying exclusive AI creation capabilities.",
     membershipBalanceLabel: "Membership balance",
+    pointsUnit: " points",
     premiumMembershipActive: "Premium membership active",
     readyForPremiumActivation: "Ready for premium activation",
+    remainingDaysLabel: "{count} days remaining",
+    thanksForSupportLabel: "Thank you for your support",
     title: "Subscription center",
+    totalSpentLabel: "Total spent",
+    upgradeBadgeLabel: "Upgrade",
+    welcomeBackLabel: "Welcome back, ",
   },
   levelGrid: {
     empty: "Membership level comparison will appear when the current runtime exposes membership levels.",
@@ -262,8 +376,14 @@ const EN_US_MESSAGES: SdkworkSubscriptionMessages = {
     title: "Membership levels",
   },
   page: {
+    agreementText: "By subscribing, you agree to the Membership Service Agreement and Auto-Renewal Service Agreement. Subscriptions can be cancelled at any time.",
+    confirmOrderTitle: "Order confirmation",
+    confirmOrderDescription: "Confirm your selected package and complete payment.",
+    durationLabel: "Duration",
     errorTitle: "Subscription center error",
+    includedPointsLabel: "Included points",
     loading: "Loading subscription center...",
+    title: "Subscription center",
   },
   paymentMethods: {
     alipayLabel: "Alipay",
@@ -294,6 +414,7 @@ const EN_US_MESSAGES: SdkworkSubscriptionMessages = {
     freeMembershipTitle: "Free membership",
     noPlans: "No subscription plans are currently available.",
     noRecurringCharge: "No recurring charge",
+    savingsLabel: "Save ",
     signInToActivatePremiumCheckout: "Sign in to activate premium checkout",
     title: "Choose a premium package",
     titleEyebrow: "Plan selection",
@@ -377,6 +498,7 @@ const ZH_CN_MESSAGES: SdkworkSubscriptionMessages = {
     checkoutErrorTitle: "结算异常",
     description: "套餐详情、优惠状态与支付通道会始终与当前选中的订阅套餐保持同步。",
     lockedBadge: "锁定结算",
+    safePaymentLabel: "安全支付",
     signInRequiredDescription: "会员结算需要先完成登录。",
     signInRequiredTitle: "需要登录",
     title: "结算摘要",
@@ -386,6 +508,40 @@ const ZH_CN_MESSAGES: SdkworkSubscriptionMessages = {
     days: "天",
     flexibleDuration: "时长灵活",
     points: "积分",
+  },
+  compareTable: {
+    categoryGeneration: "AI 生成能力",
+    categorySpeed: "生成速度与特权",
+    categorySupport: "服务与支持",
+    dailyPoints: "每日赠送积分",
+    description: "详细对比各套餐权益，选择最适合你的方案。",
+    discount20Off: "8折",
+    featureHeader: "权益项目",
+    freePlan: "免费版",
+    history7Days: "7天",
+    history30Days: "30天",
+    history90Days: "90天",
+    historyForever: "永久",
+    historyRetention: "生成历史保留",
+    noWatermark: "无水印导出",
+    planBasic: "基础会员",
+    planPremium: "高级会员",
+    planStandard: "标准会员",
+    pointsDaily: "50/天",
+    pointsPerMonth: "{count}/月",
+    refundGuarantee: "无忧退款保障",
+    seedanceVip: "Seedance 2.0 VIP",
+    seedancePro: "Seedance 1.5 Pro",
+    standardSpeed: "标准生成通道",
+    supportDedicated: "专属客服通道",
+    supportEarlyAccess: "新功能优先体验",
+    title: "套餐权益对比",
+    videoDuration: "视频生成时长",
+    vipLane: "VIP专属通道",
+    apiAccess: "API调用额度",
+    image2K: "图片2K生成",
+    image4K: "图片4K高清生成",
+    fastLane: "快速生成通道",
   },
   couponList: {
     description: "支付前优先应用当前可用的最优优惠。",
@@ -408,13 +564,28 @@ const ZH_CN_MESSAGES: SdkworkSubscriptionMessages = {
   hero: {
     availablePlansLabel: "可选套餐",
     currentLevelLabel: "当前等级",
+    currentPointsLabel: "当前积分",
+    currentStatusLabel: "当前状态",
+    dailyPointsLabel: "每日登录领取积分",
     description: "选择会员套餐、应用最优优惠券，并锁定一套可被任意 SDKWORK 桌面应用复用的高级订阅结算流。",
     eyebrow: "高级会员结算",
-    freeMembershipActive: "当前为免费会员",
+    freeTierLabel: "免费用户",
+    freeUserTitle: "解锁",
+    freeUserTitleHighlight: "无限创作",
+    freeUserTitleSuffix: "可能",
+    guestDescription: "加入会员，畅享全部AI模型、更快生成速度和专属积分额度，释放您的创作潜能。",
+    memberBadgeLabel: "VIP会员",
+    memberDescription: "您的会员权益即将到期，立即续费继续享受专属AI创作能力。",
     membershipBalanceLabel: "会员资产",
+    pointsUnit: "积分",
     premiumMembershipActive: "当前为高级会员",
     readyForPremiumActivation: "已准备好开通高级会员",
+    remainingDaysLabel: "剩余 {count} 天",
+    thanksForSupportLabel: "感谢您的支持",
     title: "订阅中心",
+    totalSpentLabel: "累计消费",
+    upgradeBadgeLabel: "升级会员",
+    welcomeBackLabel: "欢迎回来，",
   },
   levelGrid: {
     empty: "当运行时提供会员等级数据后，这里会展示完整的等级对比。",
@@ -423,8 +594,14 @@ const ZH_CN_MESSAGES: SdkworkSubscriptionMessages = {
     title: "会员等级",
   },
   page: {
+    agreementText: "开通即表示同意《会员服务协议》和《自动续费服务协议》。连续订阅可随时取消。",
+    confirmOrderTitle: "订单确认",
+    confirmOrderDescription: "确认您选择的套餐并完成支付。",
+    durationLabel: "有效期",
     errorTitle: "订阅中心异常",
+    includedPointsLabel: "包含积分",
     loading: "正在加载订阅中心...",
+    title: "订阅中心",
   },
   paymentMethods: {
     alipayLabel: "支付宝",
@@ -455,6 +632,7 @@ const ZH_CN_MESSAGES: SdkworkSubscriptionMessages = {
     freeMembershipTitle: "免费会员",
     noPlans: "当前暂无可订阅套餐。",
     noRecurringCharge: "无循环扣费",
+    savingsLabel: "省",
     signInToActivatePremiumCheckout: "登录后即可开通高级会员结算",
     title: "选择高级会员套餐",
     titleEyebrow: "套餐选择",

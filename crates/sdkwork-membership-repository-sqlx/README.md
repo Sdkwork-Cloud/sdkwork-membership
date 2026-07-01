@@ -1,15 +1,17 @@
-# sdkwork-commerce (deleted)-membership-repository-sqlx
+# sdkwork-membership-repository-sqlx
 
-Domain: iam
-Capability: commerce
+Domain: commerce
+Capability: membership
 Package type: rust-crate
 Status: stable
 
-This README is the SDKWork module entrypoint for `sdkwork_commerce_membership_repository_sqlx`. The machine-readable component contract is `specs/component.spec.json`; canonical standards are under `../../../sdkwork-specs/`.
+This README is the SDKWork module entrypoint for `sdkwork_membership_repository_sqlx`. The machine-readable component contract is `specs/component.spec.json`; canonical standards are under `../../../sdkwork-specs/`.
 
 ## Public API
 
-- `.`
+- `PostgresCommerceMembershipStore`, `SqliteCommerceMembershipStore` — tenant-scoped membership persistence.
+- `app_membership_router_with_*`, `admin_membership_router_with_*` — Axum routers emitting canonical `SdkWorkApiResponse` / `application/problem+json` envelopes.
+- `TimestampMembershipEntityIdGenerator` — default entity id generator for command surfaces.
 
 ## Required SDK Surface
 
@@ -33,7 +35,7 @@ Extension points are limited to public exports, runtime entrypoints, SDK clients
 
 ## Verification
 
-- `cargo test --manifest-path crates/sdkwork-commerce (deleted)-membership-repository-sqlx/Cargo.toml`
+- `cargo test --manifest-path crates/sdkwork-membership-repository-sqlx/Cargo.toml`
 
 ## Owner And Status
 

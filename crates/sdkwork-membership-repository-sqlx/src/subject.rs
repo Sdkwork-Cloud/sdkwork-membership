@@ -1,6 +1,5 @@
-use axum::Extension;
-use sdkwork_iam_context_service::IamAppContext;
 use sdkwork_utils_rust::number::parse_int;
+use sdkwork_web_core::WebRequestContext;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) struct NumericRuntimeSubject {
@@ -9,20 +8,25 @@ pub(crate) struct NumericRuntimeSubject {
     pub user_id: i64,
 }
 
-pub(crate) fn numeric_runtime_subject_from_extension(
-    context: Option<Extension<IamAppContext>>,
+/// Resolve the authenticated runtime subject from the canonical `WebRequestContext`
+/// injected by the `sdkwork-web-framework` interceptor chain.
+///
+/// `tenant_id` and `user_id` are positive integers; `organization_id` is non-negative
+/// with 0 meaning tenant-level scope (per `SUBJECT_ID_SPEC.md`).
+pub(crate) fn numeric_runtime_subject_from_context(
+    context: &WebRequestContext,
 ) -> Result<NumericRuntimeSubject, String> {
-    let Some(Extension(context)) = context else {
-        return Err("authenticated runtime context is required".to_owned());
-    };
-    let organization_id = match context.organization_id.as_deref() {
+    let principal = context
+        .principal()
+        .ok_or_else(|| "authenticated runtime context is required".to_owned())?;
+    let organization_id = match principal.organization_id() {
         None | Some("") | Some("0") => 0,
         Some(value) => parse_non_negative_context_i64(value, "organization_id")?,
     };
     Ok(NumericRuntimeSubject {
-        tenant_id: parse_positive_context_i64(&context.tenant_id, "tenant_id")?,
+        tenant_id: parse_positive_context_i64(principal.tenant_id(), "tenant_id")?,
         organization_id,
-        user_id: parse_positive_context_i64(&context.user_id, "user_id")?,
+        user_id: parse_positive_context_i64(principal.user_id(), "user_id")?,
     })
 }
 

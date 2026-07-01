@@ -20,8 +20,8 @@ import type {
 } from "../subscription-service";
 import { SdkworkSubscriptionCheckoutPanel } from "../components/subscription-checkout-panel";
 import { SdkworkSubscriptionHero } from "../components/subscription-hero";
-import { SdkworkSubscriptionLevelGrid } from "../components/subscription-level-grid";
 import { SdkworkSubscriptionPlanGrid } from "../components/subscription-plan-grid";
+import { SdkworkSubscriptionCompareTable } from "../components/subscription-compare-table";
 import { SdkworkSubscriptionStageShell } from "../components/subscription-stage-shell";
 
 export interface SdkworkSubscriptionPageProps {
@@ -75,22 +75,57 @@ function SdkworkSubscriptionPageContent({
       });
   }
 
+  const planCount = state.dashboard.plans.length;
+  const couponCount = state.dashboard.coupons.length;
+
+  const planContent = (
+    <SdkworkSubscriptionPlanGrid
+      hideHeader
+      onSelectPackageGroup={(packageGroupId) => controller.selectPackageGroup(packageGroupId)}
+      onSelectPlan={(packageId) => controller.selectPackage(packageId)}
+      packageGroups={state.dashboard.packageGroups}
+      plans={state.dashboard.plans}
+      selectedPackageGroupId={state.selectedPackageGroupId}
+      selectedPackageId={state.selectedPackageId}
+      summary={state.dashboard.summary}
+    />
+  );
+
+  const paymentContent = (
+    <SdkworkSubscriptionCheckoutPanel
+      activeAction={state.activeAction}
+      checkout={state.checkout}
+      coupons={state.dashboard.coupons}
+      isAuthenticated={state.dashboard.summary.isAuthenticated}
+      isMutating={state.isMutating}
+      lastError={state.isMutating ? undefined : state.lastError}
+      onBackToPlans={() => controller.setStage("plans")}
+      onClearCoupon={() => controller.clearCoupon()}
+      onSelectCoupon={(couponId) => controller.selectCoupon(couponId)}
+      onSelectPaymentMethod={(paymentMethodId) => controller.selectPaymentMethod(paymentMethodId)}
+      onSubmit={handleSubmit}
+      paymentMethods={state.dashboard.paymentMethods}
+      selectedCouponId={state.selectedCouponId}
+      selectedPlan={selectedPlan}
+    />
+  );
+
   return (
-    <div className="relative h-full overflow-y-auto">
+    <div className="relative min-h-full bg-gradient-to-b from-[var(--sdk-color-surface-base)] to-[var(--sdk-color-surface-panel)]">
       <div
-        className="pointer-events-none absolute inset-x-0 top-0 h-72"
+        className="pointer-events-none absolute inset-x-0 top-0 h-[500px] opacity-50"
         style={createSdkworkSubscriptionBackdropStyle()}
       />
 
-      <div className="relative px-4 py-4 sm:px-5 sm:py-5">
-        <div className="mx-auto max-w-[96rem] space-y-6">
+      <div className="relative px-4 py-6 sm:px-6 sm:py-8 lg:px-8">
+        <div className="mx-auto max-w-[1280px] space-y-8">
           <SdkworkSubscriptionHero
             activeAction={state.activeAction}
-            couponCount={state.dashboard.coupons.length}
             onActionChange={(action) => controller.setAction(action)}
-            planCount={state.dashboard.plans.length}
             summary={state.dashboard.summary}
           />
+
+          <h2 className="sr-only">{copy.page.title}</h2>
 
           {state.isLoading && !state.isBootstrapped ? <LoadingBlock label={copy.page.loading} /> : null}
 
@@ -100,46 +135,30 @@ function SdkworkSubscriptionPageContent({
             </StatusNotice>
           ) : null}
 
-          <SdkworkSubscriptionStageShell
-            activeAction={state.activeAction}
-            activeStage={state.activeStage}
-            checkout={state.checkout}
-            couponCount={state.dashboard.coupons.length}
-            isAuthenticated={state.dashboard.summary.isAuthenticated}
-            onBackToPlans={() => controller.setStage("plans")}
-            onContinueToCheckout={() => controller.setStage("checkout")}
-            paymentContent={(
-              <SdkworkSubscriptionCheckoutPanel
-                activeAction={state.activeAction}
-                checkout={state.checkout}
-                coupons={state.dashboard.coupons}
-                isAuthenticated={state.dashboard.summary.isAuthenticated}
-                isMutating={state.isMutating}
-                lastError={state.isMutating ? undefined : state.lastError}
-                onClearCoupon={() => controller.clearCoupon()}
-                onSelectCoupon={(couponId) => controller.selectCoupon(couponId)}
-                onSelectPaymentMethod={(paymentMethodId) => controller.selectPaymentMethod(paymentMethodId)}
-                onSubmit={handleSubmit}
-                paymentMethods={state.dashboard.paymentMethods}
-                selectedCouponId={state.selectedCouponId}
-                selectedPlan={selectedPlan}
-              />
-            )}
-            planContent={(
-              <SdkworkSubscriptionPlanGrid
-                benefits={state.dashboard.benefits}
-                onSelectPlan={(packageId) => controller.selectPackage(packageId)}
-                plans={state.dashboard.plans}
-                selectedPackageId={state.selectedPackageId}
-                summary={state.dashboard.summary}
-              />
-            )}
-            planCount={state.dashboard.plans.length}
-            selectedPlan={selectedPlan}
-            summary={state.dashboard.summary}
-          />
+          {state.isBootstrapped ? (
+            <SdkworkSubscriptionStageShell
+              activeAction={state.activeAction}
+              activeStage={state.activeStage}
+              checkout={state.checkout}
+              couponCount={couponCount}
+              isAuthenticated={state.dashboard.summary.isAuthenticated}
+              onBackToPlans={() => controller.setStage("plans")}
+              onContinueToCheckout={() => controller.setStage("checkout")}
+              paymentContent={paymentContent}
+              planContent={planContent}
+              planCount={planCount}
+              selectedPlan={selectedPlan}
+              summary={state.dashboard.summary}
+            />
+          ) : null}
 
-          <SdkworkSubscriptionLevelGrid levels={state.dashboard.levels} />
+          <SdkworkSubscriptionCompareTable benefits={state.dashboard.benefits} />
+
+          <div className="pb-12 text-center">
+            <p className="text-sm text-[var(--sdk-color-text-muted)]">
+              {copy.page.agreementText}
+            </p>
+          </div>
         </div>
       </div>
     </div>

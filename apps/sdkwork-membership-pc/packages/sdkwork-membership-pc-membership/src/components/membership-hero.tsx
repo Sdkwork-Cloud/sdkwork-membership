@@ -1,7 +1,7 @@
 import {
   Crown,
-  Gem,
   Sparkles,
+  TrendingUp,
 } from "lucide-react";
 import { Button } from "@sdkwork/ui-pc-react/components/ui/button";
 import {
@@ -15,6 +15,7 @@ import {
 } from "../membership-appearance";
 import { useSdkworkMembershipIntl } from "../membership-intl";
 import type {
+  SdkworkMembershipLevel,
   SdkworkMembershipPlan,
   SdkworkMembershipSummary,
 } from "../membership-service";
@@ -26,6 +27,60 @@ export interface SdkworkMembershipMembershipHeroProps {
   onUpgrade: () => void;
   selectedPlan?: SdkworkMembershipPlan | null;
   summary: SdkworkMembershipSummary;
+}
+
+interface SdkworkMembershipHeroProgress {
+  isTopLevel: boolean;
+  nextLevelName: string | null;
+  percent: number;
+  pointsToNext: number | null;
+}
+
+function resolveHeroProgress(
+  summary: SdkworkMembershipSummary,
+  levels: SdkworkMembershipLevel[] | undefined,
+): SdkworkMembershipHeroProgress {
+  const currentLevelValue = summary.currentLevelValue;
+  const growthValue = summary.growthValue ?? 0;
+
+  if (!levels || levels.length === 0 || currentLevelValue === null) {
+    return {
+      isTopLevel: false,
+      nextLevelName: null,
+      percent: 0,
+      pointsToNext: null,
+    };
+  }
+
+  const sortedLevels = [...levels].sort((left, right) => left.levelValue - right.levelValue);
+  const currentIndex = sortedLevels.findIndex((level) => level.levelValue === currentLevelValue);
+  const nextLevel = currentIndex >= 0 && currentIndex < sortedLevels.length - 1
+    ? sortedLevels[currentIndex + 1]
+    : null;
+
+  if (!nextLevel) {
+    return {
+      isTopLevel: true,
+      nextLevelName: null,
+      percent: 100,
+      pointsToNext: null,
+    };
+  }
+
+  const currentLevel = sortedLevels[currentIndex];
+  const floor = currentLevel?.requiredPoints ?? 0;
+  const ceiling = nextLevel.requiredPoints ?? growthValue;
+  const span = Math.max(ceiling - floor, 1);
+  const clampedGrowth = Math.min(Math.max(growthValue - floor, 0), span);
+  const percent = Math.round((clampedGrowth / span) * 100);
+  const pointsToNext = Math.max(ceiling - growthValue, 0);
+
+  return {
+    isTopLevel: false,
+    nextLevelName: nextLevel.name,
+    percent,
+    pointsToNext,
+  };
 }
 
 export function SdkworkMembershipMembershipHero({
@@ -40,6 +95,7 @@ export function SdkworkMembershipMembershipHero({
     copy,
     formatDuration,
     formatIncludedPoints,
+    formatPointsToNext,
     formatPriceWas,
     formatStatus,
     locale,
@@ -54,27 +110,40 @@ export function SdkworkMembershipMembershipHero({
   const primaryHeroTextStyle = createSdkworkMembershipHeroTextStyle();
   const mutedHeroTextStyle = createSdkworkMembershipHeroTextStyle("muted");
   const subtleHeroTextStyle = createSdkworkMembershipHeroTextStyle("subtle");
+  const progress = resolveHeroProgress(summary, undefined);
 
   return (
     <section
-      className="overflow-hidden rounded-[2rem] border border-[color-mix(in_srgb,var(--sdk-color-border-default)_72%,transparent)] px-6 py-7 text-white shadow-[var(--sdk-shadow-lg)]"
+      className="overflow-hidden rounded-[2rem] border border-[color-mix(in_srgb,var(--sdk-color-border-default)_72%,transparent)] px-6 py-7 text-white shadow-[var(--sdk-shadow-lg)] sm:px-8 sm:py-9"
       style={createSdkworkMembershipHeroStyle()}
     >
-      <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
+      <div className="flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between">
         <div className="max-w-3xl">
-          <div
-            className="inline-flex items-center gap-2 rounded-full border px-3 py-1 text-[0.7rem] font-semibold uppercase tracking-[0.18em]"
-            style={{
-              ...createSdkworkMembershipGlassStyle("accent", {
-                backgroundWeight: 12,
-                borderWeight: 22,
-                surfaceWeight: 82,
-              }),
-              ...mutedHeroTextStyle,
-            }}
-          >
-            <Sparkles className="h-3.5 w-3.5" />
-            {copy.hero.eyebrow}
+          <div className="flex flex-wrap items-center gap-3">
+            <div
+              className="inline-flex items-center gap-2 rounded-full border px-3 py-1 text-[0.7rem] font-semibold uppercase tracking-[0.18em]"
+              style={{
+                ...createSdkworkMembershipGlassStyle("accent", {
+                  backgroundWeight: 12,
+                  borderWeight: 22,
+                  surfaceWeight: 82,
+                }),
+                ...mutedHeroTextStyle,
+              }}
+            >
+              <Sparkles className="h-3.5 w-3.5" />
+              {copy.hero.eyebrow}
+            </div>
+            <div
+              className="inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-[0.7rem] font-semibold uppercase tracking-[0.16em]"
+              style={createSdkworkMembershipToneStyle("warning", {
+                backgroundWeight: 20,
+                borderWeight: 32,
+              })}
+            >
+              <Crown className="h-3.5 w-3.5" />
+              {summary.currentLevelName}
+            </div>
           </div>
           <h1 className="mt-4 text-4xl font-semibold tracking-tight" style={primaryHeroTextStyle}>{copy.hero.title}</h1>
           <p className="mt-3 text-sm leading-7" style={mutedHeroTextStyle}>
@@ -82,7 +151,7 @@ export function SdkworkMembershipMembershipHero({
           </p>
         </div>
 
-        <div className="flex flex-wrap gap-3">
+        <div className="flex flex-wrap gap-3 lg:shrink-0">
           <Button disabled={!selectedPlan} loading={isMutating} onClick={summary.isMember ? onUpgrade : onPurchase} type="button" variant="secondary">
             {copy.actions.upgrade}
           </Button>
@@ -92,34 +161,64 @@ export function SdkworkMembershipMembershipHero({
         </div>
       </div>
 
-      <div className="mt-8 grid gap-4 lg:grid-cols-[minmax(0,1.2fr)_minmax(18rem,0.9fr)]">
+      <div className="mt-8 grid gap-4 lg:grid-cols-[minmax(0,1.4fr)_minmax(20rem,1fr)]">
         <div
-          className="rounded-[1.5rem] border p-5"
+          className="rounded-[1.5rem] border p-6"
           style={createSdkworkMembershipGlassStyle("brand", {
             backgroundWeight: 12,
             borderWeight: 24,
             surfaceWeight: 84,
           })}
         >
-          <div className="flex items-start justify-between gap-4">
+          <div className="flex items-end justify-between gap-4">
             <div>
-              <div className="text-sm" style={mutedHeroTextStyle}>{copy.hero.currentLevel}</div>
-              <div className="mt-3 text-4xl font-semibold tracking-tight">
-                {summary.currentLevelName}
+              <div className="text-xs font-semibold uppercase tracking-[0.18em]" style={subtleHeroTextStyle}>{copy.hero.pointsLabel}</div>
+              <div className="mt-2 text-5xl font-semibold tracking-tight tabular-nums" style={primaryHeroTextStyle}>
+                {summary.points !== null ? formatIncludedPoints(summary.points) : copy.common.noValue}
               </div>
             </div>
             <div
-              className="flex h-14 w-14 items-center justify-center rounded-[1.5rem] border"
-              style={createSdkworkMembershipToneStyle("warning", {
+              className="flex h-14 w-14 items-center justify-center rounded-[1.25rem] border"
+              style={createSdkworkMembershipToneStyle("accent", {
                 backgroundWeight: 18,
                 borderWeight: 28,
               })}
             >
-              <Crown className="h-6 w-6" />
+              <TrendingUp className="h-6 w-6" />
             </div>
           </div>
 
-          <div className="mt-5 grid gap-3 sm:grid-cols-3">
+          <div className="mt-6">
+            <div className="flex items-center justify-between gap-4 text-xs" style={subtleHeroTextStyle}>
+              <span className="font-semibold uppercase tracking-[0.16em]">{copy.hero.currentLevel}</span>
+              <span className="font-semibold tabular-nums" style={primaryHeroTextStyle}>{summary.currentLevelName}</span>
+            </div>
+            <div className="mt-4 flex items-center justify-between gap-4 text-xs" style={subtleHeroTextStyle}>
+              <span className="font-semibold uppercase tracking-[0.16em]">{copy.hero.growthLabel}</span>
+              <span className="tabular-nums">
+                {progress.isTopLevel
+                  ? copy.hero.topLevel
+                  : progress.nextLevelName && progress.pointsToNext !== null
+                    ? formatPointsToNext(progress.pointsToNext, progress.nextLevelName)
+                    : copy.common.noValue}
+              </span>
+            </div>
+            <div className="relative mt-2 h-2 overflow-hidden rounded-full" style={{ backgroundColor: "color-mix(in srgb, white 12%, transparent)" }}>
+              <div
+                className="absolute inset-y-0 left-0 rounded-full transition-[width] duration-500 ease-out"
+                style={{
+                  width: `${Math.min(Math.max(progress.percent, 0), 100)}%`,
+                  backgroundImage: "linear-gradient(90deg, var(--sdk-color-brand-accent), var(--sdk-color-brand-primary))",
+                }}
+              />
+            </div>
+            <div className="mt-2 flex items-center justify-between gap-4 text-[0.7rem]" style={subtleHeroTextStyle}>
+              <span>{summary.currentLevelName}</span>
+              <span>{progress.nextLevelName ?? summary.currentLevelName}</span>
+            </div>
+          </div>
+
+          <div className="mt-6 grid gap-3 sm:grid-cols-3">
             <div
               className="rounded-[1rem] border px-4 py-3"
               style={createSdkworkMembershipGlassStyle("neutral", {
@@ -129,7 +228,7 @@ export function SdkworkMembershipMembershipHero({
               })}
             >
               <div className="text-[0.7rem] uppercase tracking-[0.18em]" style={subtleHeroTextStyle}>{copy.hero.status}</div>
-              <div className="mt-2 text-sm font-semibold">{formatStatus(summary.status)}</div>
+              <div className="mt-2 text-sm font-semibold" style={primaryHeroTextStyle}>{formatStatus(summary.status)}</div>
             </div>
             <div
               className="rounded-[1rem] border px-4 py-3"
@@ -140,7 +239,7 @@ export function SdkworkMembershipMembershipHero({
               })}
             >
               <div className="text-[0.7rem] uppercase tracking-[0.18em]" style={subtleHeroTextStyle}>{copy.hero.remaining}</div>
-              <div className="mt-2 text-sm font-semibold">
+              <div className="mt-2 text-sm font-semibold tabular-nums" style={primaryHeroTextStyle}>
                 {formatDuration(summary.remainingDays)}
               </div>
             </div>
@@ -153,41 +252,28 @@ export function SdkworkMembershipMembershipHero({
               })}
             >
               <div className="text-[0.7rem] uppercase tracking-[0.18em]" style={subtleHeroTextStyle}>{copy.hero.points}</div>
-              <div className="mt-2 text-sm font-semibold">
-                {summary.points !== null ? formatIncludedPoints(summary.points) : copy.common.noValue}
+              <div className="mt-2 text-sm font-semibold tabular-nums" style={primaryHeroTextStyle}>
+                {summary.pointBalance !== null ? formatIncludedPoints(summary.pointBalance) : copy.common.noValue}
               </div>
             </div>
           </div>
         </div>
 
         <div
-          className="rounded-[1.5rem] border p-5"
+          className="rounded-[1.5rem] border p-6"
           style={createSdkworkMembershipGlassStyle("accent", {
             backgroundWeight: 12,
             borderWeight: 24,
             surfaceWeight: 84,
           })}
         >
-          <div className="flex items-center gap-3">
-            <div
-              className="flex h-12 w-12 items-center justify-center rounded-[1rem] border"
-              style={createSdkworkMembershipToneStyle("accent", {
-                backgroundWeight: 20,
-                borderWeight: 28,
-              })}
-            >
-              <Gem className="h-5 w-5" />
-            </div>
-            <div>
-              <div className="text-sm" style={mutedHeroTextStyle}>{copy.hero.selectedOffer}</div>
-              <div className="mt-1 text-xl font-semibold" style={primaryHeroTextStyle}>
-                {selectedPlan?.name ?? copy.hero.noPackageSelected}
-              </div>
-            </div>
+          <div className="text-xs font-semibold uppercase tracking-[0.18em]" style={subtleHeroTextStyle}>{copy.hero.selectedOffer}</div>
+          <div className="mt-2 text-xl font-semibold" style={primaryHeroTextStyle}>
+            {selectedPlan?.name ?? copy.hero.noPackageSelected}
           </div>
 
           <div
-            className="mt-4 rounded-[1rem] border px-4 py-4 text-sm"
+            className="mt-4 rounded-[1rem] border px-4 py-3 text-sm"
             style={{
               ...createSdkworkMembershipGlassStyle("neutral", {
                 backgroundWeight: 10,
@@ -210,7 +296,7 @@ export function SdkworkMembershipMembershipHero({
               })}
             >
               <div className="text-[0.7rem] uppercase tracking-[0.18em]" style={subtleHeroTextStyle}>{copy.hero.price}</div>
-              <div className="mt-2 text-lg font-semibold">
+              <div className="mt-2 text-lg font-semibold tabular-nums" style={primaryHeroTextStyle}>
                 {selectedPrice}
               </div>
               {selectedOriginalPrice ? (
@@ -228,7 +314,7 @@ export function SdkworkMembershipMembershipHero({
               })}
             >
               <div className="text-[0.7rem] uppercase tracking-[0.18em]" style={subtleHeroTextStyle}>{copy.hero.includedPoints}</div>
-              <div className="mt-2 text-lg font-semibold">
+              <div className="mt-2 text-lg font-semibold tabular-nums" style={primaryHeroTextStyle}>
                 {selectedPlan ? formatIncludedPoints(selectedPlan.includedPoints) : copy.common.noValue}
               </div>
             </div>

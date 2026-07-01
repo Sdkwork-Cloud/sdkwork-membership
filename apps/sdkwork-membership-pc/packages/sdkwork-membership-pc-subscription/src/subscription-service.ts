@@ -1,6 +1,10 @@
 import {
+  getSdkworkMembershipService,
   requireSdkworkMembershipSession,
+  toNullableSdkworkMembershipNumber,
   toSdkworkMembershipNumber,
+  toSdkworkMembershipOptionalString,
+  unwrapSdkworkMembershipResponse,
   type SdkworkMembershipAppService,
 } from "@sdkwork/membership-service";
 import {
@@ -35,6 +39,7 @@ import {
   resolveSdkworkSubscriptionPaymentMethodOption,
   type SdkworkSubscriptionAction,
   type SdkworkSubscriptionCheckoutEstimate,
+  type SdkworkSubscriptionPlanEstimateInput,
   type SdkworkSubscriptionPaymentMethod,
   type SdkworkSubscriptionPaymentMethodKind,
   type SdkworkSubscriptionPaymentMethodOption,
@@ -43,6 +48,49 @@ import {
   createSdkworkSubscriptionMessages,
   type SdkworkSubscriptionMessagesOverrides,
 } from "./subscription-copy";
+import type { SdkworkSubscriptionPackageGroup } from "./subscription";
+
+interface RemoteMembershipPackage {
+  description?: string;
+  durationDays?: number | string;
+  id?: number | string;
+  levelName?: string;
+  name?: string;
+  originalPrice?: number | string;
+  planName?: string;
+  pointAmount?: number | string;
+  price?: number | string;
+  recommended?: boolean;
+  sortWeight?: number | string;
+  tags?: string[];
+}
+
+interface RemoteMembershipPackageGroup {
+  description?: string;
+  id?: number | string;
+  name?: string;
+  packages?: RemoteMembershipPackage[];
+  sortWeight?: number | string;
+}
+
+function mapPackageToPlan(pkg: RemoteMembershipPackage): SdkworkSubscriptionPlanEstimateInput {
+  const packageId = toSdkworkMembershipNumber(pkg.id);
+  return {
+    description: toSdkworkMembershipOptionalString(pkg.description),
+    durationDays: toNullableSdkworkMembershipNumber(pkg.durationDays),
+    id: `membership-package-${packageId}`,
+    includedPoints: toSdkworkMembershipNumber(pkg.pointAmount),
+    levelName: toSdkworkMembershipOptionalString(pkg.levelName ?? pkg.planName),
+    name: toSdkworkMembershipOptionalString(pkg.name) || "Membership package",
+    originalPriceCny: toNullableSdkworkMembershipNumber(pkg.originalPrice),
+    packageId,
+    priceCny: toSdkworkMembershipNumber(pkg.price),
+    recommended: Boolean(pkg.recommended),
+    tags: Array.isArray(pkg.tags)
+      ? pkg.tags.map((tag) => tag.trim()).filter(Boolean)
+      : [],
+  };
+}
 
 export interface SdkworkSubscriptionCoupon extends SdkworkUserCoupon {
   discountAmountCny: number | null;
@@ -53,6 +101,7 @@ export interface SdkworkSubscriptionDashboardData {
   checkout: SdkworkSubscriptionCheckoutEstimate;
   coupons: SdkworkSubscriptionCoupon[];
   levels: SdkworkMembershipLevel[];
+  packageGroups: SdkworkSubscriptionPackageGroup[];
   paymentMethods: SdkworkSubscriptionPaymentMethodOption[];
   plans: SdkworkMembershipPlan[];
   summary: SdkworkMembershipSummary;
@@ -102,6 +151,34 @@ function mapAvailableCoupon(coupon: SdkworkUserCoupon): SdkworkSubscriptionCoupo
     ...coupon,
     discountAmountCny: coupon.amountCny,
   };
+}
+
+function sortPlansForSubscription<T extends { recommended: boolean; includedPoints: number; priceCny: number; id: string }>(plans: T[]): T[] {
+  return [...plans].sort(
+    (left, right) =>
+      Number(right.recommended) - Number(left.recommended)
+      || right.includedPoints - left.includedPoints
+      || left.priceCny - right.priceCny
+      || left.id.localeCompare(right.id),
+  );
+}
+
+function mapPackageGroup(group: RemoteMembershipPackageGroup): SdkworkSubscriptionPackageGroup {
+  const packageGroupId = toSdkworkMembershipNumber(group.id);
+  return {
+    description: group.description,
+    id: `membership-package-group-${packageGroupId}`,
+    name: group.name || "Subscription",
+    packageGroupId,
+    packages: Array.isArray(group.packages) ? group.packages.map(mapPackageToPlan) : [],
+    sortWeight: toSdkworkMembershipNumber(group.sortWeight),
+  };
+}
+
+function sortPackageGroups(groups: SdkworkSubscriptionPackageGroup[]): SdkworkSubscriptionPackageGroup[] {
+  return [...groups].sort(
+    (left, right) => left.sortWeight - right.sortWeight || left.name.localeCompare(right.name),
+  );
 }
 
 function resolveDefaultAction(summary: SdkworkMembershipSummary): SdkworkSubscriptionAction {
@@ -242,9 +319,28 @@ function createDashboard(
   membershipDashboard: SdkworkMembershipDashboardData,
   coupons: readonly SdkworkSubscriptionCoupon[],
   paymentMethods: readonly SdkworkSubscriptionPaymentMethodOption[],
+  packageGroups: readonly SdkworkSubscriptionPackageGroup[] = [],
 ): SdkworkSubscriptionDashboardData {
   const action = resolveDefaultAction(membershipDashboard.summary);
-  const plan = resolveDefaultPlan(membershipDashboard.plans);
+  const allPlansFromGroups = packageGroups.flatMap((g) => g.packages);
+  const existingPlanIds = new Set(membershipDashboard.plans.map((p) => p.packageId));
+  const additionalPlans = allPlansFromGroups
+    .filter((p) => !existingPlanIds.has(p.packageId))
+    .map((p) => ({
+      description: p.description ?? undefined,
+      durationDays: p.durationDays ?? null,
+      id: p.id,
+      includedPoints: p.includedPoints,
+      levelName: p.levelName,
+      name: p.name,
+      originalPriceCny: p.originalPriceCny ?? null,
+      packageId: p.packageId,
+      priceCny: p.priceCny,
+      recommended: p.recommended,
+      tags: p.tags,
+    }));
+  const mergedPlans = sortPlansForSubscription([...membershipDashboard.plans, ...additionalPlans]);
+  const plan = resolveDefaultPlan(mergedPlans);
   const coupon = resolveBestCoupon(coupons, plan, action);
   const selectedPaymentMethod = resolveSdkworkSubscriptionPaymentMethodOption(paymentMethods, null);
 
@@ -259,14 +355,15 @@ function createDashboard(
     }),
     coupons: [...coupons],
     levels: membershipDashboard.levels,
+    packageGroups: sortPackageGroups([...packageGroups]),
     paymentMethods: [...paymentMethods],
-    plans: membershipDashboard.plans,
+    plans: mergedPlans,
     summary: membershipDashboard.summary,
   };
 }
 
 function createEmptyDashboard(membershipService: Pick<SdkworkMembershipService, "getEmptyDashboard">): SdkworkSubscriptionDashboardData {
-  return createDashboard(membershipService.getEmptyDashboard(), [], createDefaultSdkworkSubscriptionPaymentMethodOptions());
+  return createDashboard(membershipService.getEmptyDashboard(), [], createDefaultSdkworkSubscriptionPaymentMethodOptions(), []);
 }
 
 async function runMembershipMutation(
@@ -285,6 +382,10 @@ export function createSdkworkSubscriptionService(
   options: CreateSdkworkSubscriptionServiceOptions = {},
 ): SdkworkSubscriptionService {
   const copy = createSdkworkSubscriptionMessages(options.locale, options.messages);
+  const resolveMembershipAppService = (): SdkworkMembershipAppService => {
+    if (options.membershipAppService) return options.membershipAppService;
+    return getSdkworkMembershipService();
+  };
   const membershipService: SdkworkMembershipService = options.membershipService
     ? {
         ...createSdkworkMembershipService({
@@ -308,11 +409,25 @@ export function createSdkworkSubscriptionService(
       }
     : createSdkworkPaymentService({ paymentAppService: options.paymentAppService });
 
+  async function fetchPackageGroups(): Promise<SdkworkSubscriptionPackageGroup[]> {
+    try {
+      const membershipAppService = resolveMembershipAppService();
+      const payload = await membershipAppService.memberships.packageGroups.list();
+      const groups = unwrapSdkworkMembershipResponse<RemoteMembershipPackageGroup[]>(payload);
+      return sortPackageGroups(groups.map(mapPackageGroup));
+    } catch {
+      return [];
+    }
+  }
+
   return {
     async getDashboard() {
-      const membershipDashboard = await membershipService.getDashboard();
+      const [membershipDashboard, packageGroups] = await Promise.all([
+        membershipService.getDashboard(),
+        fetchPackageGroups(),
+      ]);
       if (!membershipDashboard.summary.isAuthenticated) {
-        return createDashboard(membershipDashboard, [], createDefaultSdkworkSubscriptionPaymentMethodOptions());
+        return createDashboard(membershipDashboard, [], createDefaultSdkworkSubscriptionPaymentMethodOptions(), packageGroups);
       }
 
       const [couponDashboard, paymentDashboard] = await Promise.all([
@@ -324,7 +439,7 @@ export function createSdkworkSubscriptionService(
       ) as SdkworkSubscriptionCoupon[];
       const paymentMethods = resolvePaymentMethods(paymentDashboard.methods);
 
-      return createDashboard(membershipDashboard, coupons, paymentMethods);
+      return createDashboard(membershipDashboard, coupons, paymentMethods, packageGroups);
     },
 
     getEmptyDashboard() {
@@ -347,5 +462,3 @@ export function createSdkworkSubscriptionService(
     },
   };
 }
-
-export const sdkworkSubscriptionService = createSdkworkSubscriptionService();

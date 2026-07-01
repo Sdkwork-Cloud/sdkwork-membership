@@ -36,13 +36,13 @@
     "typescript": "catalog:"
   },
   "peerDependencies": {
-    "@sdkwork/membership-service": "*",
-    "@sdkwork/promotion-pc-coupon": "*",
-    "@sdkwork/promotion-service": "*",
-    "@sdkwork/payment-pc-payment": "*",
-    "@sdkwork/payment-service": "*",
-    "@sdkwork/ui-pc-react": "*",
-    "@sdkwork/membership-pc-membership": "*",
+    "@sdkwork/membership-service": "workspace:*",
+    "@sdkwork/promotion-pc-coupon": "workspace:*",
+    "@sdkwork/promotion-service": "workspace:*",
+    "@sdkwork/payment-pc-payment": "workspace:*",
+    "@sdkwork/payment-service": "workspace:*",
+    "@sdkwork/ui-pc-react": "workspace:*",
+    "@sdkwork/membership-pc-membership": "workspace:*",
     "react": ">=18.2.0 <20.0.0",
     "react-dom": ">=18.2.0 <20.0.0"
   },

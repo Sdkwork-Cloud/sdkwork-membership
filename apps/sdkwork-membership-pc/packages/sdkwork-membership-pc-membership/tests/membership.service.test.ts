@@ -352,7 +352,7 @@ describe("sdkwork-membership-pc-membership service", () => {
         memberships: {
           purchases: {
             create: vi.fn().mockResolvedValue({
-              code: "5000",
+              code: 50000,
             }),
           },
         },

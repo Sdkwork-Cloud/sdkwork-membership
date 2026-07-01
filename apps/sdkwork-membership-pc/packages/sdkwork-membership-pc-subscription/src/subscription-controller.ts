@@ -37,6 +37,7 @@ export interface SdkworkSubscriptionControllerState {
   isMutating: boolean;
   lastError?: string;
   selectedCouponId: string | null;
+  selectedPackageGroupId: number | null;
   selectedPackageId: number | null;
   selectedPaymentMethodId: string | null;
 }
@@ -48,6 +49,7 @@ export interface SdkworkSubscriptionController {
   refresh(): Promise<SdkworkSubscriptionControllerState>;
   selectCoupon(couponId: string | null): void;
   selectPackage(packageId: number): void;
+  selectPackageGroup(packageGroupId: number): void;
   selectPaymentMethod(paymentMethodId: string): void;
   service: SdkworkSubscriptionService;
   setAction(action: SdkworkSubscriptionAction): void;
@@ -90,15 +92,44 @@ function findSelectedPaymentMethod(
 function resolveSelectedPackId(
   dashboard: SdkworkSubscriptionDashboardData,
   selectedPackageId: number | null,
+  selectedPackageGroupId: number | null,
 ): number | null {
   if (selectedPackageId && dashboard.plans.some((plan) => plan.packageId === selectedPackageId)) {
     return selectedPackageId;
+  }
+
+  const packageGroups = dashboard.packageGroups ?? [];
+  const selectedGroup = packageGroups.find((g) => g.packageGroupId === selectedPackageGroupId);
+  if (selectedGroup) {
+    const recommendedInGroup = selectedGroup.packages.find((p) => p.recommended);
+    if (recommendedInGroup) return recommendedInGroup.packageId;
+    return selectedGroup.packages[0]?.packageId ?? null;
   }
 
   return dashboard.checkout.selectedPackageId
     ?? dashboard.plans.find((plan) => plan.recommended)?.packageId
     ?? dashboard.plans[0]?.packageId
     ?? null;
+}
+
+function resolveSelectedPackageGroupId(
+  dashboard: SdkworkSubscriptionDashboardData,
+  selectedPackageGroupId: number | null,
+  selectedPackageId: number | null,
+): number | null {
+  const packageGroups = dashboard.packageGroups ?? [];
+  if (selectedPackageGroupId && packageGroups.some((g) => g.packageGroupId === selectedPackageGroupId)) {
+    return selectedPackageGroupId;
+  }
+
+  if (selectedPackageId) {
+    const groupWithPackage = packageGroups.find((g) =>
+      g.packages.some((p) => p.packageId === selectedPackageId),
+    );
+    if (groupWithPackage) return groupWithPackage.packageGroupId;
+  }
+
+  return packageGroups[0]?.packageGroupId ?? null;
 }
 
 function resolveCouponSelection(
@@ -167,7 +198,12 @@ function resolveCheckout(
 }
 
 function normalizeState(state: SdkworkSubscriptionControllerState): SdkworkSubscriptionControllerState {
-  const selectedPackageId = resolveSelectedPackId(state.dashboard, state.selectedPackageId);
+  const selectedPackageGroupId = resolveSelectedPackageGroupId(
+    state.dashboard,
+    state.selectedPackageGroupId,
+    state.selectedPackageId,
+  );
+  const selectedPackageId = resolveSelectedPackId(state.dashboard, state.selectedPackageId, selectedPackageGroupId);
   const couponSelection = resolveCouponSelection(
     state.dashboard,
     state.selectedCouponId,
@@ -191,6 +227,7 @@ function normalizeState(state: SdkworkSubscriptionControllerState): SdkworkSubsc
       selectedPaymentMethodId,
     ),
     selectedCouponId: couponSelection.selectedCouponId,
+    selectedPackageGroupId,
     selectedPackageId,
     selectedPaymentMethodId,
   };
@@ -241,6 +278,7 @@ export function createSdkworkSubscriptionController(
     isLoading: false,
     isMutating: false,
     selectedCouponId: fallbackDashboard.checkout.selectedCouponId,
+    selectedPackageGroupId: null,
     selectedPackageId: fallbackDashboard.checkout.selectedPackageId,
     selectedPaymentMethodId: fallbackDashboard.checkout.selectedPaymentMethodId,
     ...options.initialState,
@@ -278,6 +316,7 @@ export function createSdkworkSubscriptionController(
       isMutating: false,
       selectedCouponId: options.preserveSelections ? currentState.selectedCouponId : dashboard.checkout.selectedCouponId,
       couponSelectionMode: options.preserveSelections ? currentState.couponSelectionMode : "auto",
+      selectedPackageGroupId: options.preserveSelections ? currentState.selectedPackageGroupId : null,
       selectedPackageId: options.preserveSelections ? currentState.selectedPackageId : dashboard.checkout.selectedPackageId,
       selectedPaymentMethodId: options.preserveSelections
         ? currentState.selectedPaymentMethodId
@@ -348,6 +387,13 @@ export function createSdkworkSubscriptionController(
     selectPackage(packageId) {
       setState({
         selectedPackageId: packageId,
+      });
+    },
+
+    selectPackageGroup(packageGroupId) {
+      setState({
+        selectedPackageGroupId: packageGroupId,
+        selectedPackageId: null,
       });
     },
 

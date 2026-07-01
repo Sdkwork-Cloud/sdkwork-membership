@@ -31,9 +31,9 @@
     "typescript": "catalog:"
   },
   "peerDependencies": {
-    "@sdkwork/appbase-pc-react": "*",
-    "@sdkwork/membership-service": "*",
-    "@sdkwork/ui-pc-react": "*",
+    "@sdkwork/appbase-pc-react": "workspace:*",
+    "@sdkwork/membership-service": "workspace:*",
+    "@sdkwork/ui-pc-react": "workspace:*",
     "react": ">=18.2.0 <20.0.0",
     "react-dom": ">=18.2.0 <20.0.0"
   },

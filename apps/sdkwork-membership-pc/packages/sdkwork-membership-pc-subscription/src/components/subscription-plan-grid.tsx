@@ -1,268 +1,263 @@
 import { Button } from "@sdkwork/ui-pc-react";
-import type {
-  SdkworkMembershipBenefit,
-  SdkworkMembershipSummary,
-} from "@sdkwork/membership-pc-membership";
-import {
-  createSdkworkSubscriptionPanelStyle,
-  createSdkworkSubscriptionToneStyle,
-} from "../subscription-appearance";
+import type { SdkworkMembershipPlan, SdkworkMembershipSummary } from "@sdkwork/membership-pc-membership";
+import type { SdkworkSubscriptionPackageGroup, SdkworkSubscriptionPlanEstimateInput } from "../subscription";
 import { useSdkworkSubscriptionIntl } from "../subscription-intl";
 
 export interface SdkworkSubscriptionPlanGridProps {
-  benefits: SdkworkMembershipBenefit[];
+  hideHeader?: boolean;
+  onSelectPackageGroup: (packageGroupId: number) => void;
   onSelectPlan: (packageId: number) => void;
-  plans: Array<{
-    description?: string | null;
-    durationDays?: number | null;
-    id: string;
-    includedPoints: number;
-    name: string;
-    originalPriceCny?: number | null;
-    packageId: number;
-    priceCny: number;
-    recommended: boolean;
-    tags: string[];
-  }>;
+  packageGroups: SdkworkSubscriptionPackageGroup[];
+  plans?: SdkworkMembershipPlan[];
+  selectedPackageGroupId: number | null;
   selectedPackageId: number | null;
   summary: SdkworkMembershipSummary;
 }
 
+function CheckIcon() {
+  return (
+    <svg className="h-4 w-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+    </svg>
+  );
+}
+
+function resolvePeriodLabel(days: number | null | undefined, copy: ReturnType<typeof useSdkworkSubscriptionIntl>["copy"]): string {
+  if (!days || days <= 0) return "";
+  if (days >= 365) return `/ ${copy.common.days === "days" ? "year" : "年"}`;
+  if (days >= 90) return `/ ${copy.common.days === "days" ? "quarter" : "季"}`;
+  if (days >= 30) return `/ ${copy.common.days === "days" ? "month" : "月"}`;
+  return `/ ${days} ${copy.common.days}`;
+}
+
 export function SdkworkSubscriptionPlanGrid({
-  benefits,
+  hideHeader = false,
+  onSelectPackageGroup,
   onSelectPlan,
-  plans,
+  packageGroups,
+  plans: plansProp,
+  selectedPackageGroupId,
   selectedPackageId,
   summary,
 }: SdkworkSubscriptionPlanGridProps) {
-  const {
-    copy,
-    formatCurrentBalance,
-    formatCurrencyCny,
-    formatDurationDays,
-    formatPoints,
-  } = useSdkworkSubscriptionIntl();
-  const isFreeCurrent = !summary.isMember;
+  const { copy, formatCurrencyCny, formatPoints } = useSdkworkSubscriptionIntl();
+
+  const groups = packageGroups ?? [];
+  const directPlans = plansProp ?? [];
+
+  const hasGroups = groups.length > 0;
+  const selectedGroup = hasGroups
+    ? (groups.find((g) => g.packageGroupId === selectedPackageGroupId) ?? groups[0] ?? null)
+    : null;
+
+  const paidPlans: SdkworkSubscriptionPlanEstimateInput[] = hasGroups && selectedGroup
+    ? selectedGroup.packages
+    : directPlans.map((p) => ({
+        description: p.description ?? null,
+        durationDays: p.durationDays ?? null,
+        id: p.id,
+        includedPoints: p.includedPoints,
+        levelName: p.levelName,
+        name: p.name,
+        originalPriceCny: p.originalPriceCny ?? null,
+        packageId: p.packageId,
+        priceCny: p.priceCny,
+        recommended: p.recommended,
+        tags: p.tags,
+      }));
+
+  const allPlans = [
+    {
+      id: "free",
+      packageId: 0,
+      name: copy.planGrid.freeMembershipTitle,
+      description: copy.planGrid.freeMembershipDescription,
+      priceCny: 0,
+      originalPriceCny: null,
+      includedPoints: 50,
+      recommended: false,
+      tags: [copy.planGrid.entryTier],
+      levelName: "Free",
+      durationDays: null,
+      isFree: true,
+    },
+    ...paidPlans.map((p) => ({
+      ...p,
+      isFree: false,
+    })),
+  ];
 
   return (
-    <section className="overflow-hidden rounded-[2rem] border border-[var(--sdk-color-border-default)] bg-[var(--sdk-color-surface-panel)] shadow-[var(--sdk-shadow-md)]">
-      <div className="border-b border-[var(--sdk-color-border-subtle)] px-6 py-6">
-        <div className="text-[0.7rem] font-semibold uppercase tracking-[0.22em] text-[var(--sdk-color-text-muted)]">
-          {copy.planGrid.titleEyebrow}
+    <section className="space-y-8">
+      {!hideHeader ? (
+        <div className="flex flex-col items-center space-y-4 text-center">
+          <div className="text-[0.7rem] font-semibold uppercase tracking-[0.22em] text-[var(--sdk-color-text-muted)]">
+            {copy.planGrid.titleEyebrow}
+          </div>
+          <h2 className="text-3xl font-bold tracking-tight text-[var(--sdk-color-text-primary)] sm:text-4xl">
+            {copy.planGrid.title}
+          </h2>
+          <p className="max-w-2xl text-base text-[var(--sdk-color-text-secondary)]">
+            {copy.planGrid.freeMembershipDescription}
+          </p>
         </div>
-        <h2 className="mt-3 text-2xl font-semibold tracking-tight text-[var(--sdk-color-text-primary)]">
-          {copy.planGrid.title}
-        </h2>
-      </div>
+      ) : null}
 
-      <div className="grid gap-5 px-6 py-6 xl:grid-cols-2">
-        <article
-          className={`flex h-full flex-col rounded-[1.9rem] border px-6 py-6 shadow-[var(--sdk-shadow-soft)] ${
-            isFreeCurrent
-              ? ""
-              : "border-[var(--sdk-color-border-default)] bg-[var(--sdk-color-surface-panel-muted)]"
-          }`}
-          style={isFreeCurrent
-            ? createSdkworkSubscriptionPanelStyle("brand", {
-              backgroundWeight: 8,
-              surfaceWeight: 94,
-            })
-            : undefined}
-        >
-          <div className="flex flex-wrap items-start justify-between gap-3">
-            <div>
-              <div className="text-xl font-semibold tracking-tight text-[var(--sdk-color-text-primary)]">
-                {copy.planGrid.freeMembershipTitle}
-              </div>
-              <div className="mt-3 text-sm leading-7 text-[var(--sdk-color-text-secondary)]">
-                {copy.planGrid.freeMembershipDescription}
-              </div>
-            </div>
+      {hasGroups && groups.length > 1 ? (
+        <div className="flex justify-center">
+          <div className="inline-flex rounded-full bg-[var(--sdk-color-surface-panel-muted)] p-1">
+            {groups.map((group) => {
+              const isSelected = group.packageGroupId === selectedPackageGroupId
+                || (selectedPackageGroupId === null && group === groups[0]);
+              return (
+                <button
+                  key={group.id}
+                  type="button"
+                  onClick={() => onSelectPackageGroup(group.packageGroupId)}
+                  className={`relative rounded-full px-6 py-2.5 text-sm font-medium transition-all duration-200 ${
+                    isSelected
+                      ? "bg-[var(--sdk-color-brand-primary)] text-white shadow-lg"
+                      : "text-[var(--sdk-color-text-secondary)] hover:text-[var(--sdk-color-text-primary)]"
+                  }`}
+                >
+                  {group.name}
+                  {group.description ? (
+                    <span className="ml-1.5 text-xs opacity-80">{group.description}</span>
+                  ) : null}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      ) : null}
 
-            <span
-              className="rounded-full border px-3 py-1 text-[0.68rem] font-semibold uppercase tracking-[0.18em] shadow-[var(--sdk-shadow-soft)]"
-              style={isFreeCurrent
-                ? createSdkworkSubscriptionToneStyle("brand", {
-                  backgroundWeight: 12,
-                  borderWeight: 24,
-                })
-                : undefined}
-            >
-              {isFreeCurrent ? copy.planGrid.currentTag : copy.planGrid.entryTier}
-            </span>
-          </div>
-
-          <div className="mt-8 text-5xl font-semibold tracking-tight text-[var(--sdk-color-text-primary)]">
-            {formatCurrencyCny(0)}
-          </div>
-          <div className="mt-2 text-sm text-[var(--sdk-color-text-secondary)]">
-            {summary.isAuthenticated ? copy.planGrid.noRecurringCharge : copy.planGrid.signInToActivatePremiumCheckout}
-          </div>
-          <div className="mt-1 text-sm text-[var(--sdk-color-text-secondary)]">
-            {formatCurrentBalance(summary.pointBalance ?? summary.points ?? 0)}
-          </div>
-
-          <div className="mt-5 flex flex-wrap gap-2">
-            <span
-              className="rounded-full border px-3 py-1 text-xs font-medium shadow-[var(--sdk-shadow-soft)]"
-              style={createSdkworkSubscriptionToneStyle("neutral", {
-                backgroundWeight: 10,
-                borderWeight: 18,
-              })}
-            >
-              {copy.planGrid.entryTier}
-            </span>
-            <span
-              className="rounded-full border px-3 py-1 text-xs font-medium shadow-[var(--sdk-shadow-soft)]"
-              style={createSdkworkSubscriptionToneStyle("neutral", {
-                backgroundWeight: 10,
-                borderWeight: 18,
-              })}
-            >
-              {summary.currentLevelName}
-            </span>
-          </div>
-
-          <Button
-            className="mt-auto w-full rounded-2xl py-6 text-base font-semibold"
-            disabled
-            type="button"
-            variant={isFreeCurrent ? "secondary" : "outline"}
-          >
-            {isFreeCurrent ? copy.planGrid.currentPlanButton : copy.planGrid.freeBaselineButton}
-          </Button>
-        </article>
-
-        {plans.length === 0 ? (
-          <div className="rounded-[1.6rem] border border-dashed border-[var(--sdk-color-border-default)] px-5 py-10 text-sm text-[var(--sdk-color-text-secondary)]">
-            {copy.planGrid.noPlans}
-          </div>
-        ) : plans.map((plan) => {
+      <div className="grid gap-5 lg:grid-cols-4">
+        {allPlans.map((plan) => {
           const isSelected = plan.packageId === selectedPackageId;
-          const showOriginalPrice = plan.originalPriceCny !== null
-            && plan.originalPriceCny !== undefined
-            && plan.originalPriceCny > plan.priceCny;
+          const isRecommended = plan.recommended;
+          const isCurrentFree = plan.isFree && !summary.isMember;
 
           return (
             <article
-              className={`relative flex h-full flex-col rounded-[1.9rem] border px-6 py-6 shadow-[var(--sdk-shadow-soft)] ${
-                isSelected
-                  ? ""
-                  : "border-[var(--sdk-color-border-default)] bg-[var(--sdk-color-surface-panel-muted)]"
-              }`}
               key={plan.id}
-              style={isSelected
-                ? createSdkworkSubscriptionPanelStyle("accent", {
-                  backgroundWeight: 12,
-                  surfaceWeight: 96,
-                })
-                : undefined}
+              className={`relative flex flex-col rounded-3xl border-2 p-6 transition-all duration-300 ${
+                isRecommended
+                  ? "border-[var(--sdk-color-brand-primary)] bg-gradient-to-b from-[color-mix(in_srgb,var(--sdk-color-brand-primary)_8%,var(--sdk-color-surface-panel))] to-[var(--sdk-color-surface-panel)] shadow-xl scale-[1.02]"
+                  : isSelected
+                    ? "border-[var(--sdk-color-brand-primary)] bg-[var(--sdk-color-surface-panel)] shadow-lg"
+                    : "border-[var(--sdk-color-border-subtle)] bg-[var(--sdk-color-surface-panel)] hover:border-[var(--sdk-color-border-default)] hover:shadow-md"
+              }`}
             >
-              <div className="flex flex-wrap items-start justify-between gap-3">
-                <div>
-                  <div className="text-xl font-semibold tracking-tight text-[var(--sdk-color-text-primary)]">
-                    {plan.name}
-                  </div>
-                  <div className="mt-3 text-sm leading-7 text-[var(--sdk-color-text-secondary)]">
-                    {plan.description || copy.selectedPlan.fallbackDescription}
-                  </div>
-                </div>
-
-                {plan.recommended ? (
-                  <span
-                    className="rounded-full border px-3 py-1 text-[0.68rem] font-semibold uppercase tracking-[0.18em] text-white shadow-[var(--sdk-shadow-soft)]"
-                    style={createSdkworkSubscriptionToneStyle("accent", {
-                      backgroundWeight: 100,
-                      borderWeight: 100,
-                    })}
-                  >
+              {isRecommended ? (
+                <div className="absolute -top-3.5 left-1/2 -translate-x-1/2">
+                  <span className="rounded-full bg-gradient-to-r from-amber-400 to-orange-500 px-4 py-1 text-xs font-bold text-white shadow-lg">
                     {copy.paymentMethods.recommended}
                   </span>
-                ) : null}
-              </div>
-
-              <div className="mt-8">
-                {showOriginalPrice ? (
-                  <div className="text-sm text-[var(--sdk-color-text-muted)] line-through">
-                    {formatCurrencyCny(plan.originalPriceCny)}
-                  </div>
-                ) : null}
-                <div className="mt-2 text-5xl font-semibold tracking-tight text-[var(--sdk-color-text-primary)]">
-                  {formatCurrencyCny(plan.priceCny)}
-                </div>
-              </div>
-
-              <div
-                className="mt-5 rounded-[1.5rem] border px-4 py-4 shadow-[var(--sdk-shadow-soft)]"
-                style={createSdkworkSubscriptionPanelStyle("accent", {
-                  backgroundWeight: 8,
-                  borderWeight: 16,
-                  surfaceColor: "var(--sdk-color-surface-panel-muted)",
-                  surfaceWeight: 96,
-                })}
-              >
-                <div className="text-[0.68rem] font-semibold uppercase tracking-[0.18em] text-[var(--sdk-color-text-muted)]">
-                  {copy.stageShell.selectedPackageLabel}
-                </div>
-                <div className="mt-2 text-sm text-[var(--sdk-color-text-secondary)]">
-                  {formatDurationDays(plan.durationDays)}
-                </div>
-                <div className="mt-1 text-sm text-[var(--sdk-color-text-secondary)]">
-                  {formatPoints(plan.includedPoints)} {copy.common.points}
-                </div>
-              </div>
-
-              {plan.tags.length > 0 ? (
-                <div className="mt-5 flex flex-wrap gap-2">
-                  {plan.tags.map((tag) => (
-                    <span
-                      className="rounded-full border px-3 py-1 text-xs font-medium shadow-[var(--sdk-shadow-soft)]"
-                      key={`${plan.id}-${tag}`}
-                      style={createSdkworkSubscriptionToneStyle("neutral", {
-                        backgroundWeight: 10,
-                        borderWeight: 18,
-                      })}
-                    >
-                      {tag}
-                    </span>
-                  ))}
                 </div>
               ) : null}
 
-              <Button
-                className="mt-auto w-full rounded-2xl py-6 text-base font-semibold"
-                onClick={() => onSelectPlan(plan.packageId)}
-                type="button"
-                variant={isSelected ? "primary" : "outline"}
-              >
-                {isSelected ? copy.actions.selectedPlan : copy.actions.selectPlan}
-              </Button>
+              {plan.isFree ? (
+                <div className="absolute -top-3.5 left-1/2 -translate-x-1/2">
+                  <span className="rounded-full bg-[var(--sdk-color-surface-panel-muted)] border border-[var(--sdk-color-border-subtle)] px-4 py-1 text-xs font-medium text-[var(--sdk-color-text-secondary)]">
+                    {copy.planGrid.entryTier}
+                  </span>
+                </div>
+              ) : null}
+
+              <div className="mb-5">
+                <h3 className={`text-xl font-bold ${
+                  isRecommended ? "text-[var(--sdk-color-brand-primary)]" : "text-[var(--sdk-color-text-primary)]"
+                }`}>
+                  {plan.name}
+                </h3>
+                <p className="mt-1.5 text-sm text-[var(--sdk-color-text-secondary)] leading-relaxed">
+                  {plan.description}
+                </p>
+              </div>
+
+              <div className="mb-5">
+                <div className="flex items-baseline">
+                  {plan.priceCny > 0 ? (
+                    <>
+                      <span className="text-sm text-[var(--sdk-color-text-secondary)]">¥</span>
+                      <span className={`text-5xl font-bold tracking-tight ${
+                        isRecommended ? "text-[var(--sdk-color-brand-primary)]" : "text-[var(--sdk-color-text-primary)]"
+                      }`}>
+                        {plan.priceCny}
+                      </span>
+                    </>
+                  ) : (
+                    <span className={`text-5xl font-bold tracking-tight ${
+                      isRecommended ? "text-[var(--sdk-color-brand-primary)]" : "text-[var(--sdk-color-text-primary)]"
+                    }`}>
+                      ¥0
+                    </span>
+                  )}
+                  {!plan.isFree && plan.durationDays ? (
+                    <span className="ml-2 text-sm text-[var(--sdk-color-text-muted)]">
+                      {resolvePeriodLabel(plan.durationDays, copy)}
+                    </span>
+                  ) : null}
+                </div>
+                {plan.originalPriceCny && plan.originalPriceCny > plan.priceCny ? (
+                  <div className="mt-1 flex items-center gap-2">
+                    <span className="text-sm text-[var(--sdk-color-text-muted)] line-through">
+                      ¥{plan.originalPriceCny}
+                    </span>
+                    <span className="rounded bg-red-50 px-1.5 py-0.5 text-xs font-medium text-red-500">
+                      {copy.planGrid.savingsLabel}¥{plan.originalPriceCny - plan.priceCny}
+                    </span>
+                  </div>
+                ) : null}
+              </div>
+
+              <div className="mb-5 rounded-2xl bg-[var(--sdk-color-surface-panel-muted)] p-4">
+                <div className="flex items-center gap-2">
+                  <svg className="h-5 w-5 text-amber-500" fill="currentColor" viewBox="0 0 20 20">
+                    <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+                  </svg>
+                  <span className="text-sm font-semibold text-[var(--sdk-color-text-primary)]">
+                    {formatPoints(plan.includedPoints)} {copy.common.points}
+                  </span>
+                </div>
+                {plan.tags.length > 0 ? (
+                  <div className="mt-2 flex flex-wrap gap-1.5">
+                    {plan.tags.map((tag) => (
+                      <span
+                        key={tag}
+                        className="rounded-full bg-[var(--sdk-color-surface-panel)] px-2 py-0.5 text-xs text-[var(--sdk-color-text-secondary)]"
+                      >
+                        {tag}
+                      </span>
+                    ))}
+                  </div>
+                ) : null}
+              </div>
+
+              {plan.isFree ? (
+                <Button
+                  className="w-full rounded-2xl py-3.5 text-sm font-semibold"
+                  disabled={isCurrentFree}
+                  type="button"
+                  variant={isCurrentFree ? "secondary" : "outline"}
+                >
+                  {isCurrentFree ? copy.planGrid.currentPlanButton : copy.planGrid.freeBaselineButton}
+                </Button>
+              ) : (
+                <Button
+                  className={`w-full rounded-2xl py-3.5 text-sm font-semibold transition-all duration-200 ${
+                    isRecommended ? "shadow-lg hover:shadow-xl" : ""
+                  }`}
+                  onClick={() => onSelectPlan(plan.packageId)}
+                  type="button"
+                  variant={isSelected ? "primary" : isRecommended ? "primary" : "outline"}
+                >
+                  {isSelected ? copy.actions.selectedPlan : isRecommended ? copy.actions.activateMembership : copy.actions.selectPlan}
+                </Button>
+              )}
             </article>
           );
         })}
-      </div>
-
-      <div className="border-t border-[var(--sdk-color-border-subtle)] px-6 py-6">
-        <div className="text-[0.7rem] font-semibold uppercase tracking-[0.22em] text-[var(--sdk-color-text-muted)]">
-          {copy.planGrid.benefitsEyebrow}
-        </div>
-        <div className="mt-4 flex flex-wrap gap-3">
-          {benefits.length === 0 ? (
-            <div className="rounded-[1.4rem] border border-dashed border-[var(--sdk-color-border-default)] px-4 py-4 text-sm text-[var(--sdk-color-text-secondary)]">
-              {copy.planGrid.benefitsEmpty}
-            </div>
-          ) : benefits.map((benefit) => (
-            <div
-              className="min-w-[14rem] rounded-[1.4rem] border border-[var(--sdk-color-border-default)] bg-[var(--sdk-color-surface-panel-muted)] px-4 py-4"
-              key={benefit.id}
-            >
-              <div className="text-sm font-semibold text-[var(--sdk-color-text-primary)]">{benefit.name}</div>
-              <div className="mt-1 text-sm text-[var(--sdk-color-text-secondary)]">
-                {benefit.description || copy.planGrid.benefitFallback}
-              </div>
-            </div>
-          ))}
-        </div>
       </div>
     </section>
   );

@@ -147,16 +147,17 @@ interface RemoteMembershipStatus {
 
 interface RemoteMembershipPackage {
   description?: string;
+  durationDays?: number | string;
   id?: number | string;
   levelName?: string;
   name?: string;
   originalPrice?: number | string;
+  planName?: string;
   pointAmount?: number | string;
   price?: number | string;
   recommended?: boolean;
   sortWeight?: number | string;
   tags?: string[];
-  durationDays?: number | string;
 }
 
 interface RemoteMembershipPurchaseResult {
@@ -165,8 +166,11 @@ interface RemoteMembershipPurchaseResult {
   orderId?: string;
   packageId?: number | string;
   packageName?: string;
+  requestNo?: string;
   status?: string;
+  success?: boolean;
   targetLevelName?: string;
+  targetPlanName?: string;
 }
 
 function mapPlan(membershipPackage: RemoteMembershipPackage): SdkworkMembershipPlan {
@@ -177,7 +181,7 @@ function mapPlan(membershipPackage: RemoteMembershipPackage): SdkworkMembershipP
     durationDays: toNullableSdkworkMembershipNumber(membershipPackage.durationDays),
     id: `membership-package-${packageId}`,
     includedPoints: toSdkworkMembershipNumber(membershipPackage.pointAmount),
-    levelName: toSdkworkMembershipOptionalString(membershipPackage.levelName),
+    levelName: toSdkworkMembershipOptionalString(membershipPackage.levelName ?? membershipPackage.planName),
     name: toSdkworkMembershipOptionalString(membershipPackage.name) || "Membership package",
     originalPriceCny: toNullableSdkworkMembershipNumber(membershipPackage.originalPrice),
     packageId,
@@ -266,14 +270,15 @@ function mapBenefits(benefits: RemoteMembershipBenefit[]): SdkworkMembershipBene
 }
 
 function mapPurchaseResult(result: RemoteMembershipPurchaseResult | null | undefined): SdkworkMembershipPurchaseResult {
+  const statusStr = toSdkworkMembershipOptionalString(result?.status);
   return {
     amountCny: toNullableSdkworkMembershipNumber(result?.amount),
     durationDays: toNullableSdkworkMembershipNumber(result?.durationDays),
-    orderId: toSdkworkMembershipOptionalString(result?.orderId),
+    orderId: toSdkworkMembershipOptionalString(result?.orderId ?? result?.requestNo),
     packageId: toNullableSdkworkMembershipNumber(result?.packageId),
     packageName: toSdkworkMembershipOptionalString(result?.packageName),
-    status: toSdkworkMembershipMutationStatus(toSdkworkMembershipOptionalString(result?.status)),
-    targetLevelName: toSdkworkMembershipOptionalString(result?.targetLevelName),
+    status: result?.success === false ? "failed" : toSdkworkMembershipMutationStatus(statusStr),
+    targetLevelName: toSdkworkMembershipOptionalString(result?.targetLevelName ?? result?.targetPlanName),
   };
 }
 

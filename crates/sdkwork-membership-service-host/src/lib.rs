@@ -1,5 +1,7 @@
 use sdkwork_database_sqlx::DatabasePool;
-use sdkwork_membership_database_host::{bootstrap_membership_database_from_env, MembershipDatabaseHost};
+use sdkwork_membership_database_host::{
+    bootstrap_membership_database_from_env, MembershipDatabaseHost,
+};
 
 pub struct MembershipServiceHost {
     database: MembershipDatabaseHost,
@@ -7,7 +9,9 @@ pub struct MembershipServiceHost {
 
 impl MembershipServiceHost {
     pub async fn new() -> Self {
-        Self::from_env().await.expect("membership service host bootstrap failed")
+        Self::from_env()
+            .await
+            .expect("membership service host bootstrap failed")
     }
 
     pub async fn from_env() -> Result<Self, String> {

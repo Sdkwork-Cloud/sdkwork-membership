@@ -1,4 +1,4 @@
-import { ShieldCheck } from "lucide-react";
+import { ChevronLeft, ShieldCheck } from "lucide-react";
 import {
   Button,
   StatusNotice,
@@ -27,6 +27,7 @@ export interface SdkworkSubscriptionCheckoutPanelProps {
   isAuthenticated: boolean;
   isMutating: boolean;
   lastError?: string;
+  onBackToPlans?: () => void;
   onClearCoupon: () => void;
   onSelectCoupon: (couponId: string | null) => void;
   onSelectPaymentMethod: (paymentMethodId: string) => void;
@@ -43,6 +44,7 @@ export function SdkworkSubscriptionCheckoutPanel({
   isAuthenticated,
   isMutating,
   lastError,
+  onBackToPlans,
   onClearCoupon,
   onSelectCoupon,
   onSelectPaymentMethod,
@@ -67,6 +69,17 @@ export function SdkworkSubscriptionCheckoutPanel({
       })}
     >
       <div className="relative">
+        {onBackToPlans ? (
+          <button
+            type="button"
+            onClick={onBackToPlans}
+            className="mb-4 inline-flex items-center gap-1.5 text-sm font-medium text-[var(--sdk-color-text-secondary)] transition-colors hover:text-[var(--sdk-color-text-primary)]"
+          >
+            <ChevronLeft className="h-4 w-4" />
+            {copy.actions.backToPlans}
+          </button>
+        ) : null}
+
         <div className="flex items-start justify-between gap-3">
           <div>
             <div className="text-[0.7rem] font-semibold uppercase tracking-[0.22em] text-[var(--sdk-color-text-muted)]">
@@ -88,7 +101,7 @@ export function SdkworkSubscriptionCheckoutPanel({
             })}
           >
             <ShieldCheck className="h-3.5 w-3.5" />
-            {copy.checkoutPanel.lockedBadge}
+            {copy.checkoutPanel.safePaymentLabel}
           </div>
         </div>
 

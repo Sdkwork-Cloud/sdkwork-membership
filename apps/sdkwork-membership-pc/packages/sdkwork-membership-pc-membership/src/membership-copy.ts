@@ -14,6 +14,9 @@ export interface SdkworkMembershipMessages {
     selectPlan: string;
     selected: string;
     upgrade: string;
+    claim: string;
+    compare: string;
+    viewBenefits: string;
   };
   benefits: {
     claimed: string;
@@ -25,14 +28,23 @@ export interface SdkworkMembershipMessages {
     title: string;
     typeFallback: string;
     usageValue: string;
+    locked: string;
+    unlockAt: string;
+    unlimited: string;
   };
   common: {
     flexibleDuration: string;
     noValue: string;
+    perYear: string;
+    billedYearly: string;
+    save: string;
   };
   format: {
     daysValue: string;
     priceWasValue: string;
+    pointsToNext: string;
+    expiresOn: string;
+    memberSince: string;
   };
   hero: {
     currentLevel: string;
@@ -47,6 +59,11 @@ export interface SdkworkMembershipMessages {
     status: string;
     title: string;
     points: string;
+    progressToNext: string;
+    nextLevel: string;
+    topLevel: string;
+    pointsLabel: string;
+    growthLabel: string;
   };
   levels: {
     compareLevel: string;
@@ -58,10 +75,15 @@ export interface SdkworkMembershipMessages {
     eyebrow: string;
     requiredPoints: string;
     title: string;
+    ladderEyebrow: string;
+    ladderTitle: string;
+    locked: string;
+    perks: string;
   };
   page: {
     errorTitle: string;
     loading: string;
+    subtitle: string;
   };
   plans: {
     descriptionFallback: string;
@@ -70,6 +92,11 @@ export interface SdkworkMembershipMessages {
     eyebrow: string;
     popular: string;
     title: string;
+    subtitle: string;
+    features: string;
+    allFeatures: string;
+    duration: string;
+    pointsIncluded: string;
   };
   service: {
     purchaseFailed: string;
@@ -134,11 +161,14 @@ const EN_US_MESSAGES: SdkworkMembershipMessages = {
     benefits: "Benefits",
     levels: "Levels",
     plans: "Plans",
-    refresh: "Refresh membership center",
-    renew: "Renew membership",
+    refresh: "Refresh",
+    renew: "Renew",
     selectPlan: "Select plan",
     selected: "Selected",
     upgrade: "Upgrade now",
+    claim: "Claim",
+    compare: "Compare",
+    viewBenefits: "View benefits",
   },
   benefits: {
     claimed: "Claimed",
@@ -150,18 +180,27 @@ const EN_US_MESSAGES: SdkworkMembershipMessages = {
     title: "Membership benefits",
     typeFallback: "benefit",
     usageValue: "{used}/{limit} used",
+    locked: "Locked",
+    unlockAt: "Unlock at {level}",
+    unlimited: "Unlimited",
   },
   common: {
     flexibleDuration: "Flexible duration",
     noValue: "--",
+    perYear: "/year",
+    billedYearly: "Billed yearly",
+    save: "Save {percent}%",
   },
   format: {
     daysValue: "{value} days",
     priceWasValue: "Was {value}",
+    pointsToNext: "{value} points to {level}",
+    expiresOn: "Expires {date}",
+    memberSince: "Member since {date}",
   },
   hero: {
     currentLevel: "Current level",
-    description: "Standardize premium plans, benefits, and renew or upgrade workflows into one Sdkwork-inspired desktop capability.",
+    description: "Manage your plan, track benefits, and grow your membership tier — all in one place.",
     eyebrow: "Membership",
     includedPoints: "Included points",
     noPackageDescription: "Pick a package to compare price, included points, and membership duration.",
@@ -172,6 +211,11 @@ const EN_US_MESSAGES: SdkworkMembershipMessages = {
     status: "Status",
     title: "Membership Center",
     points: "Membership points",
+    progressToNext: "Progress to {level}",
+    nextLevel: "Next level",
+    topLevel: "Top level reached",
+    pointsLabel: "Points",
+    growthLabel: "Growth",
   },
   levels: {
     compareLevel: "Compare level",
@@ -183,18 +227,28 @@ const EN_US_MESSAGES: SdkworkMembershipMessages = {
     eyebrow: "Levels",
     requiredPoints: "Required points",
     title: "Level comparison",
+    ladderEyebrow: "Tier ladder",
+    ladderTitle: "Your membership journey",
+    locked: "Locked",
+    perks: "Perks",
   },
   page: {
     errorTitle: "Membership center error",
     loading: "Loading membership center...",
+    subtitle: "Plan, benefits, and tier progression",
   },
   plans: {
     descriptionFallback: "Premium membership offer",
     emptyDescription: "No membership plans are currently available in this workspace.",
     emptyTitle: "No membership plans",
     eyebrow: "Plans",
-    popular: "Popular",
+    popular: "Most popular",
     title: "Membership plans",
+    subtitle: "Pick the plan that fits your workflow",
+    features: "What's included",
+    allFeatures: "All features",
+    duration: "Duration",
+    pointsIncluded: "Points included",
   },
   service: {
     purchaseFailed: "Failed to purchase membership.",
@@ -211,81 +265,108 @@ const EN_US_MESSAGES: SdkworkMembershipMessages = {
 
 const ZH_CN_MESSAGES: SdkworkMembershipMessages = {
   actions: {
-    benefits: "\u6743\u76ca",
-    levels: "\u7b49\u7ea7",
-    plans: "\u65b9\u6848",
-    refresh: "\u5237\u65b0\u4f1a\u5458\u4e2d\u5fc3",
-    renew: "\u7eed\u8d39\u4f1a\u5458",
-    selectPlan: "\u9009\u62e9\u65b9\u6848",
-    selected: "\u5df2\u9009\u62e9",
-    upgrade: "\u7acb\u5373\u5347\u7ea7",
+    benefits: "权益",
+    levels: "等级",
+    plans: "方案",
+    refresh: "刷新",
+    renew: "续费",
+    selectPlan: "选择方案",
+    selected: "已选择",
+    upgrade: "立即升级",
+    claim: "领取",
+    compare: "对比",
+    viewBenefits: "查看权益",
   },
   benefits: {
-    claimed: "\u5df2\u9886\u53d6",
-    descriptionFallback: "\u9ad8\u7ea7\u4f1a\u5458\u6743\u76ca",
-    emptyDescription: "\u5f53\u6709\u53ef\u7528\u7684\u89e3\u9501\u6743\u76ca\u548c\u914d\u989d\u65f6\uff0c\u4f1a\u5728\u8fd9\u91cc\u5c55\u793a\u3002",
-    emptyTitle: "\u6682\u65e0\u4f1a\u5458\u6743\u76ca",
-    eyebrow: "\u6743\u76ca",
-    pending: "\u5f85\u4f7f\u7528",
-    title: "\u4f1a\u5458\u6743\u76ca",
-    typeFallback: "\u6743\u76ca",
-    usageValue: "\u5df2\u7528 {used}/{limit}",
+    claimed: "已领取",
+    descriptionFallback: "高级会员权益",
+    emptyDescription: "当有可用的解锁权益和配额时，会在这里展示。",
+    emptyTitle: "暂无会员权益",
+    eyebrow: "权益",
+    pending: "待使用",
+    title: "会员权益",
+    typeFallback: "权益",
+    usageValue: "已用 {used}/{limit}",
+    locked: "未解锁",
+    unlockAt: "{level} 解锁",
+    unlimited: "不限",
   },
   common: {
-    flexibleDuration: "\u65f6\u957f\u7075\u6d3b",
+    flexibleDuration: "时长灵活",
     noValue: "--",
+    perYear: "/年",
+    billedYearly: "按年结算",
+    save: "省 {percent}%",
   },
   format: {
-    daysValue: "{value} \u5929",
-    priceWasValue: "\u539f\u4ef7 {value}",
+    daysValue: "{value} 天",
+    priceWasValue: "原价 {value}",
+    pointsToNext: "距 {level} 还差 {value} 成长值",
+    expiresOn: "{date} 到期",
+    memberSince: "{date} 加入",
   },
   hero: {
-    currentLevel: "\u5f53\u524d\u7b49\u7ea7",
-    description: "\u628a\u4f1a\u5458\u65b9\u6848\u3001\u6743\u76ca\u5c55\u793a\u3001\u7eed\u8d39\u548c\u5347\u7ea7\u6d41\u7a0b\u7edf\u4e00\u6210\u4e00\u5957 Sdkwork \u98ce\u683c\u7684\u53ef\u590d\u7528\u684c\u9762\u7aef\u80fd\u529b\u3002",
-    eyebrow: "\u4f1a\u5458",
-    includedPoints: "\u5305\u542b\u79ef\u5206",
-    noPackageDescription: "\u9009\u62e9\u4e00\u4e2a\u5957\u9910\u67e5\u770b\u4ef7\u683c\u3001\u5305\u542b\u79ef\u5206\u548c\u4f1a\u5458\u65f6\u957f\u3002",
-    noPackageSelected: "\u6682\u672a\u9009\u62e9\u5957\u9910",
-    price: "\u4ef7\u683c",
-    remaining: "\u5269\u4f59\u65f6\u957f",
-    selectedOffer: "\u5df2\u9009\u5957\u9910",
-    status: "\u72b6\u6001",
-    title: "\u4f1a\u5458\u4e2d\u5fc3",
-    points: "\u4f1a\u5458\u79ef\u5206",
+    currentLevel: "当前等级",
+    description: "在一个中心管理你的方案、权益与等级成长。",
+    eyebrow: "会员",
+    includedPoints: "包含积分",
+    noPackageDescription: "选择一个套餐查看价格、积分与会员时长。",
+    noPackageSelected: "暂未选择套餐",
+    price: "价格",
+    remaining: "剩余时长",
+    selectedOffer: "已选套餐",
+    status: "状态",
+    title: "会员中心",
+    points: "会员积分",
+    progressToNext: "升级到 {level}",
+    nextLevel: "下一等级",
+    topLevel: "已达到最高等级",
+    pointsLabel: "积分",
+    growthLabel: "成长值",
   },
   levels: {
-    compareLevel: "\u5bf9\u6bd4\u7b49\u7ea7",
-    currentLevelAction: "\u5f53\u524d\u7b49\u7ea7",
-    currentLabel: "\u5f53\u524d",
-    descriptionFallback: "\u9ad8\u7ea7\u4f1a\u5458\u7b49\u7ea7",
-    emptyDescription: "\u5f53\u4f1a\u5458\u7b49\u7ea7\u6570\u636e\u53ef\u7528\u65f6\uff0c\u8fd9\u91cc\u4f1a\u5c55\u793a\u5bf9\u6bd4\u4fe1\u606f\u3002",
-    emptyTitle: "\u6682\u65e0\u4f1a\u5458\u7b49\u7ea7",
-    eyebrow: "\u7b49\u7ea7",
-    requiredPoints: "\u9700\u8981\u79ef\u5206",
-    title: "\u7b49\u7ea7\u5bf9\u6bd4",
+    compareLevel: "对比等级",
+    currentLevelAction: "当前等级",
+    currentLabel: "当前",
+    descriptionFallback: "高级会员等级",
+    emptyDescription: "当会员等级数据可用时，这里会展示对比信息。",
+    emptyTitle: "暂无会员等级",
+    eyebrow: "等级",
+    requiredPoints: "需要成长值",
+    title: "等级对比",
+    ladderEyebrow: "等级阶梯",
+    ladderTitle: "你的会员成长之路",
+    locked: "未解锁",
+    perks: "专属权益",
   },
   page: {
-    errorTitle: "\u4f1a\u5458\u4e2d\u5fc3\u5f02\u5e38",
-    loading: "\u6b63\u5728\u52a0\u8f7d\u4f1a\u5458\u4e2d\u5fc3...",
+    errorTitle: "会员中心异常",
+    loading: "正在加载会员中心...",
+    subtitle: "方案、权益与等级成长",
   },
   plans: {
-    descriptionFallback: "\u9ad8\u7ea7\u4f1a\u5458\u5957\u9910",
-    emptyDescription: "\u5f53\u524d\u5de5\u4f5c\u533a\u6682\u65e0\u53ef\u7528\u7684\u4f1a\u5458\u5957\u9910\u3002",
-    emptyTitle: "\u6682\u65e0\u4f1a\u5458\u65b9\u6848",
-    eyebrow: "\u65b9\u6848",
-    popular: "\u63a8\u8350",
-    title: "\u4f1a\u5458\u65b9\u6848",
+    descriptionFallback: "高级会员套餐",
+    emptyDescription: "当前工作区暂无可用的会员套餐。",
+    emptyTitle: "暂无会员方案",
+    eyebrow: "方案",
+    popular: "最受欢迎",
+    title: "会员方案",
+    subtitle: "选择适合你的方案",
+    features: "包含内容",
+    allFeatures: "全部功能",
+    duration: "时长",
+    pointsIncluded: "包含积分",
   },
   service: {
-    purchaseFailed: "\u8d2d\u4e70\u4f1a\u5458\u5931\u8d25\u3002",
-    renewFailed: "\u7eed\u8d39\u4f1a\u5458\u5931\u8d25\u3002",
-    signInRequired: "\u8bf7\u5148\u767b\u5f55\u540e\u518d\u7ba1\u7406\u4f1a\u5458\u3002",
-    upgradeFailed: "\u5347\u7ea7\u4f1a\u5458\u5931\u8d25\u3002",
+    purchaseFailed: "购买会员失败。",
+    renewFailed: "续费会员失败。",
+    signInRequired: "请先登录后再管理会员。",
+    upgradeFailed: "升级会员失败。",
   },
   status: {
-    active: "\u751f\u6548\u4e2d",
-    free: "\u514d\u8d39",
-    guest: "\u6e38\u5ba2",
+    active: "生效中",
+    free: "免费",
+    guest: "游客",
   },
 };
 

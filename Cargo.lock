@@ -1761,14 +1761,12 @@ name = "sdkwork-membership-repository-sqlx"
 version = "0.1.0"
 dependencies = [
  "axum",
+ "chrono",
  "http-body-util",
  "sdkwork-contract-service",
  "sdkwork-database-config",
  "sdkwork-database-sqlx",
- "sdkwork-iam-context-service",
- "sdkwork-iam-web-adapter",
  "sdkwork-utils-rust",
- "sdkwork-web-axum",
  "sdkwork-web-core",
  "serde",
  "serde_json",
@@ -1913,6 +1911,7 @@ dependencies = [
  "http",
  "percent-encoding",
  "rsa",
+ "sdkwork-utils-rust",
  "sdkwork-web-contract",
  "serde",
  "serde_json",

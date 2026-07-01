@@ -413,9 +413,7 @@ impl AppMembershipStore for SqliteCommerceMembershipStore {
         subject: AppMembershipSubject,
         requested_at: String,
     ) -> AppMembershipReadFuture<'a, AppMembershipDailyRewardResponse> {
-        Box::pin(async move {
-            claim_daily_reward_sqlite(&self.pool, subject, requested_at).await
-        })
+        Box::pin(async move { claim_daily_reward_sqlite(&self.pool, subject, requested_at).await })
     }
 
     fn load_privilege_usage<'a>(
@@ -2990,9 +2988,15 @@ async fn claim_daily_reward_sqlite(
     };
     let new_total = prev_total + 1;
     let reward_points = daily_reward_points(new_consecutive);
-    let reward_id = format!("daily-reward-{}-{}-{}", subject.tenant_id, subject.user_id, today);
+    let reward_id = format!(
+        "daily-reward-{}-{}-{}",
+        subject.tenant_id, subject.user_id, today
+    );
     let reward_uuid = format!("dr-{}-{}-{}", subject.tenant_id, subject.user_id, today);
-    let idempotency_key = format!("daily-reward-{}-{}-{}", subject.tenant_id, subject.user_id, today);
+    let idempotency_key = format!(
+        "daily-reward-{}-{}-{}",
+        subject.tenant_id, subject.user_id, today
+    );
 
     sqlx::query(
         r#"
@@ -3038,9 +3042,7 @@ async fn current_date_sqlite(pool: &SqlitePool) -> String {
     sqlx::query_scalar::<_, String>("SELECT date('now')")
         .fetch_one(pool)
         .await
-        .unwrap_or_else(|_| {
-            format_timestamp_date(std::time::SystemTime::now())
-        })
+        .unwrap_or_else(|_| format_timestamp_date(std::time::SystemTime::now()))
 }
 
 async fn yesterday_date_sqlite(pool: &SqlitePool) -> String {
@@ -3074,7 +3076,20 @@ fn epoch_days_to_ymd(days_since_epoch: i64) -> (i64, u32, u32) {
         }
     }
     let leap = is_leap_year(year);
-    let month_days = [31, if leap { 29 } else { 28 }, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
+    let month_days = [
+        31,
+        if leap { 29 } else { 28 },
+        31,
+        30,
+        31,
+        30,
+        31,
+        31,
+        30,
+        31,
+        30,
+        31,
+    ];
     let mut month = 0u32;
     let mut day = days as u32;
     while (month as usize) < 12 && day >= month_days[month as usize] {

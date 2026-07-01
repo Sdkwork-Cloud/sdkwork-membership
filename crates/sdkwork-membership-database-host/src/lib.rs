@@ -1,9 +1,9 @@
-use std::path::PathBuf;
-use std::sync::Arc;
 use sdkwork_database_config::DatabaseConfig;
 use sdkwork_database_lifecycle::{lifecycle_options_from_env, LifecycleOrchestrator};
 use sdkwork_database_spi::{DatabaseAssetProvider, DatabaseManifest, DefaultDatabaseModule};
 use sdkwork_database_sqlx::{create_pool_from_config, DatabasePool};
+use std::path::PathBuf;
+use std::sync::Arc;
 
 pub struct MembershipDatabaseHost {
     pool: DatabasePool,
@@ -37,8 +37,8 @@ pub async fn bootstrap_membership_database_from_env() -> Result<MembershipDataba
     let manifest = DatabaseManifest::from_file(module.manifest_path())
         .map_err(|error| format!("read membership database manifest failed: {error}"))?;
     let options = lifecycle_options_from_env("MEMBERSHIP", &manifest);
-    let orchestrator =
-        LifecycleOrchestrator::new(pool.clone(), module.clone()).with_applied_by("sdkwork-membership");
+    let orchestrator = LifecycleOrchestrator::new(pool.clone(), module.clone())
+        .with_applied_by("sdkwork-membership");
     orchestrator.init().await.map_err(|e| format!("{e}"))?;
     if options.auto_migrate {
         orchestrator.migrate().await.map_err(|e| format!("{e}"))?;

@@ -40,6 +40,16 @@ function createSubscriptionDashboard() {
         status: "available" as const,
       },
     ],
+    levels: [
+      {
+        id: "membership-level-3",
+        isCurrent: true,
+        levelValue: 3,
+        name: "Pro",
+        requiredPoints: 500,
+      },
+    ],
+    packageGroups: [],
     paymentMethods: [
       {
         available: true,
@@ -76,15 +86,6 @@ function createSubscriptionDashboard() {
         ],
         recommended: false,
         recommendedProductType: "pc" as const,
-      },
-    ],
-    levels: [
-      {
-        id: "membership-level-3",
-        isCurrent: true,
-        levelValue: 3,
-        name: "Pro",
-        requiredPoints: 500,
       },
     ],
     plans: [
@@ -131,6 +132,7 @@ function createEmptyDashboard() {
     },
     coupons: [],
     levels: [],
+    packageGroups: [],
     paymentMethods: [
       {
         available: true,
@@ -192,9 +194,9 @@ describe("sdkwork-membership-pc-subscription page", () => {
       })).length,
     ).toBeGreaterThan(0);
     expect(
-      screen.getByRole("button", {
+      screen.getAllByRole("button", {
         name: /continue to checkout/i,
-      }),
+      })[0],
     ).toBeInTheDocument();
     expect(
       screen.getByText(/free membership/i),
@@ -203,16 +205,18 @@ describe("sdkwork-membership-pc-subscription page", () => {
     expect(screen.getByText("Priority rendering")).toBeInTheDocument();
 
     fireEvent.click(
-      screen.getByRole("button", {
+      screen.getAllByRole("button", {
         name: /continue to checkout/i,
-      }),
+      })[0]!,
     );
 
-    expect(
-      screen.getByRole("button", {
-        name: /back to plans/i,
-      }),
-    ).toBeInTheDocument();
+    await waitFor(() => {
+      expect(
+        screen.getByRole("button", {
+          name: /back to plans/i,
+        }),
+      ).toBeInTheDocument();
+    });
     expect(
       screen.getByRole("button", {
         name: /confirm payment/i,
@@ -263,16 +267,22 @@ describe("sdkwork-membership-pc-subscription page", () => {
         name: /subscription center/i,
       })).length,
     ).toBeGreaterThan(0);
-    fireEvent.click(
-      screen.getByRole("button", {
-        name: /continue to checkout/i,
-      }),
-    );
+
     fireEvent.click(
       screen.getAllByRole("button", {
-        name: /confirm payment/i,
+        name: /continue to checkout/i,
       })[0]!,
     );
+
+    const confirmButton = await waitFor(() => {
+      const btn = screen.getByRole("button", {
+        name: /confirm payment/i,
+      });
+      expect(btn).toBeInTheDocument();
+      return btn;
+    });
+
+    fireEvent.click(confirmButton);
 
     await waitFor(() => {
       expect(onCheckoutComplete).toHaveBeenCalledWith(
@@ -294,7 +304,10 @@ describe("sdkwork-membership-pc-subscription page", () => {
     const onCheckoutError = vi.fn();
     const controller = createSdkworkSubscriptionController({
       service: {
-        getDashboard: vi.fn().mockResolvedValue(dashboard),
+        getDashboard: vi
+          .fn()
+          .mockResolvedValueOnce(dashboard)
+          .mockResolvedValueOnce(dashboard),
         getEmptyDashboard: vi.fn().mockReturnValue(createEmptyDashboard()),
         purchaseSubscription: vi.fn(),
         renewSubscription: vi.fn(),
@@ -317,16 +330,22 @@ describe("sdkwork-membership-pc-subscription page", () => {
         name: /subscription center/i,
       })).length,
     ).toBeGreaterThan(0);
-    fireEvent.click(
-      screen.getByRole("button", {
-        name: /continue to checkout/i,
-      }),
-    );
+
     fireEvent.click(
       screen.getAllByRole("button", {
-        name: /confirm payment/i,
+        name: /continue to checkout/i,
       })[0]!,
     );
+
+    const confirmButton = await waitFor(() => {
+      const btn = screen.getByRole("button", {
+        name: /confirm payment/i,
+      });
+      expect(btn).toBeInTheDocument();
+      return btn;
+    });
+
+    fireEvent.click(confirmButton);
 
     await waitFor(() => {
       expect(onCheckoutError).toHaveBeenCalledWith(failure);

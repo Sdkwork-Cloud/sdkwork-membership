@@ -1,5 +1,6 @@
 use std::collections::BTreeSet;
 
+use chrono::{TimeZone, Utc};
 use sdkwork_contract_service::{CommerceMoney, CommerceServiceError};
 use serde_json::Value;
 
@@ -7,6 +8,24 @@ use crate::{
     AppMembershipBenefitItem, AppMembershipPackageGroupItem, AppMembershipPackageItem,
     AppMembershipPlanItem, AppMembershipPrivilegeUsageResponse,
 };
+
+/// Trim and drop empty optional query/header values. Shared by app and admin routers.
+pub(crate) fn normalize_optional_text(value: Option<String>) -> Option<String> {
+    value.map(|v| v.trim().to_owned()).filter(|v| !v.is_empty())
+}
+
+/// Current UTC timestamp formatted as `%Y-%m-%d %H:%M:%S`. Shared by app and admin routers.
+pub(crate) fn current_timestamp_string() -> String {
+    format_unix_timestamp(Utc::now().timestamp())
+}
+
+/// Format a unix timestamp (seconds) as `%Y-%m-%d %H:%M:%S`. Shared by app and admin routers.
+pub(crate) fn format_unix_timestamp(seconds: i64) -> String {
+    Utc.timestamp_opt(seconds, 0)
+        .single()
+        .map(|ts| ts.format("%Y-%m-%d %H:%M:%S").to_string())
+        .unwrap_or_else(|| format!("{seconds}"))
+}
 
 pub(crate) const POINTS_ASSET_TYPE: &str = "points";
 pub(crate) const POINTS_CURRENCY_CODE: &str = "POINT";

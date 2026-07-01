@@ -16,14 +16,14 @@ sdkwork-specs (L0)
 sdkwork-web-framework + sdkwork-database + sdkwork-utils (L1 frameworks)
        -> extended by
 sdkwork-membership crates (L2 business)
-  sdkwork-membership-service          — domain rules, commands, ports
-  sdkwork-commerce (deleted)-membership-repository-sqlx  — SQLx persistence, seed data
-  sdkwork-routes-membership-app-api            — app-api route adapter
-  sdkwork-routes-membership-backend-api        — backend-api route adapter
-  sdkwork-membership-database-host             — database lifecycle bootstrap
-  sdkwork-membership-service-host              — in-process service container
-  sdkwork-membership-standalone-gateway                — HTTP process entry point
-  sdkwork-membership-gateway-assembly          — route assembly manifest
+  sdkwork-membership-service                    — domain rules, commands, ports
+  sdkwork-membership-repository-sqlx            — SQLx persistence, route adapters
+  sdkwork-routes-membership-app-api             — app-api route adapter
+  sdkwork-routes-membership-backend-api         — backend-api route adapter
+  sdkwork-membership-database-host              — database lifecycle bootstrap
+  sdkwork-membership-service-host               — in-process service container
+  sdkwork-membership-standalone-gateway         — HTTP process entry point
+  sdkwork-membership-gateway-assembly           — route assembly manifest
        -> consumed by
 composition applications (sdkwork-mall, etc.) via workspace path dependencies
 ```
@@ -42,7 +42,7 @@ composition applications (sdkwork-mall, etc.) via workspace path dependencies
 | Layer | Owner crate | Responsibility |
 | --- | --- | --- |
 | Domain commands/queries | `sdkwork-membership-service` | Business validation, domain models, ports, service contracts |
-| SQL repositories | `sdkwork-commerce (deleted)-membership-repository-sqlx` | Tenant-scoped persistence, row mapping, seed installation |
+| SQL repositories | `sdkwork-membership-repository-sqlx` | Tenant-scoped persistence, row mapping, route adapters |
 | App API routes | `sdkwork-routes-membership-app-api` | `/app/v3/api/membership` route adapter with `WebRequestContext` |
 | Backend API routes | `sdkwork-routes-membership-backend-api` | `/backend/v3/api/membership` route adapter with `WebRequestContext` |
 | Database lifecycle | `sdkwork-membership-database-host` | Pool creation, `DefaultDatabaseModule`, migration orchestration |
@@ -78,7 +78,7 @@ sdkwork-database-sqlx::create_pool_from_config
 - Standard `database/` directory with `database.manifest.json`, contract, migrations, seeds, and drift policy.
 - Connection pools created through `sdkwork-database-sqlx`.
 - Lifecycle orchestration uses `sdkwork-database-lifecycle`.
-- Seed data is installed through repository crate seed functions.
+- Seed data is installed through the `sdkwork-database-cli` seed mechanism declared in `database/seeds/seed.manifest.json`.
 
 ### 5.1 Table Ownership
 
@@ -137,15 +137,15 @@ sdkwork-membership/
     drift/policy.yaml
     fixtures/
   crates/
-    sdkwork-membership-service/       — domain rules
-    sdkwork-commerce (deleted)-membership-repository-sqlx/ — SQLx persistence
-    sdkwork-routes-membership-app-api/         — app-api routes
-    sdkwork-routes-membership-backend-api/     — backend-api routes
-    sdkwork-membership-database-host/          — database bootstrap
-    sdkwork-membership-service-host/           — service container
-    sdkwork-membership-standalone-gateway/             — HTTP process
-    sdkwork-membership-gateway-assembly/       — route assembly
-  packages/common/membership/                  — TypeScript contracts and SDK ports
+    sdkwork-membership-service/              — domain rules
+    sdkwork-membership-repository-sqlx/       — SQLx persistence, route adapters
+    sdkwork-routes-membership-app-api/        — app-api routes
+    sdkwork-routes-membership-backend-api/    — backend-api routes
+    sdkwork-membership-database-host/         — database bootstrap
+    sdkwork-membership-service-host/          — service container
+    sdkwork-membership-standalone-gateway/    — HTTP process
+    sdkwork-membership-gateway-assembly/     — route assembly
+  apps/sdkwork-membership-common/packages/     — TypeScript contracts, SDK ports, and service facade
   apps/sdkwork-membership-pc/                  — PC application root
   docs/                                        — documentation canon
 ```
@@ -173,8 +173,8 @@ sdkwork-membership/
 ## 12. Deployment And Runtime Topology
 
 - Local development: `cargo test --workspace` in this repository.
-- Independent deployment: `sdkwork-membership-standalone-gateway` binary `membership-server`.
-- Platform composition: composition applications (sdkwork-mall, etc.) consume per-T1 SDKs via workspace paths. The `sdkwork-commerce (deleted)` monolith has been dissolved.
+- Independent deployment: `sdkwork-membership-standalone-gateway` binary `sdkwork-membership-standalone-gateway`.
+- Platform composition: composition applications (sdkwork-mall, etc.) consume per-T1 SDKs via workspace paths.
 - Environment variables follow `ENVIRONMENT_SPEC.md` with `MEMBERSHIP` service code prefix.
 
 ## 13. Verification

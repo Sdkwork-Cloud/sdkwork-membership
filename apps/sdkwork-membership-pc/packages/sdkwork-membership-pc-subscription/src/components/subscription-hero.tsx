@@ -1,142 +1,119 @@
-import { Button } from "@sdkwork/ui-pc-react";
 import type { SdkworkMembershipSummary } from "@sdkwork/membership-pc-membership";
 import type { SdkworkSubscriptionAction } from "../subscription";
-import {
-  createSdkworkSubscriptionGlassStyle,
-  createSdkworkSubscriptionHeroStyle,
-  createSdkworkSubscriptionHeroTextStyle,
-  createSdkworkSubscriptionToneStyle,
-} from "../subscription-appearance";
 import { useSdkworkSubscriptionIntl } from "../subscription-intl";
 
 export interface SdkworkSubscriptionHeroProps {
   activeAction: SdkworkSubscriptionAction;
-  couponCount: number;
   onActionChange: (action: SdkworkSubscriptionAction) => void;
-  planCount: number;
   summary: SdkworkMembershipSummary;
 }
 
 const ACTIONS: SdkworkSubscriptionAction[] = ["purchase", "upgrade", "renew"];
 
+function interpolate(template: string, values: Record<string, number | string>): string {
+  return Object.entries(values).reduce(
+    (output, [key, value]) => output.replaceAll(`{${key}}`, String(value)),
+    template,
+  );
+}
+
 export function SdkworkSubscriptionHero({
   activeAction,
-  couponCount,
   onActionChange,
-  planCount,
   summary,
 }: SdkworkSubscriptionHeroProps) {
   const {
     copy,
-    formatCouponCount,
     formatCurrencyCny,
-    formatCurrentLevelMeta,
     formatPoints,
     resolveActionLabel,
   } = useSdkworkSubscriptionIntl();
-  const balanceValue = summary.totalSpent !== null && summary.totalSpent !== undefined && summary.totalSpent > 0
-    ? formatCurrencyCny(summary.totalSpent)
-    : `${formatPoints(summary.points ?? summary.pointBalance ?? 0)} ${copy.common.points}`;
-  const primaryHeroTextStyle = createSdkworkSubscriptionHeroTextStyle();
-  const mutedHeroTextStyle = createSdkworkSubscriptionHeroTextStyle("muted");
-  const subtleHeroTextStyle = createSdkworkSubscriptionHeroTextStyle("subtle");
+
+  const isVip = summary.isMember;
+  const displayName = summary.currentLevelName || copy.hero.freeTierLabel;
+  const balanceValue = summary.pointBalance ?? summary.points ?? 0;
 
   return (
-    <section
-      className="relative overflow-hidden rounded-[2rem] border border-[color-mix(in_srgb,var(--sdk-color-border-default)_72%,transparent)] px-6 py-6 text-white shadow-[var(--sdk-shadow-lg)]"
-      style={createSdkworkSubscriptionHeroStyle()}
-    >
-      <div className="relative grid gap-6 xl:grid-cols-[minmax(0,1.18fr)_minmax(22rem,0.82fr)] xl:items-end">
-        <div>
-          <div
-            className="inline-flex rounded-full border px-3 py-1 text-[0.68rem] font-semibold uppercase tracking-[0.22em] shadow-[var(--sdk-shadow-soft)]"
-            style={{
-              ...createSdkworkSubscriptionGlassStyle("accent", {
-                backgroundWeight: 12,
-                borderWeight: 24,
-                surfaceWeight: 82,
-              }),
-              ...subtleHeroTextStyle,
-            }}
-          >
-            {copy.hero.eyebrow}
-          </div>
-          <h1 className="mt-4 max-w-3xl text-4xl font-semibold tracking-tight sm:text-[2.8rem]" style={primaryHeroTextStyle}>
-            {copy.hero.title}
-          </h1>
-          <p className="mt-3 max-w-3xl text-sm leading-7" style={mutedHeroTextStyle}>
-            {copy.hero.description}
-          </p>
+    <section className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-violet-600 via-purple-600 to-indigo-700 px-8 py-10 text-white shadow-2xl sm:px-12 sm:py-14">
+      <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,_rgba(255,255,255,0.15),_transparent_60%)]" />
+      <div className="absolute -right-20 -top-20 h-80 w-80 rounded-full bg-white/5 blur-3xl" />
+      <div className="absolute -bottom-20 -left-20 h-60 w-60 rounded-full bg-amber-400/10 blur-3xl" />
 
-          <div className="mt-6 flex flex-wrap gap-3">
+      <div className="relative flex flex-col gap-8 lg:flex-row lg:items-end lg:justify-between">
+        <div className="space-y-5">
+          <div className="inline-flex items-center gap-2 rounded-full bg-white/15 px-4 py-1.5 backdrop-blur-sm">
+            <span className="h-2 w-2 rounded-full bg-amber-400 animate-pulse" />
+            <span className="text-xs font-semibold uppercase tracking-wider text-white/90">
+              {isVip ? copy.hero.memberBadgeLabel : copy.hero.upgradeBadgeLabel}
+            </span>
+          </div>
+
+          <div>
+            <h1 className="text-3xl font-bold tracking-tight sm:text-5xl">
+              {isVip ? (
+                <>
+                  {copy.hero.welcomeBackLabel}
+                  <span className="bg-gradient-to-r from-amber-200 to-yellow-400 bg-clip-text text-transparent">
+                    {displayName}
+                  </span>
+                </>
+              ) : (
+                <>
+                  {copy.hero.freeUserTitle}
+                  <span className="bg-gradient-to-r from-amber-200 to-yellow-400 bg-clip-text text-transparent">
+                    {copy.hero.freeUserTitleHighlight}
+                  </span>
+                  {copy.hero.freeUserTitleSuffix}
+                </>
+              )}
+            </h1>
+            <p className="mt-3 max-w-xl text-base text-white/75 leading-relaxed sm:text-lg">
+              {isVip ? copy.hero.memberDescription : copy.hero.guestDescription}
+            </p>
+          </div>
+
+          <div className="flex flex-wrap gap-2">
             {ACTIONS.map((action) => (
-              <Button
-                className={`rounded-2xl px-5 py-5 text-sm font-semibold ${
-                  activeAction === action
-                    ? "shadow-[var(--sdk-shadow-md)]"
-                    : "border-[color-mix(in_srgb,var(--sdk-color-border-default)_72%,transparent)] bg-[color-mix(in_srgb,var(--sdk-color-surface-panel)_14%,transparent)] text-white hover:bg-[color-mix(in_srgb,var(--sdk-color-surface-panel)_22%,transparent)]"
-                }`}
+              <button
                 key={action}
                 onClick={() => onActionChange(action)}
+                className={`rounded-full px-5 py-2 text-sm font-medium transition-all duration-200 ${
+                  activeAction === action
+                    ? "bg-white text-purple-700 shadow-lg"
+                    : "bg-white/10 text-white/80 hover:bg-white/20 hover:text-white backdrop-blur-sm"
+                }`}
                 type="button"
-                variant={activeAction === action ? "primary" : "outline"}
               >
                 {resolveActionLabel(action)}
-              </Button>
+              </button>
             ))}
           </div>
         </div>
 
-        <div className="grid gap-3 sm:grid-cols-3 xl:grid-cols-1">
-          <div
-            className="rounded-[1.7rem] border px-5 py-5 shadow-[var(--sdk-shadow-sm)] backdrop-blur-xl"
-            style={createSdkworkSubscriptionGlassStyle("brand", {
-              backgroundWeight: 12,
-              borderWeight: 26,
-            })}
-          >
-            <div className="text-[0.68rem] font-semibold uppercase tracking-[0.2em]" style={subtleHeroTextStyle}>
-              {copy.hero.currentLevelLabel}
+        <div className="flex gap-4 sm:gap-6">
+          <div className="rounded-2xl bg-white/10 px-6 py-5 backdrop-blur-sm">
+            <div className="text-xs font-medium uppercase tracking-wider text-white/60">
+              {copy.hero.currentStatusLabel}
             </div>
-            <div className="mt-3 text-2xl font-semibold" style={primaryHeroTextStyle}>
-              {summary.currentLevelName || copy.hero.readyForPremiumActivation}
-            </div>
-            <div className="mt-1 text-sm" style={mutedHeroTextStyle}>
-              {formatCurrentLevelMeta(summary)}
-            </div>
+            <div className="mt-2 text-xl font-bold">{displayName}</div>
+            {summary.remainingDays !== null && summary.remainingDays !== undefined ? (
+              <div className="mt-1 text-sm text-white/70">
+                {interpolate(copy.hero.remainingDaysLabel, { count: summary.remainingDays })}
+              </div>
+            ) : null}
           </div>
 
-          <div
-            className="rounded-[1.7rem] border px-5 py-5 shadow-[var(--sdk-shadow-sm)] backdrop-blur-xl"
-            style={createSdkworkSubscriptionGlassStyle("accent", {
-              backgroundWeight: 12,
-              borderWeight: 26,
-            })}
-          >
-            <div className="text-[0.68rem] font-semibold uppercase tracking-[0.2em]" style={subtleHeroTextStyle}>
-              {copy.hero.availablePlansLabel}
+          <div className="rounded-2xl bg-white/10 px-6 py-5 backdrop-blur-sm">
+            <div className="text-xs font-medium uppercase tracking-wider text-white/60">
+              {isVip ? copy.hero.totalSpentLabel : copy.hero.currentPointsLabel}
             </div>
-            <div className="mt-3 text-2xl font-semibold" style={primaryHeroTextStyle}>{planCount}</div>
-            <div className="mt-1 text-sm" style={mutedHeroTextStyle}>
-              {formatCouponCount(couponCount)}
+            <div className="mt-2 text-xl font-bold">
+              {summary.totalSpent !== null && summary.totalSpent !== undefined && summary.totalSpent > 0
+                ? formatCurrencyCny(summary.totalSpent)
+                : `${balanceValue}${copy.hero.pointsUnit}`}
             </div>
-          </div>
-
-          <div
-            className="rounded-[1.7rem] border px-5 py-5 shadow-[var(--sdk-shadow-sm)] backdrop-blur-xl"
-            style={createSdkworkSubscriptionGlassStyle("success", {
-              backgroundWeight: 12,
-              borderWeight: 26,
-            })}
-          >
-            <div className="text-[0.68rem] font-semibold uppercase tracking-[0.2em]" style={subtleHeroTextStyle}>
-              {copy.hero.membershipBalanceLabel}
-            </div>
-            <div className="mt-3 text-2xl font-semibold" style={primaryHeroTextStyle}>
-              {balanceValue}
-            </div>
-            <div className="mt-1 text-sm" style={mutedHeroTextStyle}>
-              {summary.isMember ? copy.hero.premiumMembershipActive : copy.hero.freeMembershipActive}
+            <div className="mt-1 text-sm text-white/70">
+              {isVip ? copy.hero.thanksForSupportLabel : copy.hero.dailyPointsLabel}
             </div>
           </div>
         </div>

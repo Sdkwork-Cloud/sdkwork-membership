@@ -35,11 +35,34 @@ export interface CreateSdkworkMembershipAppServiceInput {
   appClient: MembershipAppSdkClient;
 }
 
+/**
+ * Canonical SDKWork success envelope. See `API_SPEC.md` §15.
+ *
+ * Success bodies always carry `code: 0`, a typed `data` payload, and the
+ * server-owned `traceId`. The legacy `message` / `msg` / `requestId` fields
+ * are forbidden on success responses.
+ */
 export interface SdkworkMembershipResponseEnvelope<T> {
-  code?: number | string;
-  data?: T;
-  message?: string;
-  msg?: string;
+  code: 0;
+  data: T;
+  traceId: string;
+}
+
+/**
+ * Canonical SDKWork error envelope (RFC 9457 `application/problem+json`).
+ * See `API_SPEC.md` §16. The numeric `code` is the platform error code
+ * (40001–79999) and is always non-zero on errors.
+ */
+export interface SdkworkMembershipProblemDetail {
+  type?: string;
+  title?: string;
+  status?: number;
+  detail?: string;
+  instance?: string;
+  operationId?: string;
+  code: number;
+  traceId: string;
+  errors?: Array<{ field: string; code: string; message?: string }>;
 }
 
 export type SdkworkMediaKind =
@@ -126,11 +149,21 @@ export function unwrapSdkworkMembershipResponse<T>(value: unknown, fallbackMessa
   if (!("data" in value) && !("code" in value)) {
     return value as T;
   }
-  const envelope = value as SdkworkMembershipResponseEnvelope<T>;
-  if (!isSuccessCode(envelope.code)) {
-    throw new Error(String(envelope.message || envelope.msg || fallbackMessage).trim());
+  const candidate = value as Partial<SdkworkMembershipResponseEnvelope<T>> &
+    Partial<SdkworkMembershipProblemDetail>;
+  if (candidate.code === 0) {
+    return candidate.data as T;
   }
-  return (envelope.data ?? null) as T;
+  if (typeof candidate.code === "number" && candidate.code !== 0) {
+    const detail = typeof candidate.detail === "string" && candidate.detail.trim()
+      ? candidate.detail
+      : typeof candidate.title === "string" && candidate.title.trim()
+        ? candidate.title
+        : fallbackMessage;
+    throw new Error(detail);
+  }
+  // No canonical code field — treat as raw payload for backward compatibility.
+  return (candidate.data ?? value) as T;
 }
 
 export function toSdkworkMembershipOptionalString(value: unknown): string | undefined {
@@ -240,15 +273,4 @@ async function callMembership(
 function normalizeSessionToken(value: unknown): string | undefined {
   const normalized = typeof value === "string" ? value.trim() : "";
   return normalized || undefined;
-}
-
-function isSuccessCode(code: number | string | undefined): boolean {
-  if (code === undefined || code === null || code === "") {
-    return true;
-  }
-  if (typeof code === "number") {
-    return code === 0 || code === 200 || code === 2000;
-  }
-  const normalized = String(code).trim();
-  return normalized === "0" || normalized === "200" || normalized === "2000" || normalized === "SUCCESS";
 }

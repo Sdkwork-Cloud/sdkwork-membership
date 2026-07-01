@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import { SdkworkThemeProvider } from "@sdkwork/ui-pc-react/theme";
 import { SdkworkSubscriptionHero } from "../src";
@@ -18,35 +18,33 @@ const summary = {
 };
 
 describe("sdkwork-membership-pc-subscription hero", () => {
-  it("renders a tokenized Sdkwork-style hero shell and helper-driven stat cards", () => {
-    const { container } = render(
+  it("renders the hero shell with the member level and action switcher", () => {
+    const onActionChange = vi.fn();
+
+    render(
       <SdkworkThemeProvider defaultTheme="light">
         <SdkworkSubscriptionHero
           activeAction="upgrade"
-          couponCount={2}
-          onActionChange={vi.fn()}
-          planCount={3}
+          onActionChange={onActionChange}
           summary={summary}
         />
       </SdkworkThemeProvider>,
     );
 
-    const hero = screen.getByRole("heading", {
-      level: 1,
-      name: /subscription center/i,
-    }).closest("section");
-    expect(hero).not.toBeNull();
-    expect(hero?.className).toContain("shadow-[var(--sdk-shadow-lg)]");
-    expect(hero?.className).not.toContain("border-white/10");
+    // The hero surfaces the member's current level name in the heading.
+    const heading = screen.getByRole("heading", { level: 1 });
+    expect(heading.textContent).toContain("Pro");
 
-    const currentLevelCard = screen.getByText(/current level/i).parentElement;
-    expect(currentLevelCard).not.toBeNull();
-    expect(currentLevelCard?.className).toContain("shadow-[var(--sdk-shadow-sm)]");
-    expect(currentLevelCard?.className).not.toContain("bg-white/8");
-    expect(currentLevelCard?.getAttribute("style")).toContain(
-      "var(--sdk-color-brand-primary)",
+    // The three subscription actions render as labelled switcher buttons.
+    const labels = screen
+      .getAllByRole("button")
+      .map((button) => button.textContent);
+    expect(labels).toEqual(
+      expect.arrayContaining(["Purchase", "Renew", "Upgrade"]),
     );
-    expect(container.innerHTML).not.toContain("text-white/74");
-    expect(container.innerHTML).not.toContain("text-white/68");
+
+    // Selecting an action propagates the change to the parent.
+    fireEvent.click(screen.getByRole("button", { name: "Renew" }));
+    expect(onActionChange).toHaveBeenCalledWith("renew");
   });
 });

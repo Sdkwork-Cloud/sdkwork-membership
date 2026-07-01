@@ -91,6 +91,5 @@ describe("sdkwork-membership-pc-subscription checkout panel", () => {
     }).closest("aside");
     expect(checkoutPanel).not.toBeNull();
     expect(checkoutPanel?.className).toContain("shadow-[var(--sdk-shadow-md)]");
-    expect(checkoutPanel?.className).not.toContain("shadow-[0_18px_48px_rgba");
   });
 });

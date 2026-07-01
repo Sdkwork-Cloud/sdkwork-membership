@@ -61,14 +61,26 @@ export interface CreateSubscriptionRouteIntentOptions {
 }
 
 export interface SdkworkSubscriptionPlanEstimateInput {
+  description?: string | null;
   durationDays?: number | null;
   id: string;
   includedPoints: number;
+  levelName?: string;
   name: string;
+  originalPriceCny?: number | null;
   packageId: number;
   priceCny: number;
   recommended: boolean;
   tags: string[];
+}
+
+export interface SdkworkSubscriptionPackageGroup {
+  description?: string;
+  id: string;
+  name: string;
+  packageGroupId: number;
+  packages: SdkworkSubscriptionPlanEstimateInput[];
+  sortWeight: number;
 }
 
 export interface SdkworkSubscriptionCouponEstimateInput extends SdkworkCouponDiscountInput {
