@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   createMembershipRouteIntent,
   createMembershipWorkspaceManifest,
+  resolveSdkworkMembershipPurchaseMode,
   summarizeSdkworkMembershipBenefits,
   summarizeSdkworkMembershipLevels,
   membershipPackageMeta,
@@ -91,5 +92,28 @@ describe("sdkwork-membership-pc-membership headless contract", () => {
       levelCount: 3,
       nextLevelName: "Pro",
     });
+  });
+
+  it("resolves purchase mode for token plan checkout routing", () => {
+    expect(
+      resolveSdkworkMembershipPurchaseMode({
+        plan: { durationDays: 365, packageId: 3 },
+        summary: { isMember: false, remainingDays: null },
+      }),
+    ).toBe("purchase");
+
+    expect(
+      resolveSdkworkMembershipPurchaseMode({
+        plan: { durationDays: 365, packageId: 3 },
+        summary: { isMember: true, remainingDays: 10 },
+      }),
+    ).toBe("renew");
+
+    expect(
+      resolveSdkworkMembershipPurchaseMode({
+        plan: { durationDays: 365, packageId: 3 },
+        summary: { isMember: true, remainingDays: 120 },
+      }),
+    ).toBe("upgrade");
   });
 });

@@ -29,6 +29,7 @@ export interface SdkworkSubscriptionMessages {
     current: string;
     days: string;
     flexibleDuration: string;
+    noValue: string;
     points: string;
   };
   compareTable: {
@@ -38,6 +39,7 @@ export interface SdkworkSubscriptionMessages {
     dailyPoints: string;
     description: string;
     discount20Off: string;
+    emptyDescription: string;
     featureHeader: string;
     freePlan: string;
     history7Days: string;
@@ -123,6 +125,17 @@ export interface SdkworkSubscriptionMessages {
     errorTitle: string;
     includedPointsLabel: string;
     loading: string;
+    title: string;
+  };
+  pendingPayment: {
+    amountLabel: string;
+    description: string;
+    dismiss: string;
+    openCashier: string;
+    orderLabel: string;
+    packageFallback: string;
+    qrLabel: string;
+    refresh: string;
     title: string;
   };
   paymentMethods: {
@@ -289,6 +302,7 @@ const EN_US_MESSAGES: SdkworkSubscriptionMessages = {
     current: "Current",
     days: "days",
     flexibleDuration: "Flexible duration",
+    noValue: "--",
     points: "points",
   },
   compareTable: {
@@ -298,6 +312,7 @@ const EN_US_MESSAGES: SdkworkSubscriptionMessages = {
     dailyPoints: "Daily bonus points",
     description: "Compare benefits across all tiers to find the right plan.",
     discount20Off: "20% off",
+    emptyDescription: "Benefit comparison will appear once membership catalog data is available.",
     featureHeader: "Benefit",
     freePlan: "Free",
     history7Days: "7 days",
@@ -385,6 +400,17 @@ const EN_US_MESSAGES: SdkworkSubscriptionMessages = {
     loading: "Loading subscription center...",
     title: "Subscription center",
   },
+  pendingPayment: {
+    amountLabel: "Amount due",
+    description: "Complete payment in the cashier or scan the QR payload, then refresh membership status.",
+    dismiss: "Dismiss",
+    openCashier: "Open cashier",
+    orderLabel: "Order",
+    packageFallback: "Selected package",
+    qrLabel: "QR payment payload",
+    refresh: "Refresh status",
+    title: "Payment pending",
+  },
   paymentMethods: {
     alipayLabel: "Alipay",
     appRedirectLabel: "App redirect",
@@ -408,13 +434,20 @@ const EN_US_MESSAGES: SdkworkSubscriptionMessages = {
     currentBalanceLabel: "Current balance",
     currentPlanButton: "Current plan",
     currentTag: "Current",
+    dailyRewardsTag: "Daily rewards",
     entryTier: "Entry tier",
     freeBaselineButton: "Free baseline",
+    freeDescription: "Compare free and premium before checkout.",
+    freePlanName: "Free",
+    freeTierBadge: "Free tier",
+    freeUseButton: "Continue with free",
     freeMembershipDescription: "Compare free and premium before checkout. Keep a zero-commit baseline for lightweight usage.",
     freeMembershipTitle: "Free membership",
     noPlans: "No subscription plans are currently available.",
     noRecurringCharge: "No recurring charge",
+    recommendedBadge: "Recommended",
     savingsLabel: "Save ",
+    selectPlanButton: "Select plan",
     signInToActivatePremiumCheckout: "Sign in to activate premium checkout",
     title: "Choose a premium package",
     titleEyebrow: "Plan selection",
@@ -507,6 +540,7 @@ const ZH_CN_MESSAGES: SdkworkSubscriptionMessages = {
     current: "当前",
     days: "天",
     flexibleDuration: "时长灵活",
+    noValue: "--",
     points: "积分",
   },
   compareTable: {
@@ -516,6 +550,7 @@ const ZH_CN_MESSAGES: SdkworkSubscriptionMessages = {
     dailyPoints: "每日赠送积分",
     description: "详细对比各套餐权益，选择最适合你的方案。",
     discount20Off: "8折",
+    emptyDescription: "会员权益目录加载后将显示套餐对比。",
     featureHeader: "权益项目",
     freePlan: "免费版",
     history7Days: "7天",
@@ -603,6 +638,17 @@ const ZH_CN_MESSAGES: SdkworkSubscriptionMessages = {
     loading: "正在加载订阅中心...",
     title: "订阅中心",
   },
+  pendingPayment: {
+    amountLabel: "待支付金额",
+    description: "请在收银台完成支付或扫描二维码，然后刷新会员状态。",
+    dismiss: "关闭",
+    openCashier: "打开收银台",
+    orderLabel: "订单号",
+    packageFallback: "已选套餐",
+    qrLabel: "扫码支付内容",
+    refresh: "刷新状态",
+    title: "等待支付",
+  },
   paymentMethods: {
     alipayLabel: "支付宝",
     appRedirectLabel: "应用跳转",
@@ -626,13 +672,20 @@ const ZH_CN_MESSAGES: SdkworkSubscriptionMessages = {
     currentBalanceLabel: "当前余额",
     currentPlanButton: "当前方案",
     currentTag: "当前",
+    dailyRewardsTag: "每日奖励",
     entryTier: "入门层级",
     freeBaselineButton: "免费基线",
+    freeDescription: "在结算前比较免费版与高级版。",
+    freePlanName: "免费版",
+    freeTierBadge: "免费层级",
+    freeUseButton: "继续使用免费版",
     freeMembershipDescription: "在结算前清晰比较免费版与高级版，让轻量使用场景始终保留零承诺基线。",
     freeMembershipTitle: "免费会员",
     noPlans: "当前暂无可订阅套餐。",
     noRecurringCharge: "无循环扣费",
+    recommendedBadge: "推荐",
     savingsLabel: "省",
+    selectPlanButton: "选择套餐",
     signInToActivatePremiumCheckout: "登录后即可开通高级会员结算",
     title: "选择高级会员套餐",
     titleEyebrow: "套餐选择",

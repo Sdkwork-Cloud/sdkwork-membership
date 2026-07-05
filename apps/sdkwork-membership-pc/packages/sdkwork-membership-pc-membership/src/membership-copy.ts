@@ -46,6 +46,11 @@ export interface SdkworkMembershipMessages {
     expiresOn: string;
     memberSince: string;
   };
+  headerEntry: {
+    ariaLabel: string;
+    fallbackLevel: string;
+    title: string;
+  };
   hero: {
     currentLevel: string;
     description: string;
@@ -79,6 +84,15 @@ export interface SdkworkMembershipMessages {
     ladderTitle: string;
     locked: string;
     perks: string;
+  };
+  menu: {
+    continueCheckout: string;
+    emptyDescription: string;
+    emptyTitle: string;
+    openCenter: string;
+    signInRequiredDescription: string;
+    signInRequiredTitle: string;
+    title: string;
   };
   page: {
     errorTitle: string;
@@ -198,6 +212,11 @@ const EN_US_MESSAGES: SdkworkMembershipMessages = {
     expiresOn: "Expires {date}",
     memberSince: "Member since {date}",
   },
+  headerEntry: {
+    ariaLabel: "Open Token Plan menu",
+    fallbackLevel: "Token Plan",
+    title: "Token Plan",
+  },
   hero: {
     currentLevel: "Current level",
     description: "Manage your plan, track benefits, and grow your membership tier — all in one place.",
@@ -231,6 +250,15 @@ const EN_US_MESSAGES: SdkworkMembershipMessages = {
     ladderTitle: "Your membership journey",
     locked: "Locked",
     perks: "Perks",
+  },
+  menu: {
+    continueCheckout: "Continue to checkout",
+    emptyDescription: "Token plans will appear here when membership packages are available.",
+    emptyTitle: "No token plans",
+    openCenter: "Open membership center",
+    signInRequiredDescription: "Sign in to view token plans and continue checkout.",
+    signInRequiredTitle: "Sign in required",
+    title: "Token plans",
   },
   page: {
     errorTitle: "Membership center error",
@@ -305,6 +333,11 @@ const ZH_CN_MESSAGES: SdkworkMembershipMessages = {
     expiresOn: "{date} 到期",
     memberSince: "{date} 加入",
   },
+  headerEntry: {
+    ariaLabel: "打开 Token Plan 菜单",
+    fallbackLevel: "Token Plan",
+    title: "Token Plan",
+  },
   hero: {
     currentLevel: "当前等级",
     description: "在一个中心管理你的方案、权益与等级成长。",
@@ -338,6 +371,15 @@ const ZH_CN_MESSAGES: SdkworkMembershipMessages = {
     ladderTitle: "你的会员成长之路",
     locked: "未解锁",
     perks: "专属权益",
+  },
+  menu: {
+    continueCheckout: "前往结算",
+    emptyDescription: "当有可用会员套餐时，Token Plan 会显示在这里。",
+    emptyTitle: "暂无 Token Plan",
+    openCenter: "打开会员中心",
+    signInRequiredDescription: "登录后查看 Token Plan 并继续结算。",
+    signInRequiredTitle: "请先登录",
+    title: "Token Plan 方案",
   },
   page: {
     errorTitle: "会员中心异常",

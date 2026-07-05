@@ -5,7 +5,41 @@ import {
   type MembershipSdkMethod,
 } from "@sdkwork/membership-sdk-ports";
 import type { SdkworkMembershipMutationStatus } from "@sdkwork/membership-contracts";
-import { formatCurrency as formatSdkworkCurrency } from "@sdkwork/utils";
+import {
+  formatCurrency as formatSdkworkCurrency,
+} from "@sdkwork/utils";
+import {
+  createMembershipAppSdkClientFromTransport,
+  createMembershipAppTransportClient,
+  type BootstrapSdkworkMembershipAppServiceInput,
+} from "./transport.ts";
+import {
+  SDKWORK_MEMBERSHIP_DEFAULT_LIST_PAGE_SIZE,
+  createSdkworkMembershipListQuery,
+  unwrapSdkworkMembershipPageItems,
+  unwrapSdkworkMembershipResponse,
+  type PageInfo,
+  type SdkWorkPageData,
+  type SdkworkMembershipProblemDetail,
+  type SdkworkMembershipResponseEnvelope,
+} from "./list-envelope.ts";
+
+export {
+  createMembershipAppSdkClientFromTransport,
+  createMembershipAppTransportClient,
+  type BootstrapSdkworkMembershipAppServiceInput,
+} from "./transport.ts";
+
+export type { PageInfo, SdkWorkPageData };
+
+export {
+  SDKWORK_MEMBERSHIP_DEFAULT_LIST_PAGE_SIZE,
+  createSdkworkMembershipListQuery,
+  unwrapSdkworkMembershipPageItems,
+  unwrapSdkworkMembershipResponse,
+  type SdkworkMembershipProblemDetail,
+  type SdkworkMembershipResponseEnvelope,
+} from "./list-envelope.ts";
 
 type ServiceTemplate = { readonly [key: string]: true | ServiceTemplate };
 
@@ -33,36 +67,6 @@ let sdkworkMembershipSessionTokenProvider: SdkworkMembershipSessionTokenProvider
 
 export interface CreateSdkworkMembershipAppServiceInput {
   appClient: MembershipAppSdkClient;
-}
-
-/**
- * Canonical SDKWork success envelope. See `API_SPEC.md` §15.
- *
- * Success bodies always carry `code: 0`, a typed `data` payload, and the
- * server-owned `traceId`. The legacy `message` / `msg` / `requestId` fields
- * are forbidden on success responses.
- */
-export interface SdkworkMembershipResponseEnvelope<T> {
-  code: 0;
-  data: T;
-  traceId: string;
-}
-
-/**
- * Canonical SDKWork error envelope (RFC 9457 `application/problem+json`).
- * See `API_SPEC.md` §16. The numeric `code` is the platform error code
- * (40001–79999) and is always non-zero on errors.
- */
-export interface SdkworkMembershipProblemDetail {
-  type?: string;
-  title?: string;
-  status?: number;
-  detail?: string;
-  instance?: string;
-  operationId?: string;
-  code: number;
-  traceId: string;
-  errors?: Array<{ field: string; code: string; message?: string }>;
 }
 
 export type SdkworkMediaKind =
@@ -142,28 +146,19 @@ export function createSdkworkMembershipAppService(
   };
 }
 
-export function unwrapSdkworkMembershipResponse<T>(value: unknown, fallbackMessage = "Request failed."): T {
-  if (!value || typeof value !== "object") {
-    return value as T;
-  }
-  if (!("data" in value) && !("code" in value)) {
-    return value as T;
-  }
-  const candidate = value as Partial<SdkworkMembershipResponseEnvelope<T>> &
-    Partial<SdkworkMembershipProblemDetail>;
-  if (candidate.code === 0) {
-    return candidate.data as T;
-  }
-  if (typeof candidate.code === "number" && candidate.code !== 0) {
-    const detail = typeof candidate.detail === "string" && candidate.detail.trim()
-      ? candidate.detail
-      : typeof candidate.title === "string" && candidate.title.trim()
-        ? candidate.title
-        : fallbackMessage;
-    throw new Error(detail);
-  }
-  // No canonical code field — treat as raw payload for backward compatibility.
-  return (candidate.data ?? value) as T;
+export function bootstrapSdkworkMembershipAppService(
+  input: BootstrapSdkworkMembershipAppServiceInput,
+): SdkworkMembershipAppService {
+  const transport = createMembershipAppTransportClient(input);
+  const service = createSdkworkMembershipAppService({
+    appClient: createMembershipAppSdkClientFromTransport(transport),
+  });
+  configureSdkworkMembershipAppServiceProvider(() => service);
+  configureSdkworkMembershipSessionTokenProvider(() => ({
+    accessToken: input.accessToken,
+    authToken: input.authToken,
+  }));
+  return service;
 }
 
 export function toSdkworkMembershipOptionalString(value: unknown): string | undefined {

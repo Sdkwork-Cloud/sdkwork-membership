@@ -12,6 +12,8 @@ use axum::response::{IntoResponse, Response};
 use axum::Json;
 use sdkwork_contract_service::CommerceServiceError;
 use sdkwork_utils_rust::SdkWorkApiResponse;
+
+pub use sdkwork_utils_rust::SdkWorkPageData;
 use sdkwork_web_core::{
     problem_response, WebFrameworkError, WebFrameworkErrorKind, WebRequestContext,
 };

@@ -1,9 +1,11 @@
 import {
+  createSdkworkMembershipListQuery,
   getSdkworkMembershipService,
   requireSdkworkMembershipSession,
   toNullableSdkworkMembershipNumber,
   toSdkworkMembershipNumber,
   toSdkworkMembershipOptionalString,
+  unwrapSdkworkMembershipPageItems,
   unwrapSdkworkMembershipResponse,
   type SdkworkMembershipAppService,
 } from "@sdkwork/membership-service";
@@ -412,8 +414,10 @@ export function createSdkworkSubscriptionService(
   async function fetchPackageGroups(): Promise<SdkworkSubscriptionPackageGroup[]> {
     try {
       const membershipAppService = resolveMembershipAppService();
-      const payload = await membershipAppService.memberships.packageGroups.list();
-      const groups = unwrapSdkworkMembershipResponse<RemoteMembershipPackageGroup[]>(payload);
+      const payload = await membershipAppService.memberships.packageGroups.list(
+        createSdkworkMembershipListQuery(),
+      );
+      const groups = unwrapSdkworkMembershipPageItems<RemoteMembershipPackageGroup>(payload);
       return sortPackageGroups(groups.map(mapPackageGroup));
     } catch {
       return [];

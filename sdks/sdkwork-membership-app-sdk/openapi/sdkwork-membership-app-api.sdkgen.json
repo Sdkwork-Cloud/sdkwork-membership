@@ -9,7 +9,7 @@
   },
   "servers": [
     {
-      "url": "http://127.0.0.1:18079"
+      "url": "http://127.0.0.1:18096"
     }
   ],
   "paths": {
@@ -27,7 +27,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/SdkWorkApiResponse"
+                  "$ref": "#/components/schemas/SdkWorkResourceResponse"
                 }
               }
             }
@@ -122,7 +122,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/SdkWorkApiResponse"
+                  "$ref": "#/components/schemas/SdkWorkResourceResponse"
                 }
               }
             }
@@ -210,14 +210,36 @@
         ],
         "summary": "Memberships benefits list.",
         "operationId": "memberships.benefits.list",
-        "parameters": [],
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "default": 1
+            }
+          },
+          {
+            "name": "page_size",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 200,
+              "default": 20
+            }
+          }
+        ],
         "responses": {
           "200": {
             "description": "Success",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/SdkWorkApiResponse"
+                  "$ref": "#/components/schemas/SdkWorkListResponse"
                 }
               }
             }
@@ -313,6 +335,27 @@
             "schema": {
               "type": "string"
             }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "default": 1
+            }
+          },
+          {
+            "name": "page_size",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 200,
+              "default": 20
+            }
           }
         ],
         "responses": {
@@ -321,7 +364,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/SdkWorkApiResponse"
+                  "$ref": "#/components/schemas/SdkWorkListResponse"
                 }
               }
             }
@@ -417,6 +460,27 @@
             "schema": {
               "type": "string"
             }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "default": 1
+            }
+          },
+          {
+            "name": "page_size",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 200,
+              "default": 20
+            }
           }
         ],
         "responses": {
@@ -425,7 +489,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/SdkWorkApiResponse"
+                  "$ref": "#/components/schemas/SdkWorkListResponse"
                 }
               }
             }
@@ -529,7 +593,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/SdkWorkApiResponse"
+                  "$ref": "#/components/schemas/SdkWorkResourceResponse"
                 }
               }
             }
@@ -633,6 +697,27 @@
             "schema": {
               "type": "string"
             }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "default": 1
+            }
+          },
+          {
+            "name": "page_size",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 200,
+              "default": 20
+            }
           }
         ],
         "responses": {
@@ -641,7 +726,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/SdkWorkApiResponse"
+                  "$ref": "#/components/schemas/SdkWorkListResponse"
                 }
               }
             }
@@ -737,6 +822,27 @@
             "schema": {
               "type": "string"
             }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "default": 1
+            }
+          },
+          {
+            "name": "page_size",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 200,
+              "default": 20
+            }
           }
         ],
         "responses": {
@@ -745,7 +851,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/SdkWorkApiResponse"
+                  "$ref": "#/components/schemas/SdkWorkListResponse"
                 }
               }
             }
@@ -849,7 +955,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/SdkWorkApiResponse"
+                  "$ref": "#/components/schemas/SdkWorkResourceResponse"
                 }
               }
             }
@@ -944,7 +1050,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/SdkWorkApiResponse"
+                  "$ref": "#/components/schemas/SdkWorkCommandResponse"
                 }
               }
             }
@@ -1049,7 +1155,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/SdkWorkApiResponse"
+                  "$ref": "#/components/schemas/SdkWorkCommandResponse"
                 }
               }
             }
@@ -1154,7 +1260,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/SdkWorkApiResponse"
+                  "$ref": "#/components/schemas/SdkWorkCommandResponse"
                 }
               }
             }
@@ -1259,7 +1365,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/SdkWorkApiResponse"
+                  "$ref": "#/components/schemas/SdkWorkResourceResponse"
                 }
               }
             }
@@ -1384,7 +1490,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/SdkWorkApiResponse"
+                  "$ref": "#/components/schemas/SdkWorkListResponse"
                 }
               }
             }
@@ -1479,7 +1585,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/SdkWorkApiResponse"
+                  "$ref": "#/components/schemas/SdkWorkCommandResponse"
                 }
               }
             }
@@ -1584,7 +1690,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/SdkWorkApiResponse"
+                  "$ref": "#/components/schemas/SdkWorkResourceResponse"
                 }
               }
             }
@@ -1679,7 +1785,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/SdkWorkApiResponse"
+                  "$ref": "#/components/schemas/SdkWorkResourceResponse"
                 }
               }
             }
@@ -1774,7 +1880,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/SdkWorkApiResponse"
+                  "$ref": "#/components/schemas/SdkWorkCommandResponse"
                 }
               }
             }
@@ -1890,7 +1996,6 @@
           "data",
           "traceId"
         ],
-        "description": "Canonical SDKWork success envelope. See API_SPEC.md §15. Success code MUST be 0.",
         "properties": {
           "code": {
             "type": "integer",
@@ -1900,16 +2005,15 @@
             ],
             "default": 0,
             "minimum": 0,
-            "maximum": 0,
-            "description": "Numeric success result code. MUST be 0 on HTTP 2xx."
+            "maximum": 0
           },
           "data": {
-            "description": "Operation-specific payload. Typed per operation via allOf with SdkWorkResourceData / SdkWorkPageData / SdkWorkCommandData."
+            "description": "Operation-specific payload typed per response schema."
           },
           "traceId": {
             "type": "string",
             "format": "uuid",
-            "description": "Server-owned request correlation id. Clients MUST NOT supply this value."
+            "description": "Server-owned request correlation id."
           }
         }
       },
@@ -1919,9 +2023,10 @@
         "required": [
           "item"
         ],
-        "description": "Single-resource payload wrapper (`data.item`).",
         "properties": {
           "item": {
+            "type": "object",
+            "additionalProperties": true,
             "description": "Typed domain resource for the operation."
           }
         }
@@ -1933,11 +2038,13 @@
           "items",
           "pageInfo"
         ],
-        "description": "List payload wrapper (`data.items` + `data.pageInfo`).",
         "properties": {
           "items": {
             "type": "array",
-            "items": {}
+            "items": {
+              "type": "object",
+              "additionalProperties": true
+            }
           },
           "pageInfo": {
             "$ref": "#/components/schemas/PageInfo"
@@ -1950,7 +2057,6 @@
         "required": [
           "accepted"
         ],
-        "description": "Command payload wrapper (`data.accepted`).",
         "properties": {
           "accepted": {
             "type": "boolean",
@@ -1970,7 +2076,6 @@
         "required": [
           "mode"
         ],
-        "description": "Pagination metadata. `mode` is `offset` or `cursor`. See API_SPEC.md §14.2.",
         "properties": {
           "mode": {
             "type": "string",
@@ -1985,19 +2090,25 @@
           },
           "pageSize": {
             "type": "integer",
-            "minimum": 1
+            "minimum": 1,
+            "maximum": 200
           },
-          "total": {
+          "totalItems": {
+            "type": "string",
+            "pattern": "^[0-9]+$"
+          },
+          "totalPages": {
             "type": "integer",
             "minimum": 0
           },
-          "cursor": {
-            "type": "string",
-            "nullable": true
-          },
           "nextCursor": {
-            "type": "string",
-            "nullable": true
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "hasMore": {
+            "type": "boolean"
           }
         }
       },
@@ -2011,7 +2122,6 @@
           "code",
           "traceId"
         ],
-        "description": "RFC 9457 problem detail. See API_SPEC.md §16. `code` is the numeric platform error code (40001–79999).",
         "properties": {
           "type": {
             "type": "string",
@@ -2029,24 +2139,15 @@
             "type": "string"
           },
           "instance": {
-            "type": "string",
-            "description": "Request endpoint occurrence in the form `{METHOD} {routeTemplate}`."
-          },
-          "operationId": {
-            "type": "string",
-            "description": "OpenAPI operation id for the failing request when resolved by the web framework."
+            "type": "string"
           },
           "code": {
-            "type": "integer",
-            "format": "int32",
-            "minimum": 40001,
-            "maximum": 79999,
-            "description": "Numeric error result code. MUST be non-zero. See API_SPEC.md §15.3."
+            "$ref": "#/components/schemas/SdkWorkPlatformErrorCode"
           },
           "traceId": {
             "type": "string",
             "format": "uuid",
-            "description": "Server-owned request correlation id. Same semantics as SdkWorkApiResponse.traceId."
+            "description": "Server-owned request correlation id."
           },
           "errors": {
             "type": "array",
@@ -2061,23 +2162,83 @@
         "additionalProperties": false,
         "required": [
           "field",
-          "code"
+          "message"
         ],
-        "description": "Field-level validation error attached to a ProblemDetail.",
         "properties": {
           "field": {
-            "type": "string"
-          },
-          "code": {
             "type": "string"
           },
           "message": {
             "type": "string"
           },
-          "rejectedValue": {
-            "description": "The rejected input value (type varies)."
+          "code": {
+            "type": "integer",
+            "format": "int32",
+            "minimum": 40011,
+            "maximum": 40099
           }
         }
+      },
+      "SdkWorkPlatformErrorCode": {
+        "type": "integer",
+        "format": "int32",
+        "minimum": 40001,
+        "maximum": 79999,
+        "description": "Platform or domain error code per API_SPEC.md §15.3."
+      },
+      "SdkWorkResourceResponse": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/SdkWorkApiResponse"
+          },
+          {
+            "type": "object",
+            "required": [
+              "data"
+            ],
+            "properties": {
+              "data": {
+                "$ref": "#/components/schemas/SdkWorkResourceData"
+              }
+            }
+          }
+        ]
+      },
+      "SdkWorkListResponse": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/SdkWorkApiResponse"
+          },
+          {
+            "type": "object",
+            "required": [
+              "data"
+            ],
+            "properties": {
+              "data": {
+                "$ref": "#/components/schemas/SdkWorkPageData"
+              }
+            }
+          }
+        ]
+      },
+      "SdkWorkCommandResponse": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/SdkWorkApiResponse"
+          },
+          {
+            "type": "object",
+            "required": [
+              "data"
+            ],
+            "properties": {
+              "data": {
+                "$ref": "#/components/schemas/SdkWorkCommandData"
+              }
+            }
+          }
+        ]
       }
     }
   }

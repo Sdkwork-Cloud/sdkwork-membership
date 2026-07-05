@@ -1,5 +1,6 @@
 mod admin_router;
 pub mod catalog;
+mod pagination;
 mod postgres;
 mod read_model;
 pub mod response;
@@ -27,9 +28,10 @@ pub use types::{
     AdminMembershipPlanMutation, AdminMembershipStore, AdminMembershipSubject,
     AppMembershipBenefitItem, AppMembershipCommandFuture, AppMembershipDailyRewardResponse,
     AppMembershipDailyRewardStatusResponse, AppMembershipEntityIdGenerator,
-    AppMembershipInfoResponse, AppMembershipPackageGroupItem, AppMembershipPackageItem,
-    AppMembershipPlanItem, AppMembershipPointsBalanceResponse, AppMembershipPointsHistoryItem,
-    AppMembershipPointsHistoryQuery, AppMembershipPrivilegeUsageResponse,
+    AppMembershipInfoResponse, AppMembershipListQuery, AppMembershipPackageGroupItem,
+    AppMembershipPackageItem, AppMembershipPlanItem, AppMembershipPointsBalanceResponse,
+    AppMembershipPointsHistoryItem, AppMembershipPointsHistoryQuery,
+    AppMembershipPrivilegeUsageResponse,
     AppMembershipPurchaseOutcome, AppMembershipReadFuture, AppMembershipResult,
     AppMembershipStatusResponse, AppMembershipStore, AppMembershipSubject,
     CreateAdminMembershipPackageCommand, CreateAdminMembershipPackageGroupCommand,

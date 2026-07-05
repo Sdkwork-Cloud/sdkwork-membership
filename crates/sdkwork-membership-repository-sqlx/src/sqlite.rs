@@ -1,11 +1,17 @@
 use std::collections::BTreeMap;
 
 use sdkwork_contract_service::{CommercePaymentStatus, CommerceServiceError};
+use sdkwork_utils_rust::SdkWorkPageData;
 use sqlx::{Row, Sqlite, SqlitePool, Transaction};
+
+use crate::pagination::{
+    bounded_sql_page, cursor_page, offset_page, organization_id_text, tenant_id_text,
+    MembershipListQuery,
+};
 
 use crate::read_model::is_missing_sqlite_read_model;
 use crate::shared::{
-    benefits_for_plan, build_package_group_from_packages, decimal_string,
+    build_package_group_from_packages, decimal_string,
     map_membership_package_record, normalize_payment_method, parse_points_amount,
     payment_product_for_scan_qr, plan_code_from_rank, plan_rank_from_code,
     privilege_usage_from_benefits, ParsedMembershipPackage, StoredMembershipPlan,
@@ -15,6 +21,7 @@ use crate::{
     AdminMembershipEntitlementItem, AdminMembershipFuture, AdminMembershipMemberItem,
     AdminMembershipPackageGroupItem, AdminMembershipPackageItem, AdminMembershipPlanItem,
     AdminMembershipStore, AppMembershipBenefitItem, AppMembershipCommandFuture,
+    AppMembershipListQuery,
     AppMembershipDailyRewardResponse, AppMembershipDailyRewardStatusResponse,
     AppMembershipInfoResponse, AppMembershipPackageGroupItem, AppMembershipPackageItem,
     AppMembershipPlanItem, AppMembershipPointsBalanceResponse, AppMembershipPointsHistoryItem,
@@ -31,39 +38,7 @@ use crate::{
     UpdateAdminMembershipPackageGroupCommand, UpdateAdminMembershipPlanCommand,
 };
 
-const LOAD_MEMBERSHIP_PLANS: &str = r#"
-SELECT
-    p.id,
-    p.plan_no AS plan_no,
-    p.name,
-    CAST(p.rank AS INTEGER) AS rank,
-    p.description,
-    b.id AS plan_benefit_id,
-    b.benefit_code,
-    CAST(b.grant_quantity AS TEXT) AS grant_quantity,
-    b.usage_policy,
-    d.name AS benefit_name,
-    d.benefit_type,
-    d.description AS benefit_description
-FROM membership_plan p
-LEFT JOIN membership_plan_version v
-    ON v.plan_id = p.id
-   AND v.tenant_id = p.tenant_id
-   AND v.lifecycle_status = 'published'
-LEFT JOIN membership_plan_benefit b
-    ON b.plan_version_id = v.id
-   AND b.tenant_id = p.tenant_id
-   AND b.status = 'active'
-LEFT JOIN benefit_definition d
-    ON d.id = b.benefit_id
-   AND d.tenant_id = b.tenant_id
-WHERE (p.tenant_id = '100001' OR p.tenant_id IS NULL)
-  AND (p.organization_id = '0' OR p.organization_id IS NULL)
-  AND p.status = 'active'
-ORDER BY p.rank ASC, p.plan_no ASC, b.sort_weight ASC, b.id ASC
-"#;
-
-const LOAD_MEMBERSHIP_PACKAGES: &str = r#"
+const LOAD_MEMBERSHIP_PACKAGES_BASE: &str = r#"
 SELECT
     CAST(p.external_id AS INTEGER) AS external_id,
     p.name,
@@ -97,7 +72,77 @@ WHERE (p.tenant_id = '100001' OR p.tenant_id IS NULL)
   AND (g.organization_id = '0' OR g.organization_id IS NULL)
   AND p.status = 'active'
   AND g.status = 'active'
-ORDER BY g.sort_weight ASC, p.sort_weight ASC, p.external_id ASC
+"#;
+
+const LOAD_MEMBERSHIP_PACKAGE_BY_ID: &str = r#"
+SELECT
+    CAST(p.external_id AS INTEGER) AS external_id,
+    p.name,
+    p.description,
+    CAST(p.price_amount AS TEXT) AS price_amount,
+    CAST(COALESCE(p.original_price_amount, '') AS TEXT) AS original_price_amount,
+    CAST(COALESCE(p.point_amount, 0) AS INTEGER) AS point_amount,
+    CAST(p.duration_days AS INTEGER) AS duration_days,
+    CAST(COALESCE(p.sort_weight, 0) AS INTEGER) AS sort_weight,
+    CAST(COALESCE(p.recommended, 0) AS INTEGER) AS recommended,
+    '[]' AS tags_json,
+    p.id AS package_storage_id,
+    p.package_group_id AS package_group_storage_id,
+    p.plan_id AS plan_storage_id,
+    p.sku_id,
+    g.external_id AS group_external_id,
+    g.name AS group_name,
+    g.description AS group_description,
+    CAST(COALESCE(g.sort_weight, 0) AS INTEGER) AS group_sort_weight,
+    l.plan_no AS plan_no,
+    l.name AS plan_name,
+    CAST(l.rank AS INTEGER) AS rank
+FROM membership_package p
+JOIN membership_package_group g
+    ON g.id = p.package_group_id
+LEFT JOIN membership_plan l
+    ON l.id = p.plan_id
+WHERE p.external_id = ?1
+  AND (p.tenant_id = '100001' OR p.tenant_id IS NULL)
+  AND (p.organization_id = '0' OR p.organization_id IS NULL)
+  AND (g.tenant_id = '100001' OR g.tenant_id IS NULL)
+  AND (g.organization_id = '0' OR g.organization_id IS NULL)
+  AND p.status = 'active'
+  AND g.status = 'active'
+LIMIT 1
+"#;
+
+const LOAD_MEMBERSHIP_PLAN_BY_RANK: &str = r#"
+SELECT
+    p.id,
+    p.plan_no AS plan_no,
+    p.name,
+    CAST(p.rank AS INTEGER) AS rank,
+    p.description,
+    b.id AS plan_benefit_id,
+    b.benefit_code,
+    CAST(b.grant_quantity AS TEXT) AS grant_quantity,
+    b.usage_policy,
+    d.name AS benefit_name,
+    d.benefit_type,
+    d.description AS benefit_description
+FROM membership_plan p
+LEFT JOIN membership_plan_version v
+    ON v.plan_id = p.id
+   AND v.tenant_id = p.tenant_id
+   AND v.lifecycle_status = 'published'
+LEFT JOIN membership_plan_benefit b
+    ON b.plan_version_id = v.id
+   AND b.tenant_id = p.tenant_id
+   AND b.status = 'active'
+LEFT JOIN benefit_definition d
+    ON d.id = b.benefit_id
+   AND d.tenant_id = b.tenant_id
+WHERE (p.tenant_id = '100001' OR p.tenant_id IS NULL)
+  AND (p.organization_id = '0' OR p.organization_id IS NULL)
+  AND p.status = 'active'
+  AND CAST(p.rank AS INTEGER) = ?1
+ORDER BY b.sort_weight ASC, b.id ASC
 "#;
 
 const LOAD_MEMBERSHIP: &str = r#"
@@ -217,24 +262,29 @@ impl SqliteCommerceMembershipStore {
         <Self as AppMembershipStore>::load_status(self, subject)
     }
 
-    pub fn load_plans<'a>(&'a self) -> AppMembershipReadFuture<'a, Vec<AppMembershipPlanItem>> {
-        <Self as AppMembershipStore>::load_plans(self)
+    pub fn load_plans<'a>(
+        &'a self,
+        query: AppMembershipListQuery,
+    ) -> AppMembershipReadFuture<'a, SdkWorkPageData<AppMembershipPlanItem>> {
+        <Self as AppMembershipStore>::load_plans(self, query)
     }
 
     pub fn load_benefits<'a>(
         &'a self,
         subject: Option<AppMembershipSubject>,
         plan_id: Option<i64>,
-    ) -> AppMembershipReadFuture<'a, Vec<AppMembershipBenefitItem>> {
-        <Self as AppMembershipStore>::load_benefits(self, subject, plan_id)
+        query: AppMembershipListQuery,
+    ) -> AppMembershipReadFuture<'a, SdkWorkPageData<AppMembershipBenefitItem>> {
+        <Self as AppMembershipStore>::load_benefits(self, subject, plan_id, query)
     }
 
     pub fn load_packages<'a>(
         &'a self,
         package_group_id: Option<i64>,
         plan_id: Option<i64>,
-    ) -> AppMembershipReadFuture<'a, Vec<AppMembershipPackageItem>> {
-        <Self as AppMembershipStore>::load_packages(self, package_group_id, plan_id)
+        query: AppMembershipListQuery,
+    ) -> AppMembershipReadFuture<'a, SdkWorkPageData<AppMembershipPackageItem>> {
+        <Self as AppMembershipStore>::load_packages(self, package_group_id, plan_id, query)
     }
 
     pub fn load_package<'a>(
@@ -248,8 +298,9 @@ impl SqliteCommerceMembershipStore {
         &'a self,
         plan_id: Option<i64>,
         recommended_only: bool,
-    ) -> AppMembershipReadFuture<'a, Vec<AppMembershipPackageGroupItem>> {
-        <Self as AppMembershipStore>::load_package_groups(self, plan_id, recommended_only)
+        query: AppMembershipListQuery,
+    ) -> AppMembershipReadFuture<'a, SdkWorkPageData<AppMembershipPackageGroupItem>> {
+        <Self as AppMembershipStore>::load_package_groups(self, plan_id, recommended_only, query)
     }
 
     pub fn load_package_group<'a>(
@@ -270,7 +321,7 @@ impl SqliteCommerceMembershipStore {
         &'a self,
         subject: Option<AppMembershipSubject>,
         query: AppMembershipPointsHistoryQuery,
-    ) -> AppMembershipReadFuture<'a, Vec<AppMembershipPointsHistoryItem>> {
+    ) -> AppMembershipReadFuture<'a, SdkWorkPageData<AppMembershipPointsHistoryItem>> {
         <Self as AppMembershipStore>::load_points_history(self, subject, query)
     }
 
@@ -319,27 +370,30 @@ impl AppMembershipStore for SqliteCommerceMembershipStore {
         Box::pin(async move { load_status(&self.pool, subject).await })
     }
 
-    fn load_plans<'a>(&'a self) -> AppMembershipReadFuture<'a, Vec<AppMembershipPlanItem>> {
-        Box::pin(async move { load_plans(&self.pool).await.map(plan_items) })
+    fn load_plans<'a>(
+        &'a self,
+        query: AppMembershipListQuery,
+    ) -> AppMembershipReadFuture<'a, SdkWorkPageData<AppMembershipPlanItem>> {
+        Box::pin(async move { load_plans_page(&self.pool, query).await })
     }
 
     fn load_benefits<'a>(
         &'a self,
         subject: Option<AppMembershipSubject>,
         plan_id: Option<i64>,
-    ) -> AppMembershipReadFuture<'a, Vec<AppMembershipBenefitItem>> {
-        Box::pin(async move { load_benefits(&self.pool, subject, plan_id).await })
+        query: AppMembershipListQuery,
+    ) -> AppMembershipReadFuture<'a, SdkWorkPageData<AppMembershipBenefitItem>> {
+        Box::pin(async move { load_benefits_page(&self.pool, subject, plan_id, query).await })
     }
 
     fn load_packages<'a>(
         &'a self,
         package_group_id: Option<i64>,
         plan_id: Option<i64>,
-    ) -> AppMembershipReadFuture<'a, Vec<AppMembershipPackageItem>> {
+        query: AppMembershipListQuery,
+    ) -> AppMembershipReadFuture<'a, SdkWorkPageData<AppMembershipPackageItem>> {
         Box::pin(async move {
-            load_package_rows(&self.pool, package_group_id, plan_id)
-                .await
-                .map(package_items)
+            load_package_rows(&self.pool, package_group_id, plan_id, query, false).await
         })
     }
 
@@ -347,33 +401,25 @@ impl AppMembershipStore for SqliteCommerceMembershipStore {
         &'a self,
         package_id: i64,
     ) -> AppMembershipReadFuture<'a, Option<AppMembershipPackageItem>> {
-        Box::pin(async move {
-            Ok(load_package_rows(&self.pool, None, None)
-                .await?
-                .into_iter()
-                .find(|package| package.item.id == package_id)
-                .map(|package| package.item))
-        })
+        Box::pin(async move { load_package_by_id(&self.pool, package_id).await })
     }
 
     fn load_package_groups<'a>(
         &'a self,
         plan_id: Option<i64>,
         recommended_only: bool,
-    ) -> AppMembershipReadFuture<'a, Vec<AppMembershipPackageGroupItem>> {
-        Box::pin(async move { load_package_groups(&self.pool, plan_id, recommended_only).await })
+        query: AppMembershipListQuery,
+    ) -> AppMembershipReadFuture<'a, SdkWorkPageData<AppMembershipPackageGroupItem>> {
+        Box::pin(async move {
+            load_package_groups_page(&self.pool, plan_id, recommended_only, query).await
+        })
     }
 
     fn load_package_group<'a>(
         &'a self,
         package_group_id: i64,
     ) -> AppMembershipReadFuture<'a, Option<AppMembershipPackageGroupItem>> {
-        Box::pin(async move {
-            Ok(load_package_groups(&self.pool, None, false)
-                .await?
-                .into_iter()
-                .find(|group| group.id == package_group_id))
-        })
+        Box::pin(async move { load_package_group_by_id(&self.pool, package_group_id).await })
     }
 
     fn load_points_balance<'a>(
@@ -387,7 +433,7 @@ impl AppMembershipStore for SqliteCommerceMembershipStore {
         &'a self,
         subject: Option<AppMembershipSubject>,
         query: AppMembershipPointsHistoryQuery,
-    ) -> AppMembershipReadFuture<'a, Vec<AppMembershipPointsHistoryItem>> {
+    ) -> AppMembershipReadFuture<'a, SdkWorkPageData<AppMembershipPointsHistoryItem>> {
         Box::pin(async move { load_points_history(&self.pool, subject, query).await })
     }
 
@@ -421,7 +467,14 @@ impl AppMembershipStore for SqliteCommerceMembershipStore {
         subject: Option<AppMembershipSubject>,
     ) -> AppMembershipReadFuture<'a, AppMembershipPrivilegeUsageResponse> {
         Box::pin(async move {
-            let benefits = load_benefits(&self.pool, subject, None).await?;
+            let benefits = load_benefits_page(
+                &self.pool,
+                subject,
+                None,
+                AppMembershipListQuery::default(),
+            )
+            .await?
+            .items;
             let mut usage = privilege_usage_from_benefits(&benefits);
             if let Some(subject) = subject {
                 if let Ok(actual) = load_privilege_usage_sqlite(&self.pool, subject).await {
@@ -454,7 +507,7 @@ impl AdminMembershipStore for SqliteCommerceMembershipStore {
     fn list_admin_membership_plans<'a>(
         &'a self,
         query: ListAdminMembershipPlansQuery,
-    ) -> AdminMembershipFuture<'a, Vec<AdminMembershipPlanItem>> {
+    ) -> AdminMembershipFuture<'a, SdkWorkPageData<AdminMembershipPlanItem>> {
         Box::pin(async move { list_admin_membership_plans(&self.pool, query).await })
     }
 
@@ -482,14 +535,14 @@ impl AdminMembershipStore for SqliteCommerceMembershipStore {
     fn list_admin_membership_packages<'a>(
         &'a self,
         query: ListAdminMembershipPackagesQuery,
-    ) -> AdminMembershipFuture<'a, Vec<AdminMembershipPackageItem>> {
+    ) -> AdminMembershipFuture<'a, SdkWorkPageData<AdminMembershipPackageItem>> {
         Box::pin(async move { list_admin_membership_packages(&self.pool, query).await })
     }
 
     fn list_admin_membership_package_groups<'a>(
         &'a self,
         query: ListAdminMembershipPackageGroupsQuery,
-    ) -> AdminMembershipFuture<'a, Vec<AdminMembershipPackageGroupItem>> {
+    ) -> AdminMembershipFuture<'a, SdkWorkPageData<AdminMembershipPackageGroupItem>> {
         Box::pin(async move { list_admin_membership_package_groups(&self.pool, query).await })
     }
 
@@ -538,7 +591,7 @@ impl AdminMembershipStore for SqliteCommerceMembershipStore {
     fn list_admin_membership_members<'a>(
         &'a self,
         query: ListAdminMembershipMembersQuery,
-    ) -> AdminMembershipFuture<'a, Vec<AdminMembershipMemberItem>> {
+    ) -> AdminMembershipFuture<'a, SdkWorkPageData<AdminMembershipMemberItem>> {
         Box::pin(async move { list_admin_membership_members(&self.pool, query).await })
     }
 
@@ -552,7 +605,7 @@ impl AdminMembershipStore for SqliteCommerceMembershipStore {
     fn list_admin_membership_entitlements<'a>(
         &'a self,
         query: ListAdminMembershipEntitlementsQuery,
-    ) -> AdminMembershipFuture<'a, Vec<AdminMembershipEntitlementItem>> {
+    ) -> AdminMembershipFuture<'a, SdkWorkPageData<AdminMembershipEntitlementItem>> {
         Box::pin(async move { list_admin_membership_entitlements(&self.pool, query).await })
     }
 }
@@ -560,8 +613,60 @@ impl AdminMembershipStore for SqliteCommerceMembershipStore {
 async fn list_admin_membership_plans(
     pool: &SqlitePool,
     query: ListAdminMembershipPlansQuery,
-) -> AppMembershipResult<Vec<AdminMembershipPlanItem>> {
-    let rows = sqlx::query(
+) -> AppMembershipResult<SdkWorkPageData<AdminMembershipPlanItem>> {
+    let params = MembershipListQuery {
+        page: query.page,
+        page_size: query.page_size,
+        cursor: query.cursor.clone(),
+    }
+    .offset_params();
+    let page_size = params.page_size;
+    let offset = params.offset;
+    let tenant_id = tenant_id_text(query.subject.tenant_id);
+
+    let total: i64 = sqlx::query_scalar(
+        r#"
+        SELECT COUNT(*)
+        FROM membership_plan p
+        WHERE p.tenant_id = ?1
+          AND (?2 IS NULL OR p.status = ?2)
+        "#,
+    )
+    .bind(&tenant_id)
+    .bind(query.status.as_deref())
+    .fetch_one(pool)
+    .await
+    .map_err(sql_error)?;
+
+    let plan_ids: Vec<String> = sqlx::query_scalar(
+        r#"
+        SELECT p.id
+        FROM membership_plan p
+        WHERE p.tenant_id = ?1
+          AND (?2 IS NULL OR p.status = ?2)
+        ORDER BY p.rank ASC, p.plan_no ASC
+        LIMIT ?3 OFFSET ?4
+        "#,
+    )
+    .bind(&tenant_id)
+    .bind(query.status.as_deref())
+    .bind(page_size)
+    .bind(offset)
+    .fetch_all(pool)
+    .await
+    .map_err(sql_error)?;
+
+    if plan_ids.is_empty() {
+        return Ok(offset_page(Vec::new(), total, params));
+    }
+
+    let placeholders = plan_ids
+        .iter()
+        .enumerate()
+        .map(|(index, _)| format!("?{}", index + 2))
+        .collect::<Vec<_>>()
+        .join(", ");
+    let sql = format!(
         r#"
         SELECT
             p.id,
@@ -588,17 +693,17 @@ async fn list_admin_membership_plans(
         LEFT JOIN benefit_definition d
             ON d.id = b.benefit_id
            AND d.tenant_id = b.tenant_id
-        WHERE (p.tenant_id = '100001' OR p.tenant_id = CAST(?1 AS TEXT))
-          AND (?2 IS NULL OR p.status = ?2)
+        WHERE p.tenant_id = ?1
+          AND p.id IN ({placeholders})
         ORDER BY p.rank ASC, p.plan_no ASC, b.sort_weight ASC, b.id ASC
-        "#,
-    )
-    .bind(query.subject.tenant_id)
-    .bind(query.status.as_deref())
-    .fetch_all(pool)
-    .await
-    .or_else(empty_rows_when_read_model_is_missing)?;
-    Ok(admin_plans_from_rows(&rows))
+        "#
+    );
+    let mut db_query = sqlx::query(&sql).bind(&tenant_id);
+    for plan_id in &plan_ids {
+        db_query = db_query.bind(plan_id);
+    }
+    let rows = db_query.fetch_all(pool).await.map_err(sql_error)?;
+    Ok(offset_page(admin_plans_from_rows(&rows), total, params))
 }
 
 async fn create_admin_membership_plan(
@@ -606,15 +711,19 @@ async fn create_admin_membership_plan(
     command: CreateAdminMembershipPlanCommand,
 ) -> AppMembershipResult<AdminMembershipPlanItem> {
     let plan_version_id = admin_plan_version_id(&command.plan_id);
+    let tenant_id = tenant_id_text(command.subject.tenant_id);
+    let organization_id = organization_id_text(command.subject.organization_id);
     sqlx::query(
         r#"
         INSERT INTO membership_plan
             (id, tenant_id, organization_id, plan_no, plan_code, name, rank, description, status, created_at, updated_at)
         VALUES
-            (?1, '100001', '0', ?2, ?2, ?3, ?4, NULL, ?5, ?6, ?6)
+            (?1, ?2, ?3, ?4, ?4, ?5, ?6, NULL, ?7, ?8, ?8)
         "#,
     )
     .bind(&command.plan_id)
+    .bind(&tenant_id)
+    .bind(&organization_id)
     .bind(&command.input.code)
     .bind(&command.input.name)
     .bind(command.input.rank)
@@ -625,6 +734,8 @@ async fn create_admin_membership_plan(
     .map_err(|error| store_error("failed to create membership plan", error))?;
     upsert_admin_membership_plan_version(
         pool,
+        &tenant_id,
+        &organization_id,
         &command.plan_id,
         &plan_version_id,
         &command.input.name,
@@ -633,37 +744,44 @@ async fn create_admin_membership_plan(
     .await?;
     replace_admin_plan_benefits(
         pool,
+        &tenant_id,
+        &organization_id,
         &command.plan_id,
         &plan_version_id,
         command.input.benefits.as_deref().unwrap_or(&[]),
         &command.requested_at,
     )
     .await?;
-    load_admin_membership_plan(pool, &command.plan_id).await
+    load_admin_membership_plan(pool, command.subject.tenant_id, &command.plan_id).await
 }
 
 async fn update_admin_membership_plan(
     pool: &SqlitePool,
     command: UpdateAdminMembershipPlanCommand,
 ) -> AppMembershipResult<AdminMembershipPlanItem> {
+    let tenant_id = tenant_id_text(command.subject.tenant_id);
     let row = sqlx::query(
         r#"
         SELECT id
         FROM membership_plan
-        WHERE id = ?1 OR plan_no = ?2
-        ORDER BY CASE WHEN id = ?1 THEN 0 ELSE 1 END
+        WHERE tenant_id = ?1
+          AND (id = ?2 OR plan_no = ?3)
+        ORDER BY CASE WHEN id = ?2 THEN 0 ELSE 1 END
         LIMIT 1
         "#,
     )
+    .bind(&tenant_id)
     .bind(&command.plan_id)
     .bind(&command.input.code)
     .fetch_optional(pool)
     .await
-    .or_else(none_when_read_model_is_missing)?
+    .map_err(sql_error)?
     .ok_or_else(|| CommerceServiceError::conflict("membership plan was not found"))?;
     let plan_id = string_cell(&row, "id");
     let plan_version_id = ensure_admin_membership_plan_version(
         pool,
+        &tenant_id,
+        &organization_id_text(command.subject.organization_id),
         &plan_id,
         &command.input.name,
         &command.requested_at,
@@ -679,6 +797,7 @@ async fn update_admin_membership_plan(
             status = ?4,
             updated_at = ?5
         WHERE id = ?6
+          AND tenant_id = ?7
         "#,
     )
     .bind(&command.input.code)
@@ -687,12 +806,15 @@ async fn update_admin_membership_plan(
     .bind(&command.input.status)
     .bind(&command.requested_at)
     .bind(&plan_id)
+    .bind(&tenant_id)
     .execute(pool)
     .await
     .map_err(|error| store_error("failed to update membership plan", error))?;
     if let Some(benefits) = command.input.benefits.as_deref() {
         replace_admin_plan_benefits(
             pool,
+            &tenant_id,
+            &organization_id_text(command.subject.organization_id),
             &plan_id,
             &plan_version_id,
             benefits,
@@ -700,23 +822,26 @@ async fn update_admin_membership_plan(
         )
         .await?;
     }
-    load_admin_membership_plan(pool, &plan_id).await
+    load_admin_membership_plan(pool, command.subject.tenant_id, &plan_id).await
 }
 
 async fn delete_admin_membership_plan(
     pool: &SqlitePool,
     command: DeleteAdminMembershipPlanCommand,
 ) -> AppMembershipResult<bool> {
+    let tenant_id = tenant_id_text(command.subject.tenant_id);
     let result = sqlx::query(
         r#"
         UPDATE membership_plan
         SET status = 'disabled',
             updated_at = ?2
-        WHERE id = ?1 OR plan_no = ?1
+        WHERE tenant_id = ?3
+          AND (id = ?1 OR plan_no = ?1)
         "#,
     )
     .bind(&command.plan_id)
     .bind(&command.requested_at)
+    .bind(&tenant_id)
     .execute(pool)
     .await
     .map_err(|error| store_error("failed to delete membership plan", error))?;
@@ -726,49 +851,111 @@ async fn delete_admin_membership_plan(
 async fn list_admin_membership_packages(
     pool: &SqlitePool,
     query: ListAdminMembershipPackagesQuery,
-) -> AppMembershipResult<Vec<AdminMembershipPackageItem>> {
+) -> AppMembershipResult<SdkWorkPageData<AdminMembershipPackageItem>> {
+    let params = MembershipListQuery {
+        page: query.page,
+        page_size: query.page_size,
+        cursor: query.cursor.clone(),
+    }
+    .offset_params();
+    let tenant_id = tenant_id_text(query.subject.tenant_id);
+
+    let total: i64 = sqlx::query_scalar(
+        r#"
+        SELECT COUNT(*)
+        FROM membership_package
+        WHERE tenant_id = ?1
+          AND (?2 IS NULL OR package_group_id = ?2)
+          AND (?3 IS NULL OR plan_id = ?3)
+          AND (?4 IS NULL OR status = ?4)
+        "#,
+    )
+    .bind(&tenant_id)
+    .bind(query.package_group_id.as_deref())
+    .bind(query.plan_id.as_deref())
+    .bind(query.status.as_deref())
+    .fetch_one(pool)
+    .await
+    .map_err(sql_error)?;
+
     let rows = sqlx::query(
         r#"
         SELECT id, package_no, package_group_id AS package_group_id, plan_id AS plan_id, name, CAST(price_amount AS TEXT) AS price_amount,
                currency_code, duration_days AS duration_days, status
         FROM membership_package
-        WHERE (tenant_id = '100001' OR tenant_id = CAST(?1 AS TEXT))
+        WHERE tenant_id = ?1
           AND (?2 IS NULL OR package_group_id = ?2)
           AND (?3 IS NULL OR plan_id = ?3)
           AND (?4 IS NULL OR status = ?4)
         ORDER BY sort_weight ASC, external_id ASC, id ASC
+        LIMIT ?5 OFFSET ?6
         "#,
     )
-    .bind(query.subject.tenant_id)
+    .bind(&tenant_id)
     .bind(query.package_group_id.as_deref())
     .bind(query.plan_id.as_deref())
     .bind(query.status.as_deref())
+    .bind(params.page_size)
+    .bind(params.offset)
     .fetch_all(pool)
     .await
-    .or_else(empty_rows_when_read_model_is_missing)?;
-    Ok(rows.iter().map(map_admin_package).collect())
+    .map_err(sql_error)?;
+    Ok(offset_page(
+        rows.iter().map(map_admin_package).collect(),
+        total,
+        params,
+    ))
 }
 
 async fn list_admin_membership_package_groups(
     pool: &SqlitePool,
     query: ListAdminMembershipPackageGroupsQuery,
-) -> AppMembershipResult<Vec<AdminMembershipPackageGroupItem>> {
+) -> AppMembershipResult<SdkWorkPageData<AdminMembershipPackageGroupItem>> {
+    let params = MembershipListQuery {
+        page: query.page,
+        page_size: query.page_size,
+        cursor: query.cursor.clone(),
+    }
+    .offset_params();
+    let tenant_id = tenant_id_text(query.subject.tenant_id);
+
+    let total: i64 = sqlx::query_scalar(
+        r#"
+        SELECT COUNT(*)
+        FROM membership_package_group
+        WHERE tenant_id = ?1
+          AND (?2 IS NULL OR status = ?2)
+        "#,
+    )
+    .bind(&tenant_id)
+    .bind(query.status.as_deref())
+    .fetch_one(pool)
+    .await
+    .map_err(sql_error)?;
+
     let rows = sqlx::query(
         r#"
         SELECT id, group_no, name, description, billing_cycle, duration_days,
                sort_weight, status
         FROM membership_package_group
-        WHERE (tenant_id = '100001' OR tenant_id = CAST(?1 AS TEXT))
+        WHERE tenant_id = ?1
           AND (?2 IS NULL OR status = ?2)
         ORDER BY sort_weight ASC, external_id ASC, id ASC
+        LIMIT ?3 OFFSET ?4
         "#,
     )
-    .bind(query.subject.tenant_id)
+    .bind(&tenant_id)
     .bind(query.status.as_deref())
+    .bind(params.page_size)
+    .bind(params.offset)
     .fetch_all(pool)
     .await
-    .or_else(empty_rows_when_read_model_is_missing)?;
-    Ok(rows.iter().map(map_admin_package_group).collect())
+    .map_err(sql_error)?;
+    Ok(offset_page(
+        rows.iter().map(map_admin_package_group).collect(),
+        total,
+        params,
+    ))
 }
 
 async fn create_admin_membership_package_group(
@@ -776,15 +963,19 @@ async fn create_admin_membership_package_group(
     command: CreateAdminMembershipPackageGroupCommand,
 ) -> AppMembershipResult<AdminMembershipPackageGroupItem> {
     let external_id = next_admin_package_group_external_id(pool).await?;
+    let tenant_id = tenant_id_text(command.subject.tenant_id);
+    let organization_id = organization_id_text(command.subject.organization_id);
     sqlx::query(
         r#"
         INSERT INTO membership_package_group
             (id, tenant_id, organization_id, external_id, group_no, name, description, billing_cycle, duration_days, display_channel, sort_weight, status, created_at, updated_at)
         VALUES
-            (?1, '100001', '0', ?2, ?3, ?4, ?5, ?6, ?7, 'app', ?8, ?9, ?10, ?10)
+            (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, 'app', ?10, ?11, ?12, ?12)
         "#,
     )
     .bind(&command.package_group_id)
+    .bind(&tenant_id)
+    .bind(&organization_id)
     .bind(external_id)
     .bind(&command.input.code)
     .bind(&command.input.name)
@@ -797,15 +988,17 @@ async fn create_admin_membership_package_group(
     .execute(pool)
     .await
     .map_err(|error| store_error("failed to create membership package group", error))?;
-    load_admin_membership_package_group(pool, &command.package_group_id).await
+    load_admin_membership_package_group(pool, command.subject.tenant_id, &command.package_group_id)
+        .await
 }
 
 async fn update_admin_membership_package_group(
     pool: &SqlitePool,
     command: UpdateAdminMembershipPackageGroupCommand,
 ) -> AppMembershipResult<AdminMembershipPackageGroupItem> {
+    let tenant_id = tenant_id_text(command.subject.tenant_id);
     let package_group_id =
-        package_group_external_id_for_update(pool, &command.package_group_id).await?;
+        package_group_external_id_for_update(pool, &tenant_id, &command.package_group_id).await?;
     sqlx::query(
         r#"
         UPDATE membership_package_group
@@ -818,6 +1011,7 @@ async fn update_admin_membership_package_group(
             status = ?7,
             updated_at = ?8
         WHERE id = ?9
+          AND tenant_id = ?10
         "#,
     )
     .bind(&command.input.code)
@@ -829,26 +1023,30 @@ async fn update_admin_membership_package_group(
     .bind(&command.input.status)
     .bind(&command.requested_at)
     .bind(&package_group_id)
+    .bind(&tenant_id)
     .execute(pool)
     .await
     .map_err(|error| store_error("failed to update membership package group", error))?;
-    load_admin_membership_package_group(pool, &package_group_id).await
+    load_admin_membership_package_group(pool, command.subject.tenant_id, &package_group_id).await
 }
 
 async fn delete_admin_membership_package_group(
     pool: &SqlitePool,
     command: DeleteAdminMembershipPackageGroupCommand,
 ) -> AppMembershipResult<bool> {
+    let tenant_id = tenant_id_text(command.subject.tenant_id);
     let result = sqlx::query(
         r#"
         UPDATE membership_package_group
         SET status = 'disabled',
             updated_at = ?2
-        WHERE id = ?1 OR group_no = ?1
+        WHERE tenant_id = ?3
+          AND (id = ?1 OR group_no = ?1)
         "#,
     )
     .bind(&command.package_group_id)
     .bind(&command.requested_at)
+    .bind(&tenant_id)
     .execute(pool)
     .await
     .map_err(|error| store_error("failed to delete membership package group", error))?;
@@ -863,8 +1061,12 @@ async fn create_admin_membership_package(
     ensure_admin_package_group_exists(pool, &command.input.package_group_id).await?;
     let external_id = next_admin_package_external_id(pool).await?;
     let sku_id = format!("{}-sku", command.package_id);
+    let tenant_id = tenant_id_text(command.subject.tenant_id);
+    let organization_id = organization_id_text(command.subject.organization_id);
     let plan_version_id = ensure_admin_membership_plan_version(
         pool,
+        &tenant_id,
+        &organization_id,
         &command.input.plan_id,
         &command.input.name,
         &command.requested_at,
@@ -875,7 +1077,7 @@ async fn create_admin_membership_package(
         INSERT INTO commerce_product_sku
             (id, tenant_id, organization_id, spu_id, sku_no, name, title, price_amount, original_price_amount, currency_code, fulfillment_type, inventory_tracking, status, spec_json, created_at, updated_at)
         VALUES
-            (?1, '100001', '0', 'seed-product-membership', ?2, ?3, ?3, ?4, NULL, ?5, 'membership_activation', 'untracked', ?6, '{}', ?7, ?7)
+            (?1, ?2, ?3, 'seed-product-membership', ?4, ?5, ?5, ?6, NULL, ?7, 'membership_activation', 'untracked', ?8, '{}', ?9, ?9)
         ON CONFLICT(id) DO UPDATE SET
             sku_no = excluded.sku_no,
             name = excluded.name,
@@ -887,6 +1089,8 @@ async fn create_admin_membership_package(
         "#,
     )
     .bind(&sku_id)
+    .bind(&tenant_id)
+    .bind(&organization_id)
     .bind(&command.input.code)
     .bind(&command.input.name)
     .bind(&command.input.price_amount)
@@ -901,10 +1105,12 @@ async fn create_admin_membership_package(
         INSERT INTO membership_package
             (id, tenant_id, organization_id, external_id, package_no, package_group_id, plan_id, plan_version_id, sku_id, name, description, price_amount, original_price_amount, currency_code, point_amount, duration_days, recurrence_cycle, sort_weight, recommended, status, starts_at, ends_at, created_at, updated_at)
         VALUES
-            (?1, '100001', '0', ?2, ?3, ?4, ?5, ?14, ?6, ?7, NULL, ?8, NULL, ?9, 0, ?10, ?13, ?2, 0, ?11, NULL, NULL, ?12, ?12)
+            (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?15, ?8, ?9, NULL, ?10, NULL, ?11, 0, ?12, ?14, ?4, 0, ?13, NULL, NULL, ?16, ?16)
         "#,
     )
     .bind(&command.package_id)
+    .bind(&tenant_id)
+    .bind(&organization_id)
     .bind(external_id)
     .bind(&command.input.code)
     .bind(&command.input.package_group_id)
@@ -915,13 +1121,13 @@ async fn create_admin_membership_package(
     .bind(&command.input.currency_code)
     .bind(command.input.duration_days)
     .bind(&command.input.status)
-    .bind(&command.requested_at)
     .bind(recurrence_cycle_from_duration(command.input.duration_days))
     .bind(plan_version_id)
+    .bind(&command.requested_at)
     .execute(pool)
     .await
     .map_err(|error| store_error("failed to create membership package", error))?;
-    load_admin_membership_package(pool, &command.package_id).await
+    load_admin_membership_package(pool, command.subject.tenant_id, &command.package_id).await
 }
 
 async fn update_admin_membership_package(
@@ -930,20 +1136,31 @@ async fn update_admin_membership_package(
 ) -> AppMembershipResult<AdminMembershipPackageItem> {
     ensure_admin_plan_exists(pool, &command.input.plan_id).await?;
     ensure_admin_package_group_exists(pool, &command.input.package_group_id).await?;
+    let tenant_id = tenant_id_text(command.subject.tenant_id);
+    let organization_id = organization_id_text(command.subject.organization_id);
     let current = sqlx::query(
-        "SELECT sku_id FROM membership_package WHERE id = ?1 OR package_no = ?1 LIMIT 1",
+        r#"
+        SELECT sku_id
+        FROM membership_package
+        WHERE tenant_id = ?1
+          AND (id = ?2 OR package_no = ?2)
+        LIMIT 1
+        "#,
     )
+    .bind(&tenant_id)
     .bind(&command.package_id)
     .fetch_optional(pool)
     .await
-    .or_else(none_when_read_model_is_missing)?
+    .map_err(sql_error)?
     .ok_or_else(|| CommerceServiceError::conflict("membership package was not found"))?;
-    let package_id = package_id_for_update(pool, &command.package_id).await?;
+    let package_id = package_id_for_update(pool, &tenant_id, &command.package_id).await?;
     let sku_id = optional_string_cell(&current, "sku_id")
         .filter(|value| !value.trim().is_empty())
         .unwrap_or_else(|| format!("{package_id}-sku"));
     let plan_version_id = ensure_admin_membership_plan_version(
         pool,
+        &tenant_id,
+        &organization_id,
         &command.input.plan_id,
         &command.input.name,
         &command.requested_at,
@@ -954,7 +1171,7 @@ async fn update_admin_membership_package(
         INSERT INTO commerce_product_sku
             (id, tenant_id, organization_id, spu_id, sku_no, name, title, price_amount, original_price_amount, currency_code, fulfillment_type, inventory_tracking, status, spec_json, created_at, updated_at)
         VALUES
-            (?1, '100001', '0', 'seed-product-membership', ?2, ?3, ?3, ?4, NULL, ?5, 'membership_activation', 'untracked', ?6, '{}', ?7, ?7)
+            (?1, ?2, ?3, 'seed-product-membership', ?4, ?5, ?5, ?6, NULL, ?7, 'membership_activation', 'untracked', ?8, '{}', ?9, ?9)
         ON CONFLICT(id) DO UPDATE SET
             sku_no = excluded.sku_no,
             name = excluded.name,
@@ -966,6 +1183,8 @@ async fn update_admin_membership_package(
         "#,
     )
     .bind(&sku_id)
+    .bind(&tenant_id)
+    .bind(&organization_id)
     .bind(&command.input.code)
     .bind(&command.input.name)
     .bind(&command.input.price_amount)
@@ -990,6 +1209,7 @@ async fn update_admin_membership_package(
             status = ?10,
             updated_at = ?11
         WHERE id = ?12
+          AND tenant_id = ?13
         "#,
     )
     .bind(&command.input.code)
@@ -1004,26 +1224,30 @@ async fn update_admin_membership_package(
     .bind(&command.input.status)
     .bind(&command.requested_at)
     .bind(&package_id)
+    .bind(&tenant_id)
     .execute(pool)
     .await
     .map_err(|error| store_error("failed to update membership package", error))?;
-    load_admin_membership_package(pool, &package_id).await
+    load_admin_membership_package(pool, command.subject.tenant_id, &package_id).await
 }
 
 async fn delete_admin_membership_package(
     pool: &SqlitePool,
     command: DeleteAdminMembershipPackageCommand,
 ) -> AppMembershipResult<bool> {
+    let tenant_id = tenant_id_text(command.subject.tenant_id);
     let result = sqlx::query(
         r#"
         UPDATE membership_package
         SET status = 'disabled',
             updated_at = ?2
-        WHERE id = ?1 OR package_no = ?1
+        WHERE tenant_id = ?3
+          AND (id = ?1 OR package_no = ?1)
         "#,
     )
     .bind(&command.package_id)
     .bind(&command.requested_at)
+    .bind(&tenant_id)
     .execute(pool)
     .await
     .map_err(|error| store_error("failed to delete membership package", error))?;
@@ -1033,7 +1257,35 @@ async fn delete_admin_membership_package(
 async fn list_admin_membership_members(
     pool: &SqlitePool,
     query: ListAdminMembershipMembersQuery,
-) -> AppMembershipResult<Vec<AdminMembershipMemberItem>> {
+) -> AppMembershipResult<SdkWorkPageData<AdminMembershipMemberItem>> {
+    let params = MembershipListQuery {
+        page: query.page,
+        page_size: query.page_size,
+        cursor: query.cursor.clone(),
+    }
+    .offset_params();
+
+    let total: i64 = sqlx::query_scalar(
+        r#"
+        SELECT COUNT(*)
+        FROM membership_subscription m
+        LEFT JOIN membership_plan l ON l.id = m.plan_id
+        WHERE m.tenant_id = CAST(?1 AS TEXT)
+          AND (?2 IS NULL OR m.organization_id IS NULL OR m.organization_id = CAST(?2 AS TEXT) OR (CAST(?2 AS TEXT) != '0' AND m.organization_id = '0'))
+          AND (?3 IS NULL OR m.owner_user_id = ?3 OR m.subject_id = ?3)
+          AND (?4 IS NULL OR m.plan_id = ?4 OR l.plan_no = ?4)
+          AND (?5 IS NULL OR m.status = ?5)
+        "#,
+    )
+    .bind(query.subject.tenant_id)
+    .bind(query.subject.organization_id)
+    .bind(query.user_id.as_deref())
+    .bind(query.plan_id.as_deref())
+    .bind(query.status.as_deref())
+    .fetch_one(pool)
+    .await
+    .map_err(sql_error)?;
+
     let rows = sqlx::query(
         r#"
         SELECT m.id, m.owner_user_id, m.status, CAST(m.starts_at AS TEXT) AS starts_at,
@@ -1046,7 +1298,7 @@ async fn list_admin_membership_members(
           AND (?4 IS NULL OR m.plan_id = ?4 OR l.plan_no = ?4)
           AND (?5 IS NULL OR m.status = ?5)
         ORDER BY m.created_at DESC, m.id DESC
-        LIMIT 200
+        LIMIT ?6 OFFSET ?7
         "#,
     )
     .bind(query.subject.tenant_id)
@@ -1054,10 +1306,16 @@ async fn list_admin_membership_members(
     .bind(query.user_id.as_deref())
     .bind(query.plan_id.as_deref())
     .bind(query.status.as_deref())
+    .bind(params.page_size)
+    .bind(params.offset)
     .fetch_all(pool)
     .await
-    .or_else(empty_rows_when_read_model_is_missing)?;
-    Ok(rows.iter().map(map_admin_membership).collect())
+    .map_err(sql_error)?;
+    Ok(offset_page(
+        rows.iter().map(map_admin_membership).collect(),
+        total,
+        params,
+    ))
 }
 
 async fn update_admin_membership_member_status(
@@ -1091,7 +1349,50 @@ async fn update_admin_membership_member_status(
 async fn list_admin_membership_entitlements(
     pool: &SqlitePool,
     query: ListAdminMembershipEntitlementsQuery,
-) -> AppMembershipResult<Vec<AdminMembershipEntitlementItem>> {
+) -> AppMembershipResult<SdkWorkPageData<AdminMembershipEntitlementItem>> {
+    let params = MembershipListQuery {
+        page: query.page,
+        page_size: query.page_size,
+        cursor: query.cursor.clone(),
+    }
+    .offset_params();
+    let status_filter = query.status.as_deref();
+
+    let total: i64 = sqlx::query_scalar(
+        r#"
+        SELECT COUNT(*)
+        FROM entitlement_account a
+        JOIN benefit_definition d
+          ON d.id = a.benefit_id
+        LEFT JOIN entitlement_grant g
+          ON g.benefit_id = a.benefit_id
+         AND g.subject_type = a.subject_type
+         AND g.subject_id = a.subject_id
+         AND g.source_type = 'membership_subscription'
+         AND g.tenant_id = a.tenant_id
+        LEFT JOIN membership_subscription m
+          ON m.id = g.source_id
+         AND m.tenant_id = a.tenant_id
+        WHERE a.tenant_id = CAST(?1 AS TEXT)
+          AND (?2 IS NULL OR m.plan_id = ?2)
+          AND (?3 IS NULL OR g.source_id = ?3)
+          AND (?4 IS NULL OR (
+            CASE
+              WHEN CAST(a.total_granted AS REAL) > 0
+               AND CAST(a.total_used AS REAL) >= CAST(a.total_granted AS REAL) THEN 'exhausted'
+              ELSE 'active'
+            END
+          ) = ?4)
+        "#,
+    )
+    .bind(query.subject.tenant_id)
+    .bind(query.plan_id.as_deref())
+    .bind(query.membership_id.as_deref())
+    .bind(status_filter)
+    .fetch_one(pool)
+    .await
+    .map_err(sql_error)?;
+
     let rows = sqlx::query(
         r#"
         SELECT a.id, d.benefit_code AS entitlement_code, g.source_id AS membership_id,
@@ -1112,32 +1413,39 @@ async fn list_admin_membership_entitlements(
         WHERE a.tenant_id = CAST(?1 AS TEXT)
           AND (?2 IS NULL OR m.plan_id = ?2)
           AND (?3 IS NULL OR g.source_id = ?3)
+          AND (?4 IS NULL OR (
+            CASE
+              WHEN CAST(a.total_granted AS REAL) > 0
+               AND CAST(a.total_used AS REAL) >= CAST(a.total_granted AS REAL) THEN 'exhausted'
+              ELSE 'active'
+            END
+          ) = ?4)
         ORDER BY a.created_at DESC, a.id DESC
-        LIMIT 200
+        LIMIT ?5 OFFSET ?6
         "#,
     )
     .bind(query.subject.tenant_id)
     .bind(query.plan_id.as_deref())
     .bind(query.membership_id.as_deref())
+    .bind(status_filter)
+    .bind(params.page_size)
+    .bind(params.offset)
     .fetch_all(pool)
     .await
-    .or_else(empty_rows_when_read_model_is_missing)?;
-    let status_filter = query.status.as_deref();
-    Ok(rows
-        .iter()
-        .map(map_admin_entitlement)
-        .filter(|item| {
-            status_filter
-                .map(|status| item.status == status)
-                .unwrap_or(true)
-        })
-        .collect())
+    .map_err(sql_error)?;
+    Ok(offset_page(
+        rows.iter().map(map_admin_entitlement).collect(),
+        total,
+        params,
+    ))
 }
 
 async fn load_admin_membership_plan(
     pool: &SqlitePool,
+    tenant_id: i64,
     plan_id: &str,
 ) -> AppMembershipResult<AdminMembershipPlanItem> {
+    let tenant_id = tenant_id_text(tenant_id);
     let rows = sqlx::query(
         r#"
         SELECT
@@ -1165,14 +1473,16 @@ async fn load_admin_membership_plan(
         LEFT JOIN benefit_definition d
             ON d.id = b.benefit_id
            AND d.tenant_id = b.tenant_id
-        WHERE p.id = ?1 OR p.plan_no = ?1
+        WHERE p.tenant_id = ?1
+          AND (p.id = ?2 OR p.plan_no = ?2)
         ORDER BY b.sort_weight ASC, b.id ASC
         "#,
     )
+    .bind(&tenant_id)
     .bind(plan_id)
     .fetch_all(pool)
     .await
-    .or_else(empty_rows_when_read_model_is_missing)?;
+    .map_err(sql_error)?;
     admin_plans_from_rows(&rows)
         .into_iter()
         .next()
@@ -1181,42 +1491,50 @@ async fn load_admin_membership_plan(
 
 async fn load_admin_membership_package(
     pool: &SqlitePool,
+    tenant_id: i64,
     package_id: &str,
 ) -> AppMembershipResult<AdminMembershipPackageItem> {
+    let tenant_id = tenant_id_text(tenant_id);
     let row = sqlx::query(
         r#"
         SELECT id, package_no, package_group_id AS package_group_id, plan_id AS plan_id, name, CAST(price_amount AS TEXT) AS price_amount,
                currency_code, duration_days AS duration_days, status
         FROM membership_package
-        WHERE id = ?1 OR package_no = ?1
+        WHERE tenant_id = ?1
+          AND (id = ?2 OR package_no = ?2)
         LIMIT 1
         "#,
     )
+    .bind(&tenant_id)
     .bind(package_id)
     .fetch_optional(pool)
     .await
-    .or_else(none_when_read_model_is_missing)?
+    .map_err(sql_error)?
     .ok_or_else(|| CommerceServiceError::conflict("membership package was not found"))?;
     Ok(map_admin_package(&row))
 }
 
 async fn load_admin_membership_package_group(
     pool: &SqlitePool,
+    tenant_id: i64,
     package_group_id: &str,
 ) -> AppMembershipResult<AdminMembershipPackageGroupItem> {
+    let tenant_id = tenant_id_text(tenant_id);
     let row = sqlx::query(
         r#"
         SELECT id, group_no, name, description, billing_cycle, duration_days,
                sort_weight, status
         FROM membership_package_group
-        WHERE id = ?1 OR group_no = ?1
+        WHERE tenant_id = ?1
+          AND (id = ?2 OR group_no = ?2)
         LIMIT 1
         "#,
     )
+    .bind(&tenant_id)
     .bind(package_group_id)
     .fetch_optional(pool)
     .await
-    .or_else(none_when_read_model_is_missing)?
+    .map_err(sql_error)?
     .ok_or_else(|| CommerceServiceError::conflict("membership package group was not found"))?;
     Ok(map_admin_package_group(&row))
 }
@@ -1259,6 +1577,8 @@ async fn ensure_admin_plan_exists(pool: &SqlitePool, plan_id: &str) -> AppMember
 
 async fn ensure_admin_membership_plan_version(
     pool: &SqlitePool,
+    tenant_id: &str,
+    organization_id: &str,
     plan_id_or_no: &str,
     title: &str,
     requested_at: &str,
@@ -1267,15 +1587,17 @@ async fn ensure_admin_membership_plan_version(
         r#"
         SELECT id
         FROM membership_plan
-        WHERE id = ?1 OR plan_no = ?1
-        ORDER BY CASE WHEN id = ?1 THEN 0 ELSE 1 END
+        WHERE tenant_id = ?1
+          AND (id = ?2 OR plan_no = ?2)
+        ORDER BY CASE WHEN id = ?2 THEN 0 ELSE 1 END
         LIMIT 1
         "#,
     )
+    .bind(tenant_id)
     .bind(plan_id_or_no)
     .fetch_optional(pool)
     .await
-    .or_else(none_when_read_model_is_missing)?
+    .map_err(sql_error)?
     .ok_or_else(|| CommerceServiceError::conflict("membership target plan was not found"))?;
     let plan_id = string_cell(&row, "id");
     let existing: Option<String> = sqlx::query_scalar(
@@ -1296,12 +1618,23 @@ async fn ensure_admin_membership_plan_version(
         return Ok(version_id);
     }
     let version_id = admin_plan_version_id(&plan_id);
-    upsert_admin_membership_plan_version(pool, &plan_id, &version_id, title, requested_at).await?;
+    upsert_admin_membership_plan_version(
+        pool,
+        tenant_id,
+        organization_id,
+        &plan_id,
+        &version_id,
+        title,
+        requested_at,
+    )
+    .await?;
     Ok(version_id)
 }
 
 async fn upsert_admin_membership_plan_version(
     pool: &SqlitePool,
+    tenant_id: &str,
+    organization_id: &str,
     plan_id: &str,
     plan_version_id: &str,
     title: &str,
@@ -1312,7 +1645,7 @@ async fn upsert_admin_membership_plan_version(
         INSERT INTO membership_plan_version
             (id, tenant_id, organization_id, plan_id, version_no, title, description, lifecycle_status, effective_from, effective_to, published_at, created_at, updated_at)
         VALUES
-            (?1, '100001', '0', ?2, 'v1', ?3, NULL, 'published', ?4, NULL, ?4, ?4, ?4)
+            (?1, ?2, ?3, ?4, 'v1', ?5, NULL, 'published', ?6, NULL, ?6, ?6, ?6)
         ON CONFLICT(tenant_id, plan_id, version_no) DO UPDATE SET
             id = excluded.id,
             title = excluded.title,
@@ -1322,6 +1655,8 @@ async fn upsert_admin_membership_plan_version(
         "#,
     )
     .bind(plan_version_id)
+    .bind(tenant_id)
+    .bind(organization_id)
     .bind(plan_id)
     .bind(title)
     .bind(requested_at)
@@ -1333,6 +1668,8 @@ async fn upsert_admin_membership_plan_version(
 
 async fn replace_admin_plan_benefits(
     pool: &SqlitePool,
+    tenant_id: &str,
+    organization_id: &str,
     plan_id: &str,
     plan_version_id: &str,
     benefits: &[AppMembershipBenefitItem],
@@ -1356,7 +1693,7 @@ async fn replace_admin_plan_benefits(
             INSERT INTO benefit_definition
                 (id, tenant_id, organization_id, benefit_code, name, benefit_type, value_unit, measurement_type, description, status, created_at, updated_at)
             VALUES
-                (?1, '100001', '0', ?2, ?3, ?4, 'count', 'counter', ?5, 'active', ?6, ?6)
+                (?1, ?2, ?3, ?4, ?5, ?6, 'count', 'counter', ?7, 'active', ?8, ?8)
             ON CONFLICT(tenant_id, organization_id, benefit_code) DO UPDATE SET
                 id = excluded.id,
                 name = excluded.name,
@@ -1367,6 +1704,8 @@ async fn replace_admin_plan_benefits(
             "#,
         )
         .bind(&benefit_id)
+        .bind(tenant_id)
+        .bind(organization_id)
         .bind(&benefit_code)
         .bind(&benefit.name)
         .bind(benefit_type)
@@ -1383,10 +1722,12 @@ async fn replace_admin_plan_benefits(
             INSERT INTO membership_plan_benefit
                 (id, tenant_id, organization_id, plan_id, plan_version_id, benefit_id, benefit_code, grant_quantity, grant_period, reset_policy, usage_policy, sort_weight, status, created_at, updated_at)
             VALUES
-                (?1, '100001', '0', ?2, ?3, ?4, ?5, ?6, 'membership_period', NULL, ?7, ?8, 'active', ?9, ?9)
+                (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, 'membership_period', NULL, ?9, ?10, 'active', ?11, ?11)
             "#,
         )
         .bind(&plan_benefit_id)
+        .bind(tenant_id)
+        .bind(organization_id)
         .bind(plan_id)
         .bind(plan_version_id)
         .bind(&benefit_id)
@@ -1435,28 +1776,48 @@ async fn next_admin_package_group_external_id(pool: &SqlitePool) -> AppMembershi
     Ok(max_id.unwrap_or(0) + 1)
 }
 
-async fn package_id_for_update(pool: &SqlitePool, value: &str) -> AppMembershipResult<String> {
-    let row =
-        sqlx::query("SELECT id FROM membership_package WHERE id = ?1 OR package_no = ?1 LIMIT 1")
-            .bind(value)
-            .fetch_optional(pool)
-            .await
-            .or_else(none_when_read_model_is_missing)?
-            .ok_or_else(|| CommerceServiceError::conflict("membership package was not found"))?;
+async fn package_id_for_update(
+    pool: &SqlitePool,
+    tenant_id: &str,
+    value: &str,
+) -> AppMembershipResult<String> {
+    let row = sqlx::query(
+        r#"
+        SELECT id
+        FROM membership_package
+        WHERE tenant_id = ?1
+          AND (id = ?2 OR package_no = ?2)
+        LIMIT 1
+        "#,
+    )
+    .bind(tenant_id)
+    .bind(value)
+    .fetch_optional(pool)
+    .await
+    .map_err(sql_error)?
+    .ok_or_else(|| CommerceServiceError::conflict("membership package was not found"))?;
     Ok(string_cell(&row, "id"))
 }
 
 async fn package_group_external_id_for_update(
     pool: &SqlitePool,
+    tenant_id: &str,
     value: &str,
 ) -> AppMembershipResult<String> {
     let row = sqlx::query(
-        "SELECT id FROM membership_package_group WHERE id = ?1 OR group_no = ?1 LIMIT 1",
+        r#"
+        SELECT id
+        FROM membership_package_group
+        WHERE tenant_id = ?1
+          AND (id = ?2 OR group_no = ?2)
+        LIMIT 1
+        "#,
     )
+    .bind(tenant_id)
     .bind(value)
     .fetch_optional(pool)
     .await
-    .or_else(none_when_read_model_is_missing)?
+    .map_err(sql_error)?
     .ok_or_else(|| CommerceServiceError::conflict("membership package group was not found"))?;
     Ok(string_cell(&row, "id"))
 }
@@ -1601,7 +1962,7 @@ async fn load_info(
             benefits: membership.benefits,
         }),
         None => {
-            let benefits = load_benefits(pool, subject, Some(0))
+            let benefits = load_benefits_list(pool, subject, Some(0))
                 .await
                 .unwrap_or_default();
             Ok(AppMembershipInfoResponse {
@@ -1642,31 +2003,214 @@ async fn load_status(
     })
 }
 
-async fn load_benefits(
+async fn load_benefits_list(
     pool: &SqlitePool,
     subject: Option<AppMembershipSubject>,
     plan_id: Option<i64>,
 ) -> AppMembershipResult<Vec<AppMembershipBenefitItem>> {
-    let plans = load_plans(pool).await?;
-    let rank = match plan_id {
-        Some(value) => value,
-        None => match subject {
-            Some(subject) => load_current_membership(pool, subject)
-                .await?
-                .map(|membership| membership.rank)
-                .unwrap_or(0),
-            None => 0,
-        },
-    };
-    Ok(benefits_for_plan(&plans, rank))
+    let rank = resolve_plan_rank(pool, subject, plan_id).await?;
+    Ok(load_stored_plan_by_rank(pool, rank)
+        .await?
+        .map(|plan| plan.benefits)
+        .unwrap_or_default())
 }
 
-async fn load_plans(pool: &SqlitePool) -> AppMembershipResult<Vec<StoredMembershipPlan>> {
-    let rows = sqlx::query(LOAD_MEMBERSHIP_PLANS)
+async fn load_benefits_page(
+    pool: &SqlitePool,
+    subject: Option<AppMembershipSubject>,
+    plan_id: Option<i64>,
+    query: MembershipListQuery,
+) -> AppMembershipResult<SdkWorkPageData<AppMembershipBenefitItem>> {
+    let rank = resolve_plan_rank(pool, subject, plan_id).await?;
+    let params = query.offset_params();
+    let page_size = params.page_size;
+    let offset = params.offset;
+
+    let total: i64 = sqlx::query_scalar(
+        r#"
+        SELECT COUNT(*)
+        FROM membership_plan p
+        JOIN membership_plan_version v
+            ON v.plan_id = p.id
+           AND v.tenant_id = p.tenant_id
+           AND v.lifecycle_status = 'published'
+        JOIN membership_plan_benefit b
+            ON b.plan_version_id = v.id
+           AND b.tenant_id = p.tenant_id
+           AND b.status = 'active'
+        WHERE (p.tenant_id = '100001' OR p.tenant_id IS NULL)
+          AND (p.organization_id = '0' OR p.organization_id IS NULL)
+          AND p.status = 'active'
+          AND CAST(p.rank AS INTEGER) = ?1
+        "#,
+    )
+    .bind(rank)
+    .fetch_one(pool)
+    .await
+    .map_err(sql_error)?;
+
+    let rows = sqlx::query(
+        r#"
+        SELECT
+            b.id AS plan_benefit_id,
+            b.benefit_code,
+            CAST(b.grant_quantity AS TEXT) AS grant_quantity,
+            b.usage_policy,
+            d.name AS benefit_name,
+            d.benefit_type,
+            d.description AS benefit_description
+        FROM membership_plan p
+        JOIN membership_plan_version v
+            ON v.plan_id = p.id
+           AND v.tenant_id = p.tenant_id
+           AND v.lifecycle_status = 'published'
+        JOIN membership_plan_benefit b
+            ON b.plan_version_id = v.id
+           AND b.tenant_id = p.tenant_id
+           AND b.status = 'active'
+        LEFT JOIN benefit_definition d
+            ON d.id = b.benefit_id
+           AND d.tenant_id = b.tenant_id
+        WHERE (p.tenant_id = '100001' OR p.tenant_id IS NULL)
+          AND (p.organization_id = '0' OR p.organization_id IS NULL)
+          AND p.status = 'active'
+          AND CAST(p.rank AS INTEGER) = ?1
+        ORDER BY b.sort_weight ASC, b.id ASC
+        LIMIT ?2 OFFSET ?3
+        "#,
+    )
+    .bind(rank)
+    .bind(page_size)
+    .bind(offset)
+    .fetch_all(pool)
+    .await
+    .map_err(sql_error)?;
+    let items = rows
+        .iter()
+        .enumerate()
+        .filter_map(|(index, row)| plan_benefit_from_row(row, (index + 1) as i64))
+        .collect();
+    Ok(offset_page(items, total, params))
+}
+
+async fn resolve_plan_rank(
+    pool: &SqlitePool,
+    subject: Option<AppMembershipSubject>,
+    plan_id: Option<i64>,
+) -> AppMembershipResult<i64> {
+    match plan_id {
+        Some(value) => Ok(value),
+        None => match subject {
+            Some(subject) => Ok(load_current_membership(pool, subject)
+                .await?
+                .map(|membership| membership.rank)
+                .unwrap_or(0)),
+            None => Ok(0),
+        },
+    }
+}
+
+async fn load_plans_page(
+    pool: &SqlitePool,
+    query: MembershipListQuery,
+) -> AppMembershipResult<SdkWorkPageData<AppMembershipPlanItem>> {
+    let params = query.offset_params();
+    let page_size = params.page_size;
+    let offset = params.offset;
+
+    let total: i64 = sqlx::query_scalar(
+        r#"
+        SELECT COUNT(*)
+        FROM membership_plan p
+        WHERE (p.tenant_id = '100001' OR p.tenant_id IS NULL)
+          AND (p.organization_id = '0' OR p.organization_id IS NULL)
+          AND p.status = 'active'
+        "#,
+    )
+    .fetch_one(pool)
+    .await
+    .map_err(sql_error)?;
+
+    let plan_ids: Vec<String> = sqlx::query_scalar(
+        r#"
+        SELECT p.id
+        FROM membership_plan p
+        WHERE (p.tenant_id = '100001' OR p.tenant_id IS NULL)
+          AND (p.organization_id = '0' OR p.organization_id IS NULL)
+          AND p.status = 'active'
+        ORDER BY p.rank ASC, p.plan_no ASC
+        LIMIT ?1 OFFSET ?2
+        "#,
+    )
+    .bind(page_size)
+    .bind(offset)
+    .fetch_all(pool)
+    .await
+    .map_err(sql_error)?;
+
+    if plan_ids.is_empty() {
+        return Ok(offset_page(Vec::new(), total, params));
+    }
+
+    let placeholders = plan_ids
+        .iter()
+        .enumerate()
+        .map(|(index, _)| format!("?{}", index + 1))
+        .collect::<Vec<_>>()
+        .join(", ");
+    let sql = format!(
+        r#"
+        SELECT
+            p.id,
+            p.plan_no AS plan_no,
+            p.name,
+            CAST(p.rank AS INTEGER) AS rank,
+            p.description,
+            b.id AS plan_benefit_id,
+            b.benefit_code,
+            CAST(b.grant_quantity AS TEXT) AS grant_quantity,
+            b.usage_policy,
+            d.name AS benefit_name,
+            d.benefit_type,
+            d.description AS benefit_description
+        FROM membership_plan p
+        LEFT JOIN membership_plan_version v
+            ON v.plan_id = p.id
+           AND v.tenant_id = p.tenant_id
+           AND v.lifecycle_status = 'published'
+        LEFT JOIN membership_plan_benefit b
+            ON b.plan_version_id = v.id
+           AND b.tenant_id = p.tenant_id
+           AND b.status = 'active'
+        LEFT JOIN benefit_definition d
+            ON d.id = b.benefit_id
+           AND d.tenant_id = b.tenant_id
+        WHERE p.id IN ({placeholders})
+        ORDER BY p.rank ASC, p.plan_no ASC, b.sort_weight ASC, b.id ASC
+        "#
+    );
+    let mut db_query = sqlx::query(&sql);
+    for plan_id in &plan_ids {
+        db_query = db_query.bind(plan_id);
+    }
+    let rows = db_query.fetch_all(pool).await.map_err(sql_error)?;
+    Ok(offset_page(
+        plan_items(stored_plans_from_rows(&rows)),
+        total,
+        params,
+    ))
+}
+
+async fn load_stored_plan_by_rank(
+    pool: &SqlitePool,
+    rank: i64,
+) -> AppMembershipResult<Option<StoredMembershipPlan>> {
+    let rows = sqlx::query(LOAD_MEMBERSHIP_PLAN_BY_RANK)
+        .bind(rank)
         .fetch_all(pool)
         .await
-        .or_else(empty_rows_when_read_model_is_missing)?;
-    Ok(stored_plans_from_rows(&rows))
+        .map_err(sql_error)?;
+    Ok(stored_plans_from_rows(&rows).into_iter().next())
 }
 
 fn stored_plans_from_rows(rows: &[sqlx::sqlite::SqliteRow]) -> Vec<StoredMembershipPlan> {
@@ -1751,29 +2295,54 @@ async fn load_package_rows(
     pool: &SqlitePool,
     package_group_id: Option<i64>,
     plan_id: Option<i64>,
-) -> AppMembershipResult<Vec<ParsedMembershipPackage>> {
-    let rows = sqlx::query(LOAD_MEMBERSHIP_PACKAGES)
-        .fetch_all(pool)
-        .await
-        .or_else(empty_rows_when_read_model_is_missing)?;
-    let mut packages = rows
+    query: MembershipListQuery,
+    recommended_only: bool,
+) -> AppMembershipResult<SdkWorkPageData<AppMembershipPackageItem>> {
+    let params = query.offset_params();
+    let page_size = params.page_size as usize;
+    let offset = params.offset as usize;
+    let limit = (page_size + 1) as i64;
+
+    let mut sql = String::from(LOAD_MEMBERSHIP_PACKAGES_BASE);
+    if package_group_id.is_some() {
+        sql.push_str("  AND g.external_id = ?\n");
+    }
+    if plan_id.is_some() {
+        sql.push_str("  AND l.rank = ?\n");
+    }
+    if recommended_only {
+        sql.push_str("  AND p.recommended != 0\n");
+    }
+    sql.push_str("ORDER BY g.sort_weight ASC, p.sort_weight ASC, p.external_id ASC\n");
+    sql.push_str("LIMIT ? OFFSET ?\n");
+
+    let mut db_query = sqlx::query(&sql);
+    if let Some(group_id) = package_group_id {
+        db_query = db_query.bind(group_id);
+    }
+    if let Some(rank) = plan_id {
+        db_query = db_query.bind(rank);
+    }
+    db_query = db_query.bind(limit).bind(offset as i64);
+    let rows = db_query.fetch_all(pool).await.map_err(sql_error)?;
+    let packages: Vec<AppMembershipPackageItem> = rows
         .iter()
         .filter_map(map_package)
-        .filter(|package| {
-            package_group_id
-                .map(|id| package.group_external_id == id)
-                .unwrap_or(true)
-        })
-        .filter(|package| plan_id.map(|id| package.rank == id).unwrap_or(true))
-        .collect::<Vec<_>>();
-    packages.sort_by_key(|package| {
-        (
-            package.group_sort_weight,
-            package.item.sort_weight,
-            package.item.id,
-        )
-    });
-    Ok(packages)
+        .map(|package| package.item)
+        .collect();
+    Ok(bounded_sql_page(packages, page_size, offset))
+}
+
+async fn load_package_by_id(
+    pool: &SqlitePool,
+    package_id: i64,
+) -> AppMembershipResult<Option<AppMembershipPackageItem>> {
+    let row = sqlx::query(LOAD_MEMBERSHIP_PACKAGE_BY_ID)
+        .bind(package_id)
+        .fetch_optional(pool)
+        .await
+        .map_err(sql_error)?;
+    Ok(row.as_ref().and_then(map_package).map(|package| package.item))
 }
 
 fn map_package(row: &sqlx::sqlite::SqliteRow) -> Option<ParsedMembershipPackage> {
@@ -1808,57 +2377,131 @@ fn map_package(row: &sqlx::sqlite::SqliteRow) -> Option<ParsedMembershipPackage>
     )
 }
 
-fn package_items(packages: Vec<ParsedMembershipPackage>) -> Vec<AppMembershipPackageItem> {
-    packages.into_iter().map(|package| package.item).collect()
-}
-
 fn plan_items(plans: Vec<StoredMembershipPlan>) -> Vec<AppMembershipPlanItem> {
     plans.into_iter().map(|plan| plan.item).collect()
 }
 
-async fn load_package_groups(
+async fn load_package_groups_page(
     pool: &SqlitePool,
     plan_id: Option<i64>,
     recommended_only: bool,
-) -> AppMembershipResult<Vec<AppMembershipPackageGroupItem>> {
-    let packages = load_package_rows(pool, None, plan_id).await?;
-    let mut grouped: BTreeMap<i64, (String, Option<String>, i64, Vec<AppMembershipPackageItem>)> =
-        BTreeMap::new();
-    for package in packages {
-        if recommended_only && !package.item.recommended {
-            continue;
-        }
-        let package_group_id = package.group_external_id;
-        if package_group_id <= 0 {
-            continue;
-        }
-        let entry = grouped.entry(package_group_id).or_insert_with(|| {
-            (
-                package.group_name.clone(),
-                package.group_description.clone(),
-                package.group_sort_weight,
-                Vec::new(),
-            )
-        });
-        entry.3.push(package.item);
-    }
-    let mut groups = grouped
-        .into_iter()
-        .map(
-            |(package_group_id, (name, description, sort_weight, mut packages))| {
-                packages.sort_by_key(|package| (package.sort_weight, package.id));
-                build_package_group_from_packages(
-                    package_group_id,
-                    name,
-                    description,
-                    sort_weight,
-                    packages,
-                )
+    query: MembershipListQuery,
+) -> AppMembershipResult<SdkWorkPageData<AppMembershipPackageGroupItem>> {
+    let params = query.offset_params();
+    let page_size = params.page_size;
+    let offset = params.offset;
+
+    let total: i64 = sqlx::query_scalar(
+        r#"
+        SELECT COUNT(*)
+        FROM membership_package_group g
+        WHERE (g.tenant_id = '100001' OR g.tenant_id IS NULL)
+          AND (g.organization_id = '0' OR g.organization_id IS NULL)
+          AND g.status = 'active'
+        "#,
+    )
+    .fetch_one(pool)
+    .await
+    .map_err(sql_error)?;
+
+    let group_rows = sqlx::query(
+        r#"
+        SELECT
+            CAST(g.external_id AS INTEGER) AS external_id,
+            g.name,
+            g.description,
+            CAST(COALESCE(g.sort_weight, 0) AS INTEGER) AS sort_weight
+        FROM membership_package_group g
+        WHERE (g.tenant_id = '100001' OR g.tenant_id IS NULL)
+          AND (g.organization_id = '0' OR g.organization_id IS NULL)
+          AND g.status = 'active'
+        ORDER BY g.sort_weight ASC, g.external_id ASC
+        LIMIT ?1 OFFSET ?2
+        "#,
+    )
+    .bind(page_size)
+    .bind(offset)
+    .fetch_all(pool)
+    .await
+    .map_err(sql_error)?;
+
+    let mut groups = Vec::new();
+    for row in group_rows {
+        let group_external_id = integer_cell(&row, "external_id");
+        let packages = load_package_rows(
+            pool,
+            Some(group_external_id),
+            plan_id,
+            MembershipListQuery {
+                page: Some(1),
+                page_size: Some(200),
+                cursor: None,
             },
+            recommended_only,
         )
-        .collect::<Vec<_>>();
-    groups.sort_by_key(|group| (group.sort_weight, group.id));
-    Ok(groups)
+        .await?
+        .items;
+        if recommended_only && packages.is_empty() {
+            continue;
+        }
+        groups.push(build_package_group_from_packages(
+            group_external_id,
+            string_cell(&row, "name"),
+            optional_string_cell(&row, "description"),
+            integer_cell(&row, "sort_weight"),
+            packages,
+        ));
+    }
+    Ok(offset_page(groups, total, params))
+}
+
+async fn load_package_group_by_id(
+    pool: &SqlitePool,
+    package_group_id: i64,
+) -> AppMembershipResult<Option<AppMembershipPackageGroupItem>> {
+    let row = sqlx::query(
+        r#"
+        SELECT
+            CAST(g.external_id AS INTEGER) AS external_id,
+            g.name,
+            g.description,
+            CAST(COALESCE(g.sort_weight, 0) AS INTEGER) AS sort_weight
+        FROM membership_package_group g
+        WHERE g.external_id = ?1
+          AND (g.tenant_id = '100001' OR g.tenant_id IS NULL)
+          AND (g.organization_id = '0' OR g.organization_id IS NULL)
+          AND g.status = 'active'
+        LIMIT 1
+        "#,
+    )
+    .bind(package_group_id)
+    .fetch_optional(pool)
+    .await
+    .map_err(sql_error)?;
+    let Some(row) = row else {
+        return Ok(None);
+    };
+    let group_external_id = integer_cell(&row, "external_id");
+    let packages = load_package_rows(
+        pool,
+        Some(group_external_id),
+        None,
+        MembershipListQuery {
+            page: Some(1),
+            page_size: Some(200),
+            cursor: None,
+        },
+        false,
+    )
+    .await?
+    .items;
+    Ok(Some(build_package_group_from_packages(
+        group_external_id,
+        string_cell(&row, "name"),
+        optional_string_cell(&row, "description"),
+        integer_cell(&row, "sort_weight"),
+        packages,
+    )))
 }
 
 async fn load_points_balance(
@@ -1896,13 +2539,14 @@ async fn load_points_history(
     pool: &SqlitePool,
     subject: Option<AppMembershipSubject>,
     query: AppMembershipPointsHistoryQuery,
-) -> AppMembershipResult<Vec<AppMembershipPointsHistoryItem>> {
+) -> AppMembershipResult<SdkWorkPageData<AppMembershipPointsHistoryItem>> {
     let Some(subject) = subject else {
         return Err(CommerceServiceError::unauthenticated(
             "membership points history requires an authenticated subject",
         ));
     };
-    let limit = query.limit();
+    let page_size = query.limit() as usize;
+    let fetch_limit = page_size.saturating_add(1) as i64;
     let rows = if let Some(cursor) = query
         .cursor
         .as_deref()
@@ -1915,7 +2559,7 @@ async fn load_points_history(
             .bind(subject.user_id)
             .bind(POINTS_ASSET_TYPE)
             .bind(cursor)
-            .bind(limit)
+            .bind(fetch_limit)
             .fetch_all(pool)
             .await
     } else {
@@ -1925,13 +2569,22 @@ async fn load_points_history(
             .bind(subject.organization_id)
             .bind(subject.user_id)
             .bind(POINTS_ASSET_TYPE)
-            .bind(limit)
+            .bind(fetch_limit)
             .bind(offset)
             .fetch_all(pool)
             .await
     }
-    .or_else(empty_rows_when_read_model_is_missing)?;
-    Ok(rows.iter().map(map_points_history_item).collect())
+    .map_err(sql_error)?;
+    let has_more = rows.len() > page_size;
+    let items: Vec<_> = rows
+        .iter()
+        .take(page_size)
+        .map(map_points_history_item)
+        .collect();
+    let next_cursor = has_more
+        .then(|| items.last().map(|item| item.id.clone()))
+        .flatten();
+    Ok(cursor_page(items, page_size, next_cursor, has_more))
 }
 
 fn map_points_history_item(row: &sqlx::sqlite::SqliteRow) -> AppMembershipPointsHistoryItem {
@@ -1981,7 +2634,10 @@ async fn load_current_membership(
         return Ok(None);
     };
     let mut membership = map_membership(&row);
-    membership.benefits = benefits_for_plan(&load_plans(pool).await?, membership.rank);
+    membership.benefits = load_stored_plan_by_rank(pool, membership.rank)
+        .await?
+        .map(|plan| plan.benefits)
+        .unwrap_or_default();
     Ok(Some(membership))
 }
 
@@ -2007,6 +2663,10 @@ async fn submit_purchase(
     pool: &SqlitePool,
     command: SubmitMembershipPurchaseCommand,
 ) -> AppMembershipResult<AppMembershipPurchaseOutcome> {
+    if let Some(outcome) = load_purchase_outcome_by_idempotency(pool, &command).await? {
+        return Ok(outcome);
+    }
+
     let mut tx = pool
         .begin()
         .await
@@ -2059,17 +2719,125 @@ fn membership_payment_qr_code_payload(payment_id: &str, order_id: &str) -> Strin
     )
 }
 
+async fn load_purchase_outcome_by_idempotency(
+    pool: &SqlitePool,
+    command: &SubmitMembershipPurchaseCommand,
+) -> AppMembershipResult<Option<AppMembershipPurchaseOutcome>> {
+    let row = sqlx::query(
+        r#"
+        SELECT
+            o.order_no,
+            o.id AS order_uuid,
+            o.payment_status,
+            pi.id AS payment_uuid,
+            pi.provider_code,
+            pi.payment_method,
+            pi.amount,
+            pi.status AS payment_status_detail
+        FROM commerce_order o
+        LEFT JOIN commerce_payment_intent pi
+            ON pi.order_id = o.id
+           AND pi.tenant_id = o.tenant_id
+        WHERE o.tenant_id = CAST(?1 AS TEXT)
+          AND o.owner_user_id = CAST(?2 AS TEXT)
+          AND o.idempotency_key = ?3
+        ORDER BY o.created_at DESC
+        LIMIT 1
+        "#,
+    )
+    .bind(command.subject.tenant_id)
+    .bind(command.subject.user_id)
+    .bind(&command.idempotency_key)
+    .fetch_optional(pool)
+    .await
+    .map_err(|error| store_error("failed to load membership purchase idempotency record", error))?;
+
+    let Some(row) = row else {
+        return Ok(None);
+    };
+
+    let package = load_package_for_purchase_by_pool(pool, command.package_id).await?;
+    let plan = load_plan_for_package_by_pool(pool, &package).await?;
+    let order_no = string_cell(&row, "order_no");
+    let payment_uuid = optional_string_cell(&row, "payment_uuid")
+        .unwrap_or_else(|| command.payment_uuid.clone());
+    let provider_code = optional_string_cell(&row, "provider_code")
+        .unwrap_or_else(|| "membership".to_owned());
+    let payment_method = optional_string_cell(&row, "payment_method")
+        .map(|value| normalize_payment_method(&value))
+        .unwrap_or_else(|| MEMBERSHIP_PAYMENT_METHOD.to_owned());
+    let payment_status = string_cell(&row, "payment_status").to_ascii_lowercase();
+    let status = if payment_status == "paid" || payment_status == "completed" {
+        "completed".to_owned()
+    } else if payment_status == "failed" || payment_status == "cancelled" {
+        "failed".to_owned()
+    } else {
+        "pending".to_owned()
+    };
+
+    Ok(Some(AppMembershipPurchaseOutcome {
+        success: status != "failed",
+        request_no: order_no.clone(),
+        order_id: order_no.clone(),
+        provider_code,
+        payment_method: payment_method.clone(),
+        payment_product: payment_product_for_scan_qr(&payment_method)?.to_owned(),
+        next_action: "scan_qr".to_owned(),
+        payment_id: payment_uuid.clone(),
+        cashier_url: membership_payment_qr_code_payload(&payment_uuid, &order_no),
+        qr_code_payload: membership_payment_qr_code_payload(&payment_uuid, &order_no),
+        qr_code_image_url: None,
+        request_payment_payload: None,
+        package_id: package.item.id,
+        package_name: package.item.name,
+        amount: package.item.price,
+        duration_days: package.item.duration_days,
+        target_plan_rank: plan.rank,
+        target_plan_name: plan.item.name,
+        status,
+    }))
+}
+
+async fn load_package_for_purchase_by_pool(
+    pool: &SqlitePool,
+    package_id: i64,
+) -> AppMembershipResult<ParsedMembershipPackage> {
+    let row = sqlx::query(LOAD_MEMBERSHIP_PACKAGE_BY_ID)
+        .bind(package_id)
+        .fetch_optional(pool)
+        .await
+        .map_err(|error| store_error("failed to load membership packages", error))?;
+    row.as_ref()
+        .and_then(map_package)
+        .ok_or_else(|| CommerceServiceError::conflict("membership package is unavailable"))
+}
+
+async fn load_plan_for_package_by_pool(
+    pool: &SqlitePool,
+    package: &ParsedMembershipPackage,
+) -> AppMembershipResult<StoredMembershipPlan> {
+    let rows = sqlx::query(LOAD_MEMBERSHIP_PLAN_BY_RANK)
+        .bind(package.rank)
+        .fetch_all(pool)
+        .await
+        .map_err(|error| store_error("failed to load membership plans for purchase", error))?;
+    stored_plans_from_rows(&rows)
+        .into_iter()
+        .find(|plan| plan.plan_no == package.plan_no || plan.rank == package.rank)
+        .ok_or_else(|| CommerceServiceError::conflict("membership target plan is unavailable"))
+}
+
 async fn load_package_for_purchase(
     tx: &mut Transaction<'_, Sqlite>,
     package_id: i64,
 ) -> AppMembershipResult<ParsedMembershipPackage> {
-    let rows = sqlx::query(LOAD_MEMBERSHIP_PACKAGES)
-        .fetch_all(&mut **tx)
+    let row = sqlx::query(LOAD_MEMBERSHIP_PACKAGE_BY_ID)
+        .bind(package_id)
+        .fetch_optional(&mut **tx)
         .await
         .map_err(|error| store_error("failed to load membership packages", error))?;
-    rows.iter()
-        .filter_map(map_package)
-        .find(|package| package.item.id == package_id)
+    row.as_ref()
+        .and_then(map_package)
         .ok_or_else(|| CommerceServiceError::conflict("membership package is unavailable"))
 }
 
@@ -2108,7 +2876,8 @@ async fn load_plan_for_package(
     tx: &mut Transaction<'_, Sqlite>,
     package: &ParsedMembershipPackage,
 ) -> AppMembershipResult<StoredMembershipPlan> {
-    let rows = sqlx::query(LOAD_MEMBERSHIP_PLANS)
+    let rows = sqlx::query(LOAD_MEMBERSHIP_PLAN_BY_RANK)
+        .bind(package.rank)
         .fetch_all(&mut **tx)
         .await
         .map_err(|error| store_error("failed to load membership plans for purchase", error))?;
@@ -2161,7 +2930,7 @@ async fn insert_order(
     .bind(command.subject.user_id)
     .bind(&command.order_no)
     .bind(&command.order_no)
-    .bind(&command.out_trade_no)
+    .bind(&command.idempotency_key)
     .bind(&command.requested_at)
     .bind(&command.expire_at)
     .bind(&command.requested_at)
@@ -2848,11 +3617,7 @@ fn store_error(context: &str, error: sqlx::Error) -> CommerceServiceError {
 fn empty_rows_when_read_model_is_missing(
     error: sqlx::Error,
 ) -> Result<Vec<sqlx::sqlite::SqliteRow>, CommerceServiceError> {
-    if is_missing_sqlite_read_model(&error) {
-        Ok(Vec::new())
-    } else {
-        Err(sql_error(error))
-    }
+    Err(sql_error(error))
 }
 
 fn none_when_read_model_is_missing(

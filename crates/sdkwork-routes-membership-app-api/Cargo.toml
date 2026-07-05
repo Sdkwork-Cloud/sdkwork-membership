@@ -15,7 +15,7 @@ serde_json = { workspace = true }
 sdkwork_membership_service.workspace = true
 sdkwork_membership_repository_sqlx.workspace = true
 sdkwork_membership_service_host.workspace = true
-sdkwork_database_sqlx.workspace = true
+sdkwork-database-sqlx.workspace = true
 sdkwork-web-core.workspace = true
 sdkwork-web-axum.workspace = true
 sdkwork-web-bootstrap.workspace = true

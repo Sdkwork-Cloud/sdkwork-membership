@@ -1,20 +1,23 @@
-import { Fragment } from "react";
-import type { SdkworkMembershipBenefit } from "@sdkwork/membership-pc-membership";
+import { Fragment, useMemo } from "react";
+import type {
+  SdkworkMembershipBenefit,
+  SdkworkMembershipLevel,
+} from "@sdkwork/membership-pc-membership";
 import { useSdkworkSubscriptionIntl } from "../subscription-intl";
 
 export interface SdkworkSubscriptionCompareTableProps {
   benefits: SdkworkMembershipBenefit[];
+  levels?: SdkworkMembershipLevel[];
 }
+
+type TierKey = "free" | "basic" | "standard" | "premium";
 
 interface FeatureRow {
   category: string;
-  features: {
+  features: Array<{
     name: string;
-    free: string | boolean;
-    basic: string | boolean;
-    standard: string | boolean;
-    premium: string | boolean;
-  }[];
+    values: Record<TierKey, string | boolean>;
+  }>;
 }
 
 function CheckMark() {
@@ -51,48 +54,136 @@ function formatTemplate(template: string, values: Record<string, number | string
   );
 }
 
-export function SdkworkSubscriptionCompareTable({ benefits }: SdkworkSubscriptionCompareTableProps) {
-  const { copy } = useSdkworkSubscriptionIntl();
+function resolveTierLevel(tier: TierKey): number {
+  switch (tier) {
+    case "free":
+      return 0;
+    case "basic":
+      return 1;
+    case "standard":
+      return 2;
+    case "premium":
+      return 3;
+  }
+}
 
-  const featureRows: FeatureRow[] = [
-    {
-      category: copy.compareTable.categoryGeneration,
-      features: [
-        { name: copy.compareTable.dailyPoints, free: copy.compareTable.pointsDaily, basic: formatTemplate(copy.compareTable.pointsPerMonth, { count: 725 }), standard: formatTemplate(copy.compareTable.pointsPerMonth, { count: 2210 }), premium: formatTemplate(copy.compareTable.pointsPerMonth, { count: 6160 }) },
-        { name: copy.compareTable.seedanceVip, free: false, basic: true, standard: true, premium: true },
-        { name: copy.compareTable.seedancePro, free: false, basic: copy.compareTable.discount20Off, standard: copy.compareTable.discount20Off, premium: copy.compareTable.discount20Off },
-        { name: copy.compareTable.image2K, free: false, basic: true, standard: true, premium: true },
-        { name: copy.compareTable.image4K, free: false, basic: false, standard: true, premium: true },
-        { name: copy.compareTable.videoDuration, free: "5s", basic: "10s", standard: "15s", premium: "30s" },
-      ],
-    },
-    {
-      category: copy.compareTable.categorySpeed,
-      features: [
-        { name: copy.compareTable.standardSpeed, free: true, basic: true, standard: true, premium: false },
-        { name: copy.compareTable.fastLane, free: false, basic: false, standard: true, premium: false },
-        { name: copy.compareTable.vipLane, free: false, basic: false, standard: false, premium: true },
-        { name: copy.compareTable.noWatermark, free: false, basic: true, standard: true, premium: true },
-        { name: copy.compareTable.historyRetention, free: copy.compareTable.history7Days, basic: copy.compareTable.history30Days, standard: copy.compareTable.history90Days, premium: copy.compareTable.historyForever },
-      ],
-    },
-    {
-      category: copy.compareTable.categorySupport,
-      features: [
-        { name: copy.compareTable.refundGuarantee, free: false, basic: true, standard: true, premium: true },
-        { name: copy.compareTable.supportDedicated, free: false, basic: false, standard: false, premium: true },
-        { name: copy.compareTable.supportEarlyAccess, free: false, basic: false, standard: true, premium: true },
-        { name: copy.compareTable.apiAccess, free: false, basic: false, standard: true, premium: true },
-      ],
-    },
-  ];
+function resolveBenefitMinTier(benefit: SdkworkMembershipBenefit, index: number): number {
+  const benefitKey = benefit.benefitKey?.trim().toLowerCase();
+  if (benefitKey === "daily_points") {
+    return 0;
+  }
+  if (benefitKey === "standard_queue" || benefitKey === "no_watermark") {
+    return 1;
+  }
+  if (benefitKey === "fast_queue") {
+    return 2;
+  }
+  if (benefitKey === "vip_queue" || benefitKey === "vip_support") {
+    return 3;
+  }
+  return Math.min(index, 3);
+}
+
+function resolveCategoryLabel(
+  benefit: SdkworkMembershipBenefit,
+  copy: ReturnType<typeof useSdkworkSubscriptionIntl>["copy"],
+): string {
+  switch ((benefit.type ?? "").trim().toLowerCase()) {
+    case "points":
+      return copy.compareTable.categoryGeneration;
+    case "queue":
+      return copy.compareTable.categorySpeed;
+    case "service":
+      return copy.compareTable.categorySupport;
+    case "feature":
+      return copy.compareTable.categoryGeneration;
+    default:
+      return copy.planGrid.benefitsEyebrow;
+  }
+}
+
+function buildFeatureRows(
+  benefits: SdkworkMembershipBenefit[],
+  levels: SdkworkMembershipLevel[],
+  copy: ReturnType<typeof useSdkworkSubscriptionIntl>["copy"],
+): FeatureRow[] {
+  const sortedLevels = [...levels].sort((left, right) => left.levelValue - right.levelValue);
+  const tierKeys: TierKey[] = ["free", "basic", "standard", "premium"];
+  const grouped = new Map<string, FeatureRow["features"]>();
+
+  benefits.forEach((benefit, index) => {
+    const category = resolveCategoryLabel(benefit, copy);
+    const minTier = resolveBenefitMinTier(benefit, index);
+    const values = tierKeys.reduce<Record<TierKey, string | boolean>>((accumulator, tier) => {
+      const tierLevel = resolveTierLevel(tier);
+      if (benefit.benefitKey === "daily_points") {
+        if (tierLevel === 0) {
+          accumulator[tier] = copy.compareTable.pointsDaily;
+          return accumulator;
+        }
+        const level = sortedLevels.find((entry) => entry.levelValue === tierLevel);
+        if (level?.requiredPoints != null) {
+          accumulator[tier] = formatTemplate(copy.compareTable.pointsPerMonth, {
+            count: level.requiredPoints,
+          });
+          return accumulator;
+        }
+      }
+
+      if (tierLevel < minTier) {
+        accumulator[tier] = false;
+        return accumulator;
+      }
+
+      if (benefit.usageLimit != null) {
+        accumulator[tier] = String(benefit.usageLimit);
+        return accumulator;
+      }
+
+      if (benefit.description?.trim()) {
+        accumulator[tier] = benefit.description;
+        return accumulator;
+      }
+
+      accumulator[tier] = true;
+      return accumulator;
+    }, {
+      free: false,
+      basic: false,
+      standard: false,
+      premium: false,
+    });
+
+    const existing = grouped.get(category) ?? [];
+    existing.push({
+      name: benefit.name,
+      values,
+    });
+    grouped.set(category, existing);
+  });
+
+  return [...grouped.entries()].map(([category, features]) => ({
+    category,
+    features,
+  }));
+}
+
+export function SdkworkSubscriptionCompareTable({
+  benefits,
+  levels = [],
+}: SdkworkSubscriptionCompareTableProps) {
+  const { copy } = useSdkworkSubscriptionIntl();
+  const featureRows = useMemo(
+    () => buildFeatureRows(benefits, levels, copy),
+    [benefits, levels, copy],
+  );
 
   const planHeaders = [
-    { key: "free", name: copy.compareTable.freePlan, color: "text-gray-600" },
-    { key: "basic", name: copy.compareTable.planBasic, color: "text-blue-600" },
-    { key: "standard", name: copy.compareTable.planStandard, color: "text-purple-600" },
-    { key: "premium", name: copy.compareTable.planPremium, color: "text-amber-600" },
-  ] as const;
+    { key: "free" as const, name: copy.compareTable.freePlan, color: "text-gray-600" },
+    { key: "basic" as const, name: copy.compareTable.planBasic, color: "text-blue-600" },
+    { key: "standard" as const, name: copy.compareTable.planStandard, color: "text-purple-600" },
+    { key: "premium" as const, name: copy.compareTable.planPremium, color: "text-amber-600" },
+  ];
 
   return (
     <section className="overflow-hidden rounded-3xl border border-[var(--sdk-color-border-subtle)] bg-[var(--sdk-color-surface-panel)] shadow-lg">
@@ -105,98 +196,58 @@ export function SdkworkSubscriptionCompareTable({ benefits }: SdkworkSubscriptio
         </p>
       </div>
 
-      <div className="overflow-x-auto">
-        <table className="w-full min-w-[800px]">
-          <thead>
-            <tr className="border-b border-[var(--sdk-color-border-subtle)] bg-[var(--sdk-color-surface-panel-muted)]">
-              <th className="w-[22%] px-6 py-4 text-left text-sm font-semibold text-[var(--sdk-color-text-secondary)]">
-                {copy.compareTable.featureHeader}
-              </th>
-              {planHeaders.map((plan) => (
-                <th key={plan.key} className="w-[19.5%] px-4 py-4 text-center">
-                  <span className={`text-base font-bold ${plan.color}`}>{plan.name}</span>
+      {featureRows.length > 0 ? (
+        <div className="overflow-x-auto">
+          <table className="w-full min-w-[800px]">
+            <thead>
+              <tr className="border-b border-[var(--sdk-color-border-subtle)] bg-[var(--sdk-color-surface-panel-muted)]">
+                <th className="w-[22%] px-6 py-4 text-left text-sm font-semibold text-[var(--sdk-color-text-secondary)]">
+                  {copy.compareTable.featureHeader}
                 </th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {featureRows.map((row, rowIndex) => (
-              <Fragment key={`row-group-${rowIndex}`}>
-                <tr className="bg-[color-mix(in_srgb,var(--sdk-color-brand-primary)_4%,transparent)]">
-                  <td colSpan={5} className="px-6 py-3">
-                    <span className="text-sm font-bold text-[var(--sdk-color-brand-primary)]">
-                      {row.category}
-                    </span>
-                  </td>
-                </tr>
-                {row.features.map((feature, featureIndex) => (
-                  <tr
-                    key={`feature-${rowIndex}-${featureIndex}`}
-                    className="border-b border-[var(--sdk-color-border-subtle)] transition-colors hover:bg-[var(--sdk-color-surface-panel-muted)]"
-                  >
-                    <td className="px-6 py-4 text-sm text-[var(--sdk-color-text-primary)]">
-                      {feature.name}
-                    </td>
-                    <td className="px-4 py-4 text-center">
-                      <div className="flex justify-center">
-                        <FeatureCell value={feature.free} />
-                      </div>
-                    </td>
-                    <td className="px-4 py-4 text-center">
-                      <div className="flex justify-center">
-                        <FeatureCell value={feature.basic} />
-                      </div>
-                    </td>
-                    <td className="px-4 py-4 text-center">
-                      <div className="flex justify-center">
-                        <FeatureCell value={feature.standard} />
-                      </div>
-                    </td>
-                    <td className="px-4 py-4 text-center">
-                      <div className="flex justify-center">
-                        <FeatureCell value={feature.premium} />
-                      </div>
+                {planHeaders.map((plan) => (
+                  <th key={plan.key} className="w-[19.5%] px-4 py-4 text-center">
+                    <span className={`text-base font-bold ${plan.color}`}>{plan.name}</span>
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {featureRows.map((row, rowIndex) => (
+                <Fragment key={`row-group-${rowIndex}`}>
+                  <tr className="bg-[color-mix(in_srgb,var(--sdk-color-brand-primary)_4%,transparent)]">
+                    <td colSpan={5} className="px-6 py-3">
+                      <span className="text-sm font-bold text-[var(--sdk-color-brand-primary)]">
+                        {row.category}
+                      </span>
                     </td>
                   </tr>
-                ))}
-              </Fragment>
-            ))}
-          </tbody>
-        </table>
-      </div>
-
-      {benefits.length > 0 ? (
-        <div className="border-t border-[var(--sdk-color-border-subtle)] px-8 py-6">
-          <div className="text-[0.7rem] font-semibold uppercase tracking-[0.22em] text-[var(--sdk-color-text-muted)]">
-            {copy.planGrid.benefitsEyebrow}
-          </div>
-          <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-            {benefits.map((benefit) => (
-              <div
-                key={benefit.id}
-                className="rounded-2xl border border-[var(--sdk-color-border-subtle)] bg-[var(--sdk-color-surface-panel-muted)] p-4"
-              >
-                <div className="flex items-center justify-between">
-                  <span className="text-sm font-semibold text-[var(--sdk-color-text-primary)]">
-                    {benefit.name}
-                  </span>
-                  {benefit.claimed ? (
-                    <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-0.5 text-xs font-medium text-emerald-600">
-                      <CheckMark />
-                      {copy.common.current}
-                    </span>
-                  ) : null}
-                </div>
-                {benefit.usageLimit ? (
-                  <div className="mt-2 text-xs text-[var(--sdk-color-text-secondary)]">
-                    {benefit.usedCount ?? 0} / {benefit.usageLimit}
-                  </div>
-                ) : null}
-              </div>
-            ))}
-          </div>
+                  {row.features.map((feature, featureIndex) => (
+                    <tr
+                      key={`feature-${rowIndex}-${featureIndex}`}
+                      className="border-b border-[var(--sdk-color-border-subtle)] transition-colors hover:bg-[var(--sdk-color-surface-panel-muted)]"
+                    >
+                      <td className="px-6 py-4 text-sm text-[var(--sdk-color-text-primary)]">
+                        {feature.name}
+                      </td>
+                      {planHeaders.map((plan) => (
+                        <td key={`${feature.name}-${plan.key}`} className="px-4 py-4 text-center">
+                          <div className="flex justify-center">
+                            <FeatureCell value={feature.values[plan.key]} />
+                          </div>
+                        </td>
+                      ))}
+                    </tr>
+                  ))}
+                </Fragment>
+              ))}
+            </tbody>
+          </table>
         </div>
-      ) : null}
+      ) : (
+        <div className="px-8 py-10 text-center text-sm text-[var(--sdk-color-text-secondary)]">
+          {copy.compareTable.emptyDescription}
+        </div>
+      )}
     </section>
   );
 }

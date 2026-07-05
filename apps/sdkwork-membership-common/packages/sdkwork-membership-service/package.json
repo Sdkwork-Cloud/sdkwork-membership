@@ -3,10 +3,18 @@
   "private": true,
   "version": "0.1.0",
   "type": "module",
-  "exports": { ".": "./src/index.ts" },
+  "exports": {
+    ".": {
+      "types": "./src/index.ts",
+      "import": "./src/index.ts",
+      "default": "./src/index.ts"
+    }
+  },
   "dependencies": {
+    "@sdkwork/membership-app-sdk": "workspace:*",
     "@sdkwork/membership-sdk-ports": "workspace:*",
     "@sdkwork/membership-contracts": "workspace:*",
+    "@sdkwork/sdk-common": "workspace:*",
     "@sdkwork/utils": "workspace:*"
   }
 }

@@ -472,7 +472,9 @@ describe("sdkwork-membership-pc-subscription service", () => {
         memberships: {
           purchases: {
             create: vi.fn().mockResolvedValue({
-              code: 50000,
+              code: 50001,
+              detail: "购买会员失败。",
+              traceId: "membership-test-trace",
             }),
           },
         },

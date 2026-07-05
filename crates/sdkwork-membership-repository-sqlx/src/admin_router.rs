@@ -48,6 +48,9 @@ struct AdminMembershipState {
 #[serde(rename_all = "camelCase")]
 struct AdminMembershipStatusQuery {
     status: Option<String>,
+    page: Option<i64>,
+    page_size: Option<i64>,
+    cursor: Option<String>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -56,6 +59,9 @@ struct AdminMembershipPackagesQuery {
     package_group_id: Option<String>,
     plan_id: Option<String>,
     status: Option<String>,
+    page: Option<i64>,
+    page_size: Option<i64>,
+    cursor: Option<String>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -75,6 +81,9 @@ struct AdminMembershipEntitlementsQuery {
     plan_id: Option<String>,
     membership_id: Option<String>,
     status: Option<String>,
+    page: Option<i64>,
+    page_size: Option<i64>,
+    cursor: Option<String>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -225,6 +234,9 @@ async fn list_plans(
                 .list_admin_membership_plans(ListAdminMembershipPlansQuery {
                     subject,
                     status: params.status.and_then(normalize_optional_status),
+                    page: params.page,
+                    page_size: params.page_size,
+                    cursor: normalize_optional_text(params.cursor),
                 })
                 .await
                 .map_err(|e| {
@@ -361,6 +373,9 @@ async fn list_packages(
                     package_group_id: normalize_optional_text(params.package_group_id),
                     plan_id: normalize_optional_text(params.plan_id),
                     status: params.status.and_then(normalize_optional_status),
+                    page: params.page,
+                    page_size: params.page_size,
+                    cursor: normalize_optional_text(params.cursor),
                 })
                 .await
                 .map_err(|e| {
@@ -496,6 +511,9 @@ async fn list_package_groups(
                 .list_admin_membership_package_groups(ListAdminMembershipPackageGroupsQuery {
                     subject,
                     status: params.status.and_then(normalize_optional_status),
+                    page: params.page,
+                    page_size: params.page_size,
+                    cursor: normalize_optional_text(params.cursor),
                 })
                 .await
                 .map_err(|e| {
@@ -647,7 +665,6 @@ async fn list_memberships(
         &ctx,
         async {
             let subject = admin_membership_subject_from_context(&ctx)?;
-            let _ = (params.page, params.page_size, params.cursor);
             let items = state
                 .store
                 .list_admin_membership_members(ListAdminMembershipMembersQuery {
@@ -655,6 +672,9 @@ async fn list_memberships(
                     user_id: normalize_optional_text(params.user_id),
                     plan_id: normalize_optional_text(params.plan_id),
                     status: params.status.and_then(normalize_optional_membership_status),
+                    page: params.page,
+                    page_size: params.page_size,
+                    cursor: normalize_optional_text(params.cursor),
                 })
                 .await
                 .map_err(|e| {
@@ -724,6 +744,9 @@ async fn list_entitlements(
                     status: params
                         .status
                         .and_then(normalize_optional_entitlement_status),
+                    page: params.page,
+                    page_size: params.page_size,
+                    cursor: normalize_optional_text(params.cursor),
                 })
                 .await
                 .map_err(|e| {

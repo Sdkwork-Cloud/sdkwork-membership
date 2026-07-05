@@ -177,24 +177,6 @@ pub(crate) fn default_free_plan() -> AppMembershipPlanItem {
     }
 }
 
-pub(crate) fn benefits_for_plan(
-    plans: &[StoredMembershipPlan],
-    rank: i64,
-) -> Vec<AppMembershipBenefitItem> {
-    plans
-        .iter()
-        .find(|item| item.rank == rank)
-        .or_else(|| {
-            if matches!(rank, 0..=3) {
-                let code = plan_code_from_rank(rank);
-                return plans.iter().find(|item| item.plan_no == code);
-            }
-            None
-        })
-        .map(|item| item.benefits.clone())
-        .unwrap_or_default()
-}
-
 #[derive(Debug, Clone)]
 pub(crate) struct StoredMembershipPlan {
     pub id: i64,

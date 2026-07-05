@@ -152,35 +152,47 @@ sdkwork-membership/
 
 ## 10. API Surface
 
-- App API prefix: `/app/v3/api/membership`
-- Backend API prefix: `/backend/v3/api/membership`
+- App API prefix: `/app/v3/api/memberships`
+- Backend API prefix: `/backend/v3/api/memberships`
 - Table prefix: `commerce_` for capability-owned tables (commerce domain)
+- List/search responses: `SdkWorkApiResponse` with `data.items` + `data.pageInfo` per `PAGINATION_SPEC.md`
+- Default `page_size`: `20`; maximum `200`
 - Membership-owned extension tables: `commerce_membership_daily_reward`, `commerce_membership_privilege_usage`, `commerce_membership_change_log`
-- Public SDK consumption: generated commerce SDK families; do not hand-craft raw HTTP
+- Public SDK consumption: `@sdkwork/membership-app-sdk` composed facade via `@sdkwork/membership-service`; application code MUST NOT hand-craft raw HTTP or import generator transport package names.
 
 ## 11. Security, Privacy, And Observability
 
 - Authentication and tenant context are resolved through `sdkwork-web-framework` standard interceptor chain.
 - Both app-api and backend-api surfaces run the full `WebRequestContext` pipeline (request identity, surface classification, CORS, auth, authorization, tenant isolation, logging).
+- Admin catalog mutations are tenant-scoped: `CREATE` uses `command.subject.tenant_id`; `UPDATE`/`DELETE` filter by tenant in SQL `WHERE` clauses.
 - Write routes require idempotency and request-hash headers where applicable.
 - Ledger, payment, and account mutations fail closed on validation errors.
 - Daily reward claims enforce per-user-per-day uniqueness via database constraint and idempotency key.
 - Privilege usage tracking enforces per-period uniqueness to prevent double-counting.
-- Structured errors use `CommerceServiceError` contracts; internal SQL details are not leaked to clients.
+- Structured errors use `CommerceServiceError` contracts mapped to `application/problem+json`; internal SQL details are not leaked to clients.
 - Subject scope projection follows `SUBJECT_ID_SPEC.md` — `tenant_id` and `user_id` are positive integers, `organization_id` is non-negative with 0 meaning tenant-level scope.
-- Missing-table errors degrade gracefully: extension table queries return empty results or conflict errors instead of leaking SQL details.
+- Repository read-model failures propagate as dependency errors (`503`) rather than silent empty success payloads.
+- Production gateway uses DB-backed stores only; builtin catalog mock is exposed only through `app_membership_router_with_builtin_catalog()` for isolated tests.
 
 ## 12. Deployment And Runtime Topology
 
-- Local development: `cargo test --workspace` in this repository.
-- Independent deployment: `sdkwork-membership-standalone-gateway` binary `sdkwork-membership-standalone-gateway`.
+- Local development: `pnpm dev` (PC shell on port `5186`) and `pnpm start` / `cargo run -p sdkwork-membership-standalone-gateway` (API on port `18096`).
+- Independent deployment: `sdkwork-membership-standalone-gateway` binary with graceful shutdown on `SIGINT`/`SIGTERM`.
 - Platform composition: composition applications (sdkwork-mall, etc.) consume per-T1 SDKs via workspace paths.
 - Environment variables follow `ENVIRONMENT_SPEC.md` with `MEMBERSHIP` service code prefix.
+- PC shell bootstrap: `bootstrapSdkworkMembershipAppService({ baseUrl, authToken, accessToken })` via `@sdkwork/membership-service`.
 
 ## 13. Verification
 
 ```bash
 pnpm install
-pnpm verify
+pnpm sdk:generate
+pnpm test:vitest
+pnpm test:node
 cargo test --workspace
+node ../sdkwork-specs/tools/check-pagination.mjs --workspace .
+node ../sdkwork-specs/tools/check-api-response-envelope.mjs --workspace .
+node ../sdkwork-specs/tools/check-app-sdk-consumer-imports.mjs --workspace .
+node ../sdkwork-specs/tools/check-sdk-standard.mjs --workspace .
+node ../sdkwork-specs/tools/verify-repo.mjs --root .
 ```

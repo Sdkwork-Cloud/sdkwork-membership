@@ -2,7 +2,10 @@ use std::future::Future;
 use std::pin::Pin;
 
 use sdkwork_contract_service::CommerceServiceError;
+use sdkwork_utils_rust::SdkWorkPageData;
 use serde::{Deserialize, Serialize};
+
+pub use crate::pagination::MembershipListQuery as AppMembershipListQuery;
 
 pub type AppMembershipResult<T> = Result<T, CommerceServiceError>;
 
@@ -33,7 +36,7 @@ pub struct AppMembershipPointsHistoryQuery {
 
 impl AppMembershipPointsHistoryQuery {
     pub fn limit(&self) -> i64 {
-        self.page_size.unwrap_or(50).clamp(1, 200)
+        self.page_size.unwrap_or(20).clamp(1, 200)
     }
 
     pub fn offset(&self) -> i64 {
@@ -189,6 +192,7 @@ pub struct SubmitMembershipPurchaseCommand {
     pub membership_uuid: String,
     pub order_no: String,
     pub out_trade_no: String,
+    pub idempotency_key: String,
     pub requested_at: String,
     pub expire_at: String,
     pub action: String,
@@ -282,6 +286,9 @@ pub struct AdminMembershipEntitlementItem {
 pub struct ListAdminMembershipPlansQuery {
     pub subject: AdminMembershipSubject,
     pub status: Option<String>,
+    pub page: Option<i64>,
+    pub page_size: Option<i64>,
+    pub cursor: Option<String>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -290,12 +297,18 @@ pub struct ListAdminMembershipPackagesQuery {
     pub package_group_id: Option<String>,
     pub plan_id: Option<String>,
     pub status: Option<String>,
+    pub page: Option<i64>,
+    pub page_size: Option<i64>,
+    pub cursor: Option<String>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ListAdminMembershipPackageGroupsQuery {
     pub subject: AdminMembershipSubject,
     pub status: Option<String>,
+    pub page: Option<i64>,
+    pub page_size: Option<i64>,
+    pub cursor: Option<String>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -304,6 +317,9 @@ pub struct ListAdminMembershipMembersQuery {
     pub user_id: Option<String>,
     pub plan_id: Option<String>,
     pub status: Option<String>,
+    pub page: Option<i64>,
+    pub page_size: Option<i64>,
+    pub cursor: Option<String>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -312,6 +328,9 @@ pub struct ListAdminMembershipEntitlementsQuery {
     pub plan_id: Option<String>,
     pub membership_id: Option<String>,
     pub status: Option<String>,
+    pub page: Option<i64>,
+    pub page_size: Option<i64>,
+    pub cursor: Option<String>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -444,19 +463,24 @@ pub trait AppMembershipStore {
         subject: Option<AppMembershipSubject>,
     ) -> AppMembershipReadFuture<'a, AppMembershipStatusResponse>;
 
-    fn load_plans<'a>(&'a self) -> AppMembershipReadFuture<'a, Vec<AppMembershipPlanItem>>;
+    fn load_plans<'a>(
+        &'a self,
+        query: AppMembershipListQuery,
+    ) -> AppMembershipReadFuture<'a, SdkWorkPageData<AppMembershipPlanItem>>;
 
     fn load_benefits<'a>(
         &'a self,
         subject: Option<AppMembershipSubject>,
         plan_id: Option<i64>,
-    ) -> AppMembershipReadFuture<'a, Vec<AppMembershipBenefitItem>>;
+        query: AppMembershipListQuery,
+    ) -> AppMembershipReadFuture<'a, SdkWorkPageData<AppMembershipBenefitItem>>;
 
     fn load_packages<'a>(
         &'a self,
         package_group_id: Option<i64>,
         plan_id: Option<i64>,
-    ) -> AppMembershipReadFuture<'a, Vec<AppMembershipPackageItem>>;
+        query: AppMembershipListQuery,
+    ) -> AppMembershipReadFuture<'a, SdkWorkPageData<AppMembershipPackageItem>>;
 
     fn load_package<'a>(
         &'a self,
@@ -467,7 +491,8 @@ pub trait AppMembershipStore {
         &'a self,
         plan_id: Option<i64>,
         recommended_only: bool,
-    ) -> AppMembershipReadFuture<'a, Vec<AppMembershipPackageGroupItem>>;
+        query: AppMembershipListQuery,
+    ) -> AppMembershipReadFuture<'a, SdkWorkPageData<AppMembershipPackageGroupItem>>;
 
     fn load_package_group<'a>(
         &'a self,
@@ -483,7 +508,7 @@ pub trait AppMembershipStore {
         &'a self,
         subject: Option<AppMembershipSubject>,
         query: AppMembershipPointsHistoryQuery,
-    ) -> AppMembershipReadFuture<'a, Vec<AppMembershipPointsHistoryItem>>;
+    ) -> AppMembershipReadFuture<'a, SdkWorkPageData<AppMembershipPointsHistoryItem>>;
 
     fn load_daily_reward_status<'a>(
         &'a self,
@@ -517,7 +542,7 @@ pub trait AdminMembershipStore {
     fn list_admin_membership_plans<'a>(
         &'a self,
         query: ListAdminMembershipPlansQuery,
-    ) -> AdminMembershipFuture<'a, Vec<AdminMembershipPlanItem>>;
+    ) -> AdminMembershipFuture<'a, SdkWorkPageData<AdminMembershipPlanItem>>;
 
     fn create_admin_membership_plan<'a>(
         &'a self,
@@ -537,12 +562,12 @@ pub trait AdminMembershipStore {
     fn list_admin_membership_packages<'a>(
         &'a self,
         query: ListAdminMembershipPackagesQuery,
-    ) -> AdminMembershipFuture<'a, Vec<AdminMembershipPackageItem>>;
+    ) -> AdminMembershipFuture<'a, SdkWorkPageData<AdminMembershipPackageItem>>;
 
     fn list_admin_membership_package_groups<'a>(
         &'a self,
         query: ListAdminMembershipPackageGroupsQuery,
-    ) -> AdminMembershipFuture<'a, Vec<AdminMembershipPackageGroupItem>>;
+    ) -> AdminMembershipFuture<'a, SdkWorkPageData<AdminMembershipPackageGroupItem>>;
 
     fn create_admin_membership_package_group<'a>(
         &'a self,
@@ -577,7 +602,7 @@ pub trait AdminMembershipStore {
     fn list_admin_membership_members<'a>(
         &'a self,
         query: ListAdminMembershipMembersQuery,
-    ) -> AdminMembershipFuture<'a, Vec<AdminMembershipMemberItem>>;
+    ) -> AdminMembershipFuture<'a, SdkWorkPageData<AdminMembershipMemberItem>>;
 
     fn update_admin_membership_member_status<'a>(
         &'a self,
@@ -587,5 +612,5 @@ pub trait AdminMembershipStore {
     fn list_admin_membership_entitlements<'a>(
         &'a self,
         query: ListAdminMembershipEntitlementsQuery,
-    ) -> AdminMembershipFuture<'a, Vec<AdminMembershipEntitlementItem>>;
+    ) -> AdminMembershipFuture<'a, SdkWorkPageData<AdminMembershipEntitlementItem>>;
 }

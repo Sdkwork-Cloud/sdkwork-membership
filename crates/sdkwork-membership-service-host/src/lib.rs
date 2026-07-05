@@ -8,10 +8,8 @@ pub struct MembershipServiceHost {
 }
 
 impl MembershipServiceHost {
-    pub async fn new() -> Self {
-        Self::from_env()
-            .await
-            .expect("membership service host bootstrap failed")
+    pub async fn new() -> Result<Self, String> {
+        Self::from_env().await
     }
 
     pub async fn from_env() -> Result<Self, String> {

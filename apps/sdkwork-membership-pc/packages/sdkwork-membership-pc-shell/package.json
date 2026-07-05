@@ -3,13 +3,25 @@
   "private": true,
   "version": "0.1.0",
   "type": "module",
-  "exports": { ".": "./src/index.tsx" },
+  "exports": {
+    ".": {
+      "types": "./src/index.tsx",
+      "import": "./src/index.tsx",
+      "default": "./src/index.tsx"
+    }
+  },
   "dependencies": {
     "@sdkwork/membership-pc-core": "workspace:*",
-    "react": "catalog:"
+    "@sdkwork/membership-pc-membership": "workspace:*",
+    "@sdkwork/membership-pc-subscription": "workspace:*",
+    "@sdkwork/membership-service": "workspace:*",
+    "@sdkwork/ui-pc-react": "workspace:*",
+    "react": "catalog:",
+    "react-router-dom": "catalog:"
   },
   "peerDependencies": {
     "react": ">=18.2.0 <20.0.0",
-    "react-dom": ">=18.2.0 <20.0.0"
+    "react-dom": ">=18.2.0 <20.0.0",
+    "react-router-dom": ">=6.28.0 <8.0.0"
   }
 }

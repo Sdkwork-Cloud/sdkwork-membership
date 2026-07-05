@@ -15,6 +15,8 @@
       "@sdkwork/membership-contracts": ["apps/sdkwork-membership-common/packages/sdkwork-membership-contracts/src/index.ts"],
       "@sdkwork/membership-service": ["apps/sdkwork-membership-common/packages/sdkwork-membership-service/src/index.ts"],
       "@sdkwork/membership-sdk-ports": ["apps/sdkwork-membership-common/packages/sdkwork-membership-sdk-ports/src/index.ts"],
+      "@sdkwork/membership-app-sdk": ["sdks/sdkwork-membership-app-sdk/sdkwork-membership-app-sdk-typescript/src/index.ts"],
+      "@sdkwork/sdk-common": ["../sdkwork-sdk-commons/sdkwork-sdk-common-typescript/src/index.ts"],
       "@sdkwork/membership-pc-core": ["apps/sdkwork-membership-pc/packages/sdkwork-membership-pc-core/src/index.ts"],
       "@sdkwork/membership-pc-shell": ["apps/sdkwork-membership-pc/packages/sdkwork-membership-pc-shell/src/index.tsx"],
       "@sdkwork/membership-pc-membership": ["apps/sdkwork-membership-pc/packages/sdkwork-membership-pc-membership/src/index.ts"],
@@ -26,7 +28,10 @@
       "@sdkwork/payment-service": ["../sdkwork-payment/apps/sdkwork-payment-common/packages/sdkwork-payment-service/src/index.ts"],
       "@sdkwork/payment-contracts": ["../sdkwork-payment/apps/sdkwork-payment-common/packages/sdkwork-payment-contracts/src/index.ts"],
       "@sdkwork/payment-sdk-ports": ["../sdkwork-payment/apps/sdkwork-payment-common/packages/sdkwork-payment-sdk-ports/src/index.ts"],
-      "@sdkwork/payment-pc-payment": ["../sdkwork-payment/apps/sdkwork-payment-pc/packages/sdkwork-payment-pc-payment/src/index.ts"]
+      "@sdkwork/payment-pc-payment": ["../sdkwork-payment/apps/sdkwork-payment-pc/packages/sdkwork-payment-pc-payment/src/index.ts"],
+      "@sdkwork/payment-pc-core": ["../sdkwork-payment/apps/sdkwork-payment-pc/packages/sdkwork-payment-pc-core/src/index.ts"],
+      "@sdkwork/promotion-pc-core": ["../sdkwork-promotion/apps/sdkwork-promotion-pc/packages/sdkwork-promotion-pc-core/src/index.ts"],
+      "lucide-react": ["node_modules/lucide-react"]
     },
     "allowImportingTsExtensions": true,
     "jsx": "react-jsx",

@@ -170,6 +170,17 @@ function createEmptyDashboard() {
   };
 }
 
+function clickEnabledConfirmPaymentButton() {
+  const buttons = screen.getAllByRole("button", {
+    name: /confirm payment/i,
+  });
+  const enabled = buttons.find(
+    (button) => !(button as HTMLButtonElement).disabled,
+  );
+  expect(enabled).toBeTruthy();
+  fireEvent.click(enabled!);
+}
+
 describe("sdkwork-membership-pc-subscription page", () => {
   it("renders the reusable subscription center with staged plan selection and checkout", async () => {
     const controller = createSdkworkSubscriptionController({
@@ -202,7 +213,9 @@ describe("sdkwork-membership-pc-subscription page", () => {
       screen.getByText(/free membership/i),
     ).toBeInTheDocument();
     expect(screen.getByText(/ready to continue/i)).toBeInTheDocument();
-    expect(screen.getByText("Priority rendering")).toBeInTheDocument();
+    expect(
+      screen.getAllByText("Priority rendering").length,
+    ).toBeGreaterThan(0);
 
     fireEvent.click(
       screen.getAllByRole("button", {
@@ -212,16 +225,16 @@ describe("sdkwork-membership-pc-subscription page", () => {
 
     await waitFor(() => {
       expect(
-        screen.getByRole("button", {
+        screen.getAllByRole("button", {
           name: /back to plans/i,
-        }),
-      ).toBeInTheDocument();
+        }).length,
+      ).toBeGreaterThan(0);
     });
     expect(
-      screen.getByRole("button", {
+      screen.getAllByRole("button", {
         name: /confirm payment/i,
-      }),
-    ).toBeInTheDocument();
+      }).length,
+    ).toBeGreaterThan(0);
     expect(screen.getByText("Spring Launch 50")).toBeInTheDocument();
     expect(
       screen.getByRole("button", {
@@ -234,21 +247,19 @@ describe("sdkwork-membership-pc-subscription page", () => {
     const dashboard = createSubscriptionDashboard();
     const onCheckoutComplete = vi.fn();
     const onCheckoutError = vi.fn();
+    const upgradeSubscription = vi.fn().mockResolvedValue({
+      amountCny: 149,
+      orderId: "MEMBERSHIP-ORDER-200",
+      packageId: 2,
+      status: "completed",
+    });
     const controller = createSdkworkSubscriptionController({
       service: {
-        getDashboard: vi
-          .fn()
-          .mockResolvedValueOnce(dashboard)
-          .mockResolvedValueOnce(dashboard),
+        getDashboard: vi.fn().mockResolvedValue(dashboard),
         getEmptyDashboard: vi.fn().mockReturnValue(createEmptyDashboard()),
         purchaseSubscription: vi.fn(),
         renewSubscription: vi.fn(),
-        upgradeSubscription: vi.fn().mockResolvedValue({
-          amountCny: 149,
-          orderId: "MEMBERSHIP-ORDER-200",
-          packageId: 2,
-          status: "completed",
-        }),
+        upgradeSubscription,
       },
     });
 
@@ -274,15 +285,15 @@ describe("sdkwork-membership-pc-subscription page", () => {
       })[0]!,
     );
 
-    const confirmButton = await waitFor(() => {
-      const btn = screen.getByRole("button", {
-        name: /confirm payment/i,
-      });
-      expect(btn).toBeInTheDocument();
-      return btn;
+    await waitFor(() => {
+      expect(
+        screen.getAllByRole("button", {
+          name: /confirm payment/i,
+        }).length,
+      ).toBeGreaterThan(0);
     });
 
-    fireEvent.click(confirmButton);
+    clickEnabledConfirmPaymentButton();
 
     await waitFor(() => {
       expect(onCheckoutComplete).toHaveBeenCalledWith(
@@ -304,10 +315,7 @@ describe("sdkwork-membership-pc-subscription page", () => {
     const onCheckoutError = vi.fn();
     const controller = createSdkworkSubscriptionController({
       service: {
-        getDashboard: vi
-          .fn()
-          .mockResolvedValueOnce(dashboard)
-          .mockResolvedValueOnce(dashboard),
+        getDashboard: vi.fn().mockResolvedValue(dashboard),
         getEmptyDashboard: vi.fn().mockReturnValue(createEmptyDashboard()),
         purchaseSubscription: vi.fn(),
         renewSubscription: vi.fn(),
@@ -337,15 +345,15 @@ describe("sdkwork-membership-pc-subscription page", () => {
       })[0]!,
     );
 
-    const confirmButton = await waitFor(() => {
-      const btn = screen.getByRole("button", {
-        name: /confirm payment/i,
-      });
-      expect(btn).toBeInTheDocument();
-      return btn;
+    await waitFor(() => {
+      expect(
+        screen.getAllByRole("button", {
+          name: /confirm payment/i,
+        }).length,
+      ).toBeGreaterThan(0);
     });
 
-    fireEvent.click(confirmButton);
+    clickEnabledConfirmPaymentButton();
 
     await waitFor(() => {
       expect(onCheckoutError).toHaveBeenCalledWith(failure);

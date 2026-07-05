@@ -22,6 +22,7 @@ import type {
 
 export interface SdkworkMembershipMembershipHeroProps {
   isMutating: boolean;
+  levels?: SdkworkMembershipLevel[];
   onPurchase: () => void;
   onRenew: () => void;
   onUpgrade: () => void;
@@ -85,6 +86,7 @@ function resolveHeroProgress(
 
 export function SdkworkMembershipMembershipHero({
   isMutating,
+  levels,
   onPurchase,
   onRenew,
   onUpgrade,
@@ -110,7 +112,7 @@ export function SdkworkMembershipMembershipHero({
   const primaryHeroTextStyle = createSdkworkMembershipHeroTextStyle();
   const mutedHeroTextStyle = createSdkworkMembershipHeroTextStyle("muted");
   const subtleHeroTextStyle = createSdkworkMembershipHeroTextStyle("subtle");
-  const progress = resolveHeroProgress(summary, undefined);
+  const progress = resolveHeroProgress(summary, levels);
 
   return (
     <section

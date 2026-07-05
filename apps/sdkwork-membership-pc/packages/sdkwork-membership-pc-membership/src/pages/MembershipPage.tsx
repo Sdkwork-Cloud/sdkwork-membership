@@ -138,6 +138,7 @@ function SdkworkMembershipPageContent({
         <div className="mx-auto max-w-[80rem] space-y-5">
           <SdkworkMembershipMembershipHero
             isMutating={state.isMutating}
+            levels={state.dashboard.levels}
             onPurchase={() => {
               if (navigateToMembershipCheckout("purchase")) {
                 return;
@@ -336,9 +337,18 @@ function SdkworkMembershipPageContent({
 export function SdkworkMembershipPage({
   locale,
   messages,
+  onNavigate,
+  purchaseFlow,
   ...props
 }: SdkworkMembershipPageProps) {
-  const content = <SdkworkMembershipPageContent {...props} />;
+  const resolvedPurchaseFlow = purchaseFlow ?? (onNavigate ? "checkout" : "direct");
+  const content = (
+    <SdkworkMembershipPageContent
+      {...props}
+      onNavigate={onNavigate}
+      purchaseFlow={resolvedPurchaseFlow}
+    />
+  );
 
   if (locale || messages) {
     return (

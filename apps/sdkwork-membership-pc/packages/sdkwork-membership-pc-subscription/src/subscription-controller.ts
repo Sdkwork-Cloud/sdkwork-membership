@@ -26,6 +26,15 @@ import {
 
 type SdkworkSubscriptionCouponSelectionMode = "auto" | "manual" | "none";
 
+export interface SdkworkSubscriptionPendingPayment {
+  amountCny: number | null;
+  cashierUrl?: string;
+  orderId?: string;
+  packageId: number | null;
+  packageName?: string;
+  qrCode?: string;
+}
+
 export interface SdkworkSubscriptionControllerState {
   activeAction: SdkworkSubscriptionAction;
   activeStage: SdkworkSubscriptionStage;
@@ -36,6 +45,7 @@ export interface SdkworkSubscriptionControllerState {
   isLoading: boolean;
   isMutating: boolean;
   lastError?: string;
+  pendingPayment?: SdkworkSubscriptionPendingPayment | null;
   selectedCouponId: string | null;
   selectedPackageGroupId: number | null;
   selectedPackageId: number | null;
@@ -45,6 +55,7 @@ export interface SdkworkSubscriptionControllerState {
 export interface SdkworkSubscriptionController {
   bootstrap(): Promise<SdkworkSubscriptionControllerState>;
   clearCoupon(): void;
+  clearPendingPayment(): void;
   getState(): SdkworkSubscriptionControllerState;
   refresh(): Promise<SdkworkSubscriptionControllerState>;
   selectCoupon(couponId: string | null): void;
@@ -277,6 +288,7 @@ export function createSdkworkSubscriptionController(
     isBootstrapped: false,
     isLoading: false,
     isMutating: false,
+    pendingPayment: null,
     selectedCouponId: fallbackDashboard.checkout.selectedCouponId,
     selectedPackageGroupId: null,
     selectedPackageId: fallbackDashboard.checkout.selectedPackageId,
@@ -348,6 +360,12 @@ export function createSdkworkSubscriptionController(
       setState({
         couponSelectionMode: "none",
         selectedCouponId: null,
+      });
+    },
+
+    clearPendingPayment() {
+      setState({
+        pendingPayment: null,
       });
     },
 
@@ -439,10 +457,32 @@ export function createSdkworkSubscriptionController(
           : state.activeAction === "renew"
             ? await service.renewSubscription(input)
             : await service.upgradeSubscription(input);
+
+        if (
+          result.status === "pending"
+          && (result.cashierUrl || result.qrCode)
+        ) {
+          setState({
+            isMutating: false,
+            pendingPayment: {
+              amountCny: result.amountCny,
+              cashierUrl: result.cashierUrl,
+              orderId: result.orderId,
+              packageId: result.packageId,
+              packageName: result.packageName,
+              qrCode: result.qrCode,
+            },
+          });
+          return result;
+        }
+
         const dashboard = await service.getDashboard();
         applyDashboard(dashboard, {
           preserveAction: true,
           preserveSelections: true,
+        });
+        setState({
+          pendingPayment: null,
         });
         return result;
       } catch (error) {

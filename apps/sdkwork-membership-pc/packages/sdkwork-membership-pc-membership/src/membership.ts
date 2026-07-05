@@ -145,6 +145,31 @@ export function createMembershipWorkspaceManifest({
 
 export type SdkworkMembershipPurchaseMode = "purchase" | "renew" | "upgrade";
 
+export interface ResolveSdkworkMembershipPurchaseModeOptions {
+  plan?: {
+    durationDays?: number | null;
+    packageId?: number;
+  } | null;
+  summary: {
+    isMember: boolean;
+    remainingDays?: number | null;
+  };
+}
+
+export function resolveSdkworkMembershipPurchaseMode({
+  plan,
+  summary,
+}: ResolveSdkworkMembershipPurchaseModeOptions): SdkworkMembershipPurchaseMode {
+  if (!summary.isMember) {
+    return "purchase";
+  }
+
+  const remainingDays = summary.remainingDays ?? Number.POSITIVE_INFINITY;
+  const durationDays = plan?.durationDays ?? 0;
+
+  return remainingDays <= Math.max(30, Math.ceil(durationDays * 0.2)) ? "renew" : "upgrade";
+}
+
 export interface CreateMembershipCheckoutRouteIntentOptions {
   basePath?: string;
   focusWindow?: boolean;

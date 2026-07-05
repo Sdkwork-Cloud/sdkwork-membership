@@ -13,6 +13,30 @@ const proLevelIcon = {
   url: "https://cdn.sdkwork.ai/memberships/pro.png",
 } as const;
 
+function wrapSdkworkMembershipListResponse<T>(items: T[]) {
+  return {
+    code: 0,
+    data: {
+      items,
+      pageInfo: {
+        hasMore: false,
+        mode: "offset" as const,
+        page: 1,
+        pageSize: 20,
+      },
+    },
+    traceId: "membership-test-trace",
+  };
+}
+
+function wrapSdkworkMembershipResourceResponse<T>(data: T) {
+  return {
+    code: 0,
+    data,
+    traceId: "membership-test-trace",
+  };
+}
+
 describe("sdkwork-membership-pc-membership service", () => {
   beforeEach(() => {
     configureMembershipServiceMockSession({ authToken: "membership-auth-token" });
@@ -26,9 +50,8 @@ describe("sdkwork-membership-pc-membership service", () => {
     const membershipAppService = createMembershipAppServiceMock({
       memberships: {
         current: {
-          retrieve: vi.fn().mockResolvedValue({
-            code: "2000",
-            data: {
+          retrieve: vi.fn().mockResolvedValue(
+            wrapSdkworkMembershipResourceResponse({
               expireTime: "2026-06-30T00:00:00.000Z",
               growthValue: 180,
               remainingDays: 88,
@@ -38,23 +61,21 @@ describe("sdkwork-membership-pc-membership service", () => {
               planName: "Pro",
               points: 3200,
               membershipStatus: "ACTIVE",
-            },
-          }),
+            }),
+          ),
           status: {
-            retrieve: vi.fn().mockResolvedValue({
-              code: "2000",
-              data: {
+            retrieve: vi.fn().mockResolvedValue(
+              wrapSdkworkMembershipResourceResponse({
                 isMember: true,
                 pointBalance: 2400,
                 planRank: 3,
-              },
-            }),
+              }),
+            ),
           },
         },
         benefits: {
-          list: vi.fn().mockResolvedValue({
-            code: "2000",
-            data: [
+          list: vi.fn().mockResolvedValue(
+            wrapSdkworkMembershipListResponse([
               {
                 benefitKey: "priority-rendering",
                 claimed: true,
@@ -75,13 +96,12 @@ describe("sdkwork-membership-pc-membership service", () => {
                 usageLimit: 1,
                 usedCount: 0,
               },
-            ],
-          }),
+            ]),
+          ),
         },
         plans: {
-          list: vi.fn().mockResolvedValue({
-            code: "2000",
-            data: [
+          list: vi.fn().mockResolvedValue(
+            wrapSdkworkMembershipListResponse([
               {
                 description: "Entry tier",
                 id: 1,
@@ -104,13 +124,12 @@ describe("sdkwork-membership-pc-membership service", () => {
                 name: "Plus",
                 requiredPoints: 200,
               },
-            ],
-          }),
+            ]),
+          ),
         },
         packages: {
-          list: vi.fn().mockResolvedValue({
-            code: "2000",
-            data: [
+          list: vi.fn().mockResolvedValue(
+            wrapSdkworkMembershipListResponse([
               {
                 description: "Best for teams",
                 id: 2,
@@ -137,8 +156,8 @@ describe("sdkwork-membership-pc-membership service", () => {
                 tags: ["Annual"],
                 durationDays: 365,
               },
-            ],
-          }),
+            ]),
+          ),
         },
       },
     });
@@ -183,9 +202,8 @@ describe("sdkwork-membership-pc-membership service", () => {
 
   it("returns a guest-safe membership dashboard with public package plans when the wallet overview is anonymous", async () => {
     resetMembershipServiceMockSession();
-    const packagesList = vi.fn().mockResolvedValue({
-      code: "2000",
-      data: [
+    const packagesList = vi.fn().mockResolvedValue(
+      wrapSdkworkMembershipListResponse([
         {
           description: "Starter public plan",
           id: 1,
@@ -198,8 +216,8 @@ describe("sdkwork-membership-pc-membership service", () => {
           tags: ["Starter"],
           durationDays: 30,
         },
-      ],
-    });
+      ]),
+    );
     const service = createSdkworkMembershipService({
       membershipAppService: createMembershipAppServiceMock({
         memberships: {
@@ -227,9 +245,8 @@ describe("sdkwork-membership-pc-membership service", () => {
   });
 
   it("purchases, renews, and upgrades membership through the generated SDK boundary", async () => {
-    const purchase = vi.fn().mockResolvedValue({
-      code: "2000",
-      data: {
+    const purchase = vi.fn().mockResolvedValue(
+      wrapSdkworkMembershipResourceResponse({
         amount: 199,
         durationDays: 30,
         orderId: "MEMBERSHIP-PURCHASE-2",
@@ -237,11 +254,10 @@ describe("sdkwork-membership-pc-membership service", () => {
         packageName: "Pro Monthly",
         status: "SUCCESS",
         targetLevelName: "Pro",
-      },
-    });
-    const renew = vi.fn().mockResolvedValue({
-      code: "2000",
-      data: {
+      }),
+    );
+    const renew = vi.fn().mockResolvedValue(
+      wrapSdkworkMembershipResourceResponse({
         amount: 399,
         durationDays: 365,
         orderId: "MEMBERSHIP-RENEW-2",
@@ -249,11 +265,10 @@ describe("sdkwork-membership-pc-membership service", () => {
         packageName: "Pro Annual",
         status: "SUCCESS",
         targetLevelName: "Pro",
-      },
-    });
-    const upgrade = vi.fn().mockResolvedValue({
-      code: "2000",
-      data: {
+      }),
+    );
+    const upgrade = vi.fn().mockResolvedValue(
+      wrapSdkworkMembershipResourceResponse({
         amount: 199,
         durationDays: 30,
         orderId: "MEMBERSHIP-UPGRADE-2",
@@ -261,8 +276,8 @@ describe("sdkwork-membership-pc-membership service", () => {
         packageName: "Pro Monthly",
         status: "SUCCESS",
         targetLevelName: "Pro",
-      },
-    });
+      }),
+    );
     const membershipAppService = createMembershipAppServiceMock({
       memberships: {
         purchases: {
@@ -352,7 +367,9 @@ describe("sdkwork-membership-pc-membership service", () => {
         memberships: {
           purchases: {
             create: vi.fn().mockResolvedValue({
-              code: 50000,
+              code: 50001,
+              detail: "Membership purchase failed.",
+              traceId: "membership-test-trace",
             }),
           },
         },

@@ -22,6 +22,7 @@ import { SdkworkSubscriptionCheckoutPanel } from "../components/subscription-che
 import { SdkworkSubscriptionHero } from "../components/subscription-hero";
 import { SdkworkSubscriptionPlanGrid } from "../components/subscription-plan-grid";
 import { SdkworkSubscriptionCompareTable } from "../components/subscription-compare-table";
+import { SdkworkSubscriptionPendingPaymentPanel } from "../components/subscription-pending-payment-panel";
 import { SdkworkSubscriptionStageShell } from "../components/subscription-stage-shell";
 
 export interface SdkworkSubscriptionPageProps {
@@ -92,22 +93,33 @@ function SdkworkSubscriptionPageContent({
   );
 
   const paymentContent = (
-    <SdkworkSubscriptionCheckoutPanel
-      activeAction={state.activeAction}
-      checkout={state.checkout}
-      coupons={state.dashboard.coupons}
-      isAuthenticated={state.dashboard.summary.isAuthenticated}
-      isMutating={state.isMutating}
-      lastError={state.isMutating ? undefined : state.lastError}
-      onBackToPlans={() => controller.setStage("plans")}
-      onClearCoupon={() => controller.clearCoupon()}
-      onSelectCoupon={(couponId) => controller.selectCoupon(couponId)}
-      onSelectPaymentMethod={(paymentMethodId) => controller.selectPaymentMethod(paymentMethodId)}
-      onSubmit={handleSubmit}
-      paymentMethods={state.dashboard.paymentMethods}
-      selectedCouponId={state.selectedCouponId}
-      selectedPlan={selectedPlan}
-    />
+    <>
+      <SdkworkSubscriptionCheckoutPanel
+        activeAction={state.activeAction}
+        checkout={state.checkout}
+        coupons={state.dashboard.coupons}
+        isAuthenticated={state.dashboard.summary.isAuthenticated}
+        isMutating={state.isMutating}
+        lastError={state.isMutating ? undefined : state.lastError}
+        onBackToPlans={() => controller.setStage("plans")}
+        onClearCoupon={() => controller.clearCoupon()}
+        onSelectCoupon={(couponId) => controller.selectCoupon(couponId)}
+        onSelectPaymentMethod={(paymentMethodId) => controller.selectPaymentMethod(paymentMethodId)}
+        onSubmit={handleSubmit}
+        paymentMethods={state.dashboard.paymentMethods}
+        selectedCouponId={state.selectedCouponId}
+        selectedPlan={selectedPlan}
+      />
+      {state.pendingPayment ? (
+        <SdkworkSubscriptionPendingPaymentPanel
+          onDismiss={() => controller.clearPendingPayment()}
+          onRefresh={() => {
+            void controller.refresh();
+          }}
+          pendingPayment={state.pendingPayment}
+        />
+      ) : null}
+    </>
   );
 
   return (
@@ -152,7 +164,10 @@ function SdkworkSubscriptionPageContent({
             />
           ) : null}
 
-          <SdkworkSubscriptionCompareTable benefits={state.dashboard.benefits} />
+          <SdkworkSubscriptionCompareTable
+            benefits={state.dashboard.benefits}
+            levels={state.dashboard.levels}
+          />
 
           <div className="pb-12 text-center">
             <p className="text-sm text-[var(--sdk-color-text-muted)]">

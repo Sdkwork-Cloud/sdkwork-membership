@@ -165,7 +165,7 @@ describe("sdkwork-membership-pc-subscription intl", () => {
       }),
     ).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "继续前往结算" })).toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: "会员等级" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "套餐权益对比" })).toBeInTheDocument();
   });
 
   it("lets standalone subscription components consume Chinese copy through the intl provider", () => {
