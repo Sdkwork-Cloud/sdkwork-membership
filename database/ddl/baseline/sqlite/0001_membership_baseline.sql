@@ -446,6 +446,33 @@ CREATE TABLE IF NOT EXISTS commerce_order_amount_breakdown (
 CREATE INDEX IF NOT EXISTS idx_commerce_order_amount_breakdown_order
     ON commerce_order_amount_breakdown (tenant_id, order_id, allocation_type);
 
+CREATE TABLE IF NOT EXISTS commerce_payment_method (
+    id              TEXT NOT NULL,
+    tenant_id       TEXT NOT NULL,
+    organization_id TEXT,
+    method_key      TEXT NOT NULL,
+    display_name    TEXT NOT NULL,
+    provider_code   TEXT NOT NULL,
+    status          TEXT NOT NULL DEFAULT 'active',
+    sort_order      INTEGER NOT NULL DEFAULT 0,
+    scope           TEXT NOT NULL DEFAULT 'tenant',
+    currency_code   TEXT NOT NULL DEFAULT 'CNY',
+    country_code    TEXT,
+    metadata        TEXT NOT NULL DEFAULT '{}',
+    request_no      TEXT,
+    idempotency_key TEXT NOT NULL,
+    version         INTEGER NOT NULL DEFAULT 0,
+    created_at      TEXT NOT NULL,
+    updated_at      TEXT NOT NULL,
+    deleted_at      TEXT,
+    CONSTRAINT pk_commerce_payment_method PRIMARY KEY (id)
+);
+
+CREATE UNIQUE INDEX IF NOT EXISTS ux_commerce_payment_method_tenant_org_key
+    ON commerce_payment_method (tenant_id, organization_id, method_key);
+CREATE INDEX IF NOT EXISTS idx_commerce_payment_method_lookup
+    ON commerce_payment_method (tenant_id, method_key, status);
+
 CREATE TABLE IF NOT EXISTS commerce_payment_intent (
     id                TEXT NOT NULL,
     tenant_id         TEXT NOT NULL,

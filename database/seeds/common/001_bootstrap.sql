@@ -8,6 +8,16 @@ INSERT OR IGNORE INTO commerce_product_spu (
   'seed-product-membership', '100001', '0', 'membership-catalog', 'Membership Catalog', 'Membership Catalog', 'active', datetime('now'), datetime('now')
 );
 
+INSERT OR IGNORE INTO commerce_payment_method (
+  id, tenant_id, organization_id, method_key, display_name, provider_code,
+  status, sort_order, scope, currency_code, metadata, request_no,
+  idempotency_key, version, created_at, updated_at
+) VALUES (
+  'seed-payment-method-wechat-pay', '100001', '0', 'wechat_pay', 'WeChat Pay', 'wechat_pay',
+  'active', 1, 'tenant', 'CNY', '{}', 'seed-payment-method-wechat-pay',
+  'seed-payment-method-wechat-pay', 0, datetime('now'), datetime('now')
+);
+
 INSERT OR IGNORE INTO membership_plan (
   id, tenant_id, organization_id, plan_no, plan_code, name, rank, description, status, created_at, updated_at
 ) VALUES
