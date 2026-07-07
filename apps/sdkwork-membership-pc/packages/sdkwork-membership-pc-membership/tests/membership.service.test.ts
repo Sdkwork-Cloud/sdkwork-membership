@@ -286,24 +286,26 @@ describe("sdkwork-membership-pc-membership service", () => {
       { orderId: "order-uuid-renew", orderNo: "MEMBERSHIP-ORDER-003" },
     ];
     let orderCreateCallIndex = 0;
+    const orderCreate = vi.fn().mockImplementation(async () =>
+      wrapSdkworkMembershipResourceResponse(
+        orderCreateResponses[orderCreateCallIndex++] ?? orderCreateResponses[0],
+      ),
+    );
+    const orderPay = vi.fn().mockResolvedValue(
+      wrapSdkworkMembershipResourceResponse({
+        paymentParams: {
+          cashierUrl: "https://im.sdkwork.com/cashier?scene=virtual&orderId=MEMBERSHIP-ORDER-001",
+        },
+      }),
+    );
     configureOrderServiceMock(createOrderAppServiceMock({
       memberships: {
         orders: {
-          create: vi.fn().mockImplementation(async () =>
-            wrapSdkworkMembershipResourceResponse(
-              orderCreateResponses[orderCreateCallIndex++] ?? orderCreateResponses[0],
-            ),
-          ),
+          create: orderCreate,
         },
       },
       orders: {
-        pay: vi.fn().mockResolvedValue(
-          wrapSdkworkMembershipResourceResponse({
-            paymentParams: {
-              cashierUrl: "https://im.sdkwork.com/cashier?scene=virtual&orderId=MEMBERSHIP-ORDER-001",
-            },
-          }),
-        ),
+        pay: orderPay,
       },
     }));
     const membershipAppService = createMembershipAppServiceMock({
@@ -376,6 +378,28 @@ describe("sdkwork-membership-pc-membership service", () => {
       paymentMethod: "alipay",
       requestNo: "MEMBERSHIP-ORDER-003",
     });
+    expect(orderCreate).toHaveBeenNthCalledWith(
+      1,
+      {
+        packageId: "2",
+        paymentMethod: "wechat_pay",
+      },
+      {
+        idempotencyKey: "membership-checkout:2:purchase",
+        sdkworkRequestHash: "memberships.orders.create---packageId---2---paymentMethod---wechat_pay--",
+        xIdempotencyFingerprint: "memberships.orders.create---packageId---2---paymentMethod---wechat_pay--",
+      },
+    );
+    expect(orderPay).toHaveBeenNthCalledWith(
+      1,
+      "order-uuid-purchase",
+      { paymentMethod: "wechat_pay" },
+      {
+        idempotencyKey: "membership-pay:order-uuid-purchase",
+        sdkworkRequestHash: "orders.pay---paymentMethod---wechat_pay--",
+        xIdempotencyFingerprint: "orders.pay---paymentMethod---wechat_pay--",
+      },
+    );
   });
 
   it("preserves SDK qrCodePayload when the order pay response has no cashier URL", async () => {

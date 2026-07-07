@@ -17,6 +17,7 @@ CREATE TABLE IF NOT EXISTS commerce_product_spu (
     spu_no          TEXT    NOT NULL,
     name            TEXT,
     title           TEXT,
+    sales_status    TEXT    NOT NULL DEFAULT 'active',
     status          TEXT    NOT NULL DEFAULT 'active',
     created_at      TEXT    NOT NULL,
     updated_at      TEXT    NOT NULL,
@@ -39,6 +40,7 @@ CREATE TABLE IF NOT EXISTS commerce_product_sku (
     currency_code         TEXT,
     fulfillment_type      TEXT,
     inventory_tracking    TEXT,
+    sales_status          TEXT    NOT NULL DEFAULT 'active',
     status                TEXT    NOT NULL DEFAULT 'active',
     spec_json             TEXT    NOT NULL DEFAULT '{}',
     created_at            TEXT    NOT NULL,
@@ -431,9 +433,12 @@ CREATE TABLE IF NOT EXISTS commerce_order_amount_breakdown (
     tenant_id       TEXT NOT NULL,
     organization_id TEXT,
     order_id        TEXT NOT NULL,
+    order_item_id   TEXT,
     allocation_type TEXT NOT NULL DEFAULT 'order_total',
+    original_amount TEXT,
     payable_amount  TEXT NOT NULL DEFAULT '0',
     discount_amount TEXT NOT NULL DEFAULT '0',
+    currency_code   TEXT,
     created_at      TEXT NOT NULL,
     CONSTRAINT pk_commerce_order_amount_breakdown PRIMARY KEY (id)
 );
@@ -445,21 +450,55 @@ CREATE TABLE IF NOT EXISTS commerce_payment_intent (
     id                TEXT NOT NULL,
     tenant_id         TEXT NOT NULL,
     organization_id   TEXT,
-    owner_user_id     TEXT,
-    order_id          TEXT,
-    payment_intent_no TEXT,
-    payment_method    TEXT,
-    provider_code     TEXT,
-    status            TEXT NOT NULL DEFAULT 'created',
-    amount            TEXT,
-    currency_code     TEXT,
+    owner_user_id     TEXT NOT NULL,
+    order_id          TEXT NOT NULL,
+    payment_intent_no TEXT NOT NULL,
+    payment_method    TEXT NOT NULL,
+    provider_code     TEXT NOT NULL,
+    amount            TEXT NOT NULL DEFAULT '0',
+    currency_code     TEXT NOT NULL DEFAULT 'CNY',
+    status            TEXT NOT NULL DEFAULT 'pending',
+    request_no        TEXT,
+    idempotency_key   TEXT NOT NULL,
+    version           INTEGER NOT NULL DEFAULT 0,
     created_at        TEXT NOT NULL,
     updated_at        TEXT NOT NULL,
+    deleted_at        TEXT,
     CONSTRAINT pk_commerce_payment_intent PRIMARY KEY (id)
 );
 
 CREATE INDEX IF NOT EXISTS idx_commerce_payment_intent_order
     ON commerce_payment_intent (tenant_id, order_id, status);
+
+CREATE TABLE IF NOT EXISTS commerce_payment_attempt (
+    id                      TEXT NOT NULL,
+    tenant_id               TEXT NOT NULL,
+    organization_id         TEXT,
+    owner_user_id           TEXT NOT NULL,
+    payment_intent_id       TEXT NOT NULL,
+    order_id                TEXT NOT NULL,
+    attempt_no              TEXT,
+    payment_method          TEXT NOT NULL,
+    provider_code           TEXT NOT NULL,
+    channel_id              TEXT,
+    out_trade_no            TEXT,
+    amount                  TEXT NOT NULL DEFAULT '0',
+    currency_code           TEXT NOT NULL DEFAULT 'CNY',
+    status                  TEXT NOT NULL DEFAULT 'pending',
+    provider_transaction_id TEXT,
+    callback_payload        TEXT NOT NULL DEFAULT '{}',
+    paid_at                 TEXT,
+    request_no              TEXT,
+    idempotency_key         TEXT NOT NULL,
+    version                 INTEGER NOT NULL DEFAULT 0,
+    created_at              TEXT NOT NULL,
+    updated_at              TEXT NOT NULL,
+    deleted_at              TEXT,
+    CONSTRAINT pk_commerce_payment_attempt PRIMARY KEY (id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_commerce_payment_attempt_owner_order
+    ON commerce_payment_attempt (tenant_id, owner_user_id, order_id, status, created_at, id);
 
 -- 1. Daily reward tracking table
 CREATE TABLE IF NOT EXISTS commerce_membership_daily_reward (

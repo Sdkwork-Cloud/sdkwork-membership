@@ -10,6 +10,12 @@ export type { OrderAppTransportClient };
 
 let orderAppServiceProvider: (() => OrderAppTransportClient) | null = null;
 
+export interface SdkworkOrderWriteCommandHeaders {
+  idempotencyKey: string;
+  sdkworkRequestHash: string;
+  xIdempotencyFingerprint: string;
+}
+
 export interface BootstrapSdkworkOrderAppServiceInput {
   baseUrl: string;
   authToken?: string;
@@ -56,4 +62,56 @@ export function bootstrapSdkworkOrderAppService(
   const client = createOrderAppTransportClient(input);
   configureSdkworkOrderAppServiceProvider(() => client);
   return client;
+}
+
+export function createSdkworkOrderWriteCommandHeaders(
+  scope: string,
+  payload: unknown,
+  idempotencyKey: string,
+): SdkworkOrderWriteCommandHeaders {
+  const requestHash = stableJsonRequestHash(scope, payload);
+  return {
+    idempotencyKey,
+    sdkworkRequestHash: requestHash,
+    xIdempotencyFingerprint: requestHash,
+  };
+}
+
+function stableJsonRequestHash(scope: string, payload: unknown): string {
+  return [scope, canonicalJsonString(payload)].map(normalizeRequestHashPart).join("-");
+}
+
+function normalizeRequestHashPart(part: string): string {
+  return part
+    .split("")
+    .map((character) =>
+      /^[a-zA-Z0-9]$/.test(character) || character === "-" || character === "_" || character === "."
+        ? character
+        : "-",
+    )
+    .join("");
+}
+
+function canonicalJsonString(value: unknown): string {
+  if (value === null || value === undefined) {
+    return "null";
+  }
+  if (typeof value === "boolean" || typeof value === "number") {
+    return String(value);
+  }
+  if (typeof value === "string") {
+    return JSON.stringify(value);
+  }
+  if (Array.isArray(value)) {
+    return `[${value.map((entry) => canonicalJsonString(entry)).join(",")}]`;
+  }
+  if (typeof value === "object") {
+    const record = value as Record<string, unknown>;
+    const items = Object.keys(record)
+      .sort()
+      .filter((key) => record[key] !== null && record[key] !== undefined)
+      .map((key) => `${JSON.stringify(key)}:${canonicalJsonString(record[key])}`);
+    return `{${items.join(",")}}`;
+  }
+  return JSON.stringify(value);
 }

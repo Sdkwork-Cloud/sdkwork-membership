@@ -1,5 +1,6 @@
 import {
   createSdkworkMembershipListQuery,
+  createSdkworkOrderWriteCommandHeaders,
   getSdkworkMembershipService,
   getSdkworkOrderAppService,
   hasSdkworkMembershipSession,
@@ -330,16 +331,14 @@ async function runPurchaseMutation(
   const packageId = String(input.packageId);
 
   const idempotencyKey = `membership-checkout:${packageId}:${action}`;
+  const orderBody = {
+    packageId,
+    paymentMethod,
+  };
   const orderPayload = unwrapSdkworkMembershipResponse<Record<string, unknown>>(
     await orderAppService.memberships.orders.create(
-      {
-        packageId,
-        paymentMethod,
-      },
-      {
-        idempotencyKey,
-        sdkworkRequestHash: idempotencyKey,
-      },
+      orderBody,
+      createSdkworkOrderWriteCommandHeaders("memberships.orders.create", orderBody, idempotencyKey),
     ),
     copy.purchaseFailed,
   );
@@ -375,10 +374,11 @@ async function runPurchaseMutation(
     await orderAppService.orders.pay(
       orderId,
       { paymentMethod },
-      {
-        idempotencyKey: `membership-pay:${orderId}`,
-        sdkworkRequestHash: `membership-pay:${orderId}`,
-      },
+      createSdkworkOrderWriteCommandHeaders(
+        "orders.pay",
+        { paymentMethod },
+        `membership-pay:${orderId}`,
+      ),
     ),
     copy.purchaseFailed,
   );

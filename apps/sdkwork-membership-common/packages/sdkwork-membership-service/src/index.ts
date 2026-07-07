@@ -34,9 +34,11 @@ export {
   bootstrapSdkworkOrderAppService,
   configureSdkworkOrderAppServiceProvider,
   createOrderAppTransportClient,
+  createSdkworkOrderWriteCommandHeaders,
   getSdkworkOrderAppService,
   type BootstrapSdkworkOrderAppServiceInput,
   type OrderAppTransportClient,
+  type SdkworkOrderWriteCommandHeaders,
 } from "./order-transport.ts";
 
 export type { PageInfo, SdkWorkPageData };
