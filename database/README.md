@@ -50,7 +50,7 @@ Cross-capability commerce tables accessed via port interfaces (no direct write o
 - `commerce_product_spu`, `commerce_product_sku`
 - `commerce_order`, `commerce_order_item`, `commerce_order_amount_breakdown`
 - `commerce_payment_intent`, `commerce_payment_attempt`
-- `commerce_account`, `commerce_account_ledger_entry`
+- `commerce_account`, `commerce_account_ledger`
 - `commerce_payment_method`, `commerce_payment_provider`, `commerce_payment_provider_account`
 - `commerce_payment_channel`, `commerce_payment_route_rule`
 - `commerce_recharge_package`, `commerce_exchange_rule`

@@ -1,7 +1,9 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   configureMembershipServiceMockSession,
+  configureOrderServiceMock,
   createMembershipAppServiceMock,
+  createOrderAppServiceMock,
   resetMembershipServiceMockSession,
 } from "../../../tests/test-utils/membership-service-mock";
 import { createSdkworkMembershipService } from "../src";
@@ -249,35 +251,61 @@ describe("sdkwork-membership-pc-membership service", () => {
       wrapSdkworkMembershipResourceResponse({
         amount: 199,
         durationDays: 30,
-        orderId: "MEMBERSHIP-PURCHASE-2",
+        orderId: "order-uuid-purchase",
         packageId: 2,
         packageName: "Pro Monthly",
-        status: "SUCCESS",
-        targetLevelName: "Pro",
+        status: "pending",
+        targetPlanName: "Pro",
       }),
     );
     const renew = vi.fn().mockResolvedValue(
       wrapSdkworkMembershipResourceResponse({
         amount: 399,
         durationDays: 365,
-        orderId: "MEMBERSHIP-RENEW-2",
+        orderId: "order-uuid-renew",
         packageId: 3,
         packageName: "Pro Annual",
-        status: "SUCCESS",
-        targetLevelName: "Pro",
+        status: "pending",
+        targetPlanName: "Pro",
       }),
     );
     const upgrade = vi.fn().mockResolvedValue(
       wrapSdkworkMembershipResourceResponse({
         amount: 199,
         durationDays: 30,
-        orderId: "MEMBERSHIP-UPGRADE-2",
+        orderId: "order-uuid-upgrade",
         packageId: 2,
         packageName: "Pro Monthly",
-        status: "SUCCESS",
-        targetLevelName: "Pro",
+        status: "pending",
+        targetPlanName: "Pro",
       }),
     );
+    const orderCreateResponses = [
+      { orderId: "order-uuid-purchase", orderNo: "MEMBERSHIP-ORDER-001" },
+      { orderId: "order-uuid-upgrade", orderNo: "MEMBERSHIP-ORDER-002" },
+      { orderId: "order-uuid-renew", orderNo: "MEMBERSHIP-ORDER-003" },
+    ];
+    let orderCreateCallIndex = 0;
+    configureOrderServiceMock(createOrderAppServiceMock({
+      memberships: {
+        orders: {
+          create: vi.fn().mockImplementation(async () =>
+            wrapSdkworkMembershipResourceResponse(
+              orderCreateResponses[orderCreateCallIndex++] ?? orderCreateResponses[0],
+            ),
+          ),
+        },
+      },
+      orders: {
+        pay: vi.fn().mockResolvedValue(
+          wrapSdkworkMembershipResourceResponse({
+            paymentParams: {
+              cashierUrl: "https://im.sdkwork.com/cashier?scene=virtual&orderId=MEMBERSHIP-ORDER-001",
+            },
+          }),
+        ),
+      },
+    }));
     const membershipAppService = createMembershipAppServiceMock({
       memberships: {
         purchases: {
@@ -298,9 +326,9 @@ describe("sdkwork-membership-pc-membership service", () => {
       }),
     ).resolves.toMatchObject({
       amountCny: 199,
-      orderId: "MEMBERSHIP-PURCHASE-2",
+      orderId: "order-uuid-purchase",
       packageId: 2,
-      status: "completed",
+      status: "pending",
     });
 
     await expect(
@@ -310,9 +338,9 @@ describe("sdkwork-membership-pc-membership service", () => {
       }),
     ).resolves.toMatchObject({
       amountCny: 199,
-      orderId: "MEMBERSHIP-UPGRADE-2",
+      orderId: "order-uuid-upgrade",
       packageId: 2,
-      status: "completed",
+      status: "pending",
     });
 
     await expect(
@@ -322,25 +350,87 @@ describe("sdkwork-membership-pc-membership service", () => {
       }),
     ).resolves.toMatchObject({
       amountCny: 399,
-      orderId: "MEMBERSHIP-RENEW-2",
+      orderId: "order-uuid-renew",
       packageId: 3,
-      status: "completed",
+      status: "pending",
     });
 
     expect(upgrade).toHaveBeenCalledWith({
       couponId: undefined,
+      orderId: "order-uuid-upgrade",
       packageId: 2,
-      paymentMethod: "WECHAT",
+      paymentMethod: "wechat_pay",
+      requestNo: "MEMBERSHIP-ORDER-002",
     });
     expect(purchase).toHaveBeenCalledWith({
       couponId: undefined,
+      orderId: "order-uuid-purchase",
       packageId: 2,
-      paymentMethod: "WECHAT",
+      paymentMethod: "wechat_pay",
+      requestNo: "MEMBERSHIP-ORDER-001",
     });
     expect(renew).toHaveBeenCalledWith({
       couponId: undefined,
+      orderId: "order-uuid-renew",
       packageId: 3,
-      paymentMethod: "ALIPAY",
+      paymentMethod: "alipay",
+      requestNo: "MEMBERSHIP-ORDER-003",
+    });
+  });
+
+  it("preserves SDK qrCodePayload when the order pay response has no cashier URL", async () => {
+    configureOrderServiceMock(createOrderAppServiceMock({
+      memberships: {
+        orders: {
+          create: vi.fn().mockResolvedValue(
+            wrapSdkworkMembershipResourceResponse({
+              orderId: "order-uuid-qr",
+              orderNo: "MEMBERSHIP-ORDER-QR",
+            }),
+          ),
+        },
+      },
+      orders: {
+        pay: vi.fn().mockResolvedValue(
+          wrapSdkworkMembershipResourceResponse({
+            paymentParams: {},
+          }),
+        ),
+      },
+    }));
+    const membershipAppService = createMembershipAppServiceMock({
+      memberships: {
+        purchases: {
+          create: vi.fn().mockResolvedValue(
+            wrapSdkworkMembershipResourceResponse({
+              amount: "68",
+              durationDays: 30,
+              orderId: "order-uuid-qr",
+              packageId: 201,
+              packageName: "Monthly Membership",
+              qrCodePayload: "weixin://wxpay/bizpayurl?pr=membership",
+              status: "pending",
+              success: true,
+              targetPlanName: "Basic",
+            }),
+          ),
+        },
+      },
+    });
+    const service = createSdkworkMembershipService({
+      membershipAppService,
+    });
+
+    await expect(
+      service.purchaseMembership({
+        packageId: 201,
+        paymentMethod: "wechat_pay",
+      }),
+    ).resolves.toMatchObject({
+      amountCny: 68,
+      orderId: "order-uuid-qr",
+      qrCode: "weixin://wxpay/bizpayurl?pr=membership",
+      status: "pending",
     });
   });
 
@@ -362,6 +452,25 @@ describe("sdkwork-membership-pc-membership service", () => {
     ).rejects.toThrow("Please sign in before managing memberships.");
 
     configureMembershipServiceMockSession({ authToken: "membership-auth-token" });
+    configureOrderServiceMock(createOrderAppServiceMock({
+      memberships: {
+        orders: {
+          create: vi.fn().mockResolvedValue(
+            wrapSdkworkMembershipResourceResponse({
+              orderId: "order-uuid-purchase",
+              orderNo: "MEMBERSHIP-ORDER-001",
+            }),
+          ),
+        },
+      },
+      orders: {
+        pay: vi.fn().mockResolvedValue(
+          wrapSdkworkMembershipResourceResponse({
+            paymentParams: { cashierUrl: "https://example.test/cashier" },
+          }),
+        ),
+      },
+    }));
     const localizedMutationService = createSdkworkMembershipService({
       membershipAppService: createMembershipAppServiceMock({
         memberships: {

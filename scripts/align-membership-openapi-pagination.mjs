@@ -1,24 +1,24 @@
 #!/usr/bin/env node
 /**
- * Align membership app-api list/search operations with PAGINATION_SPEC and API_SPEC envelopes.
+ * Ensure membership app-api list operations document standard page/page_size params.
+ * Does NOT rewrite success response schemas (preserves SdkWorkApiResponse allOf envelopes).
  */
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
-const authorityPath = path.join(
-  repoRoot,
-  "apis/app-api/membership/membership-app-api.openapi.json",
-);
-const sdkOpenApiPath = path.join(
-  repoRoot,
-  "sdks/sdkwork-membership-app-sdk/openapi/sdkwork-membership-app-api.openapi.json",
-);
-const sdkgenPath = path.join(
-  repoRoot,
-  "sdks/sdkwork-membership-app-sdk/openapi/sdkwork-membership-app-api.sdkgen.json",
-);
+const targets = [
+  path.join(repoRoot, "apis/app-api/membership/membership-app-api.openapi.json"),
+  path.join(
+    repoRoot,
+    "sdks/sdkwork-membership-app-sdk/openapi/sdkwork-membership-app-api.openapi.json",
+  ),
+  path.join(
+    repoRoot,
+    "sdks/sdkwork-membership-app-sdk/openapi/sdkwork-membership-app-api.sdkgen.json",
+  ),
+];
 
 const PAGE_PARAMS = [
   {
@@ -37,52 +37,31 @@ const PAGE_PARAMS = [
 
 function alignDocument(document) {
   for (const pathItem of Object.values(document.paths ?? {})) {
-    for (const [method, operation] of Object.entries(pathItem ?? {})) {
+    for (const operation of Object.values(pathItem ?? {})) {
       if (!operation || typeof operation !== "object" || !operation.operationId) {
         continue;
       }
-
-      const operationId = String(operation.operationId);
-      const successSchema = operation.responses?.["200"]?.content?.["application/json"]?.schema;
-      if (!successSchema) {
+      if (!String(operation.operationId).endsWith(".list")) {
         continue;
       }
-
-      if (operationId.endsWith(".list")) {
-        const parameters = Array.isArray(operation.parameters) ? [...operation.parameters] : [];
-        if (!parameters.some((param) => param.name === "page")) {
-          operation.parameters = [...parameters, ...PAGE_PARAMS];
+      let parameters = Array.isArray(operation.parameters) ? [...operation.parameters] : [];
+      for (const param of PAGE_PARAMS) {
+        if (!parameters.some((entry) => entry.name === param.name)) {
+          parameters.push(param);
         }
-        operation.responses["200"].content["application/json"].schema = {
-          $ref: "#/components/schemas/SdkWorkListResponse",
-        };
-        continue;
       }
-
-      if (method === "post") {
-        operation.responses["200"].content["application/json"].schema = {
-          $ref: "#/components/schemas/SdkWorkCommandResponse",
-        };
-        continue;
-      }
-
-      if (method === "get") {
-        operation.responses["200"].content["application/json"].schema = {
-          $ref: "#/components/schemas/SdkWorkResourceResponse",
-        };
-      }
+      operation.parameters = parameters;
     }
   }
-
   return document;
 }
 
-function writeJson(targetPath, value) {
-  fs.writeFileSync(targetPath, `${JSON.stringify(value, null, 2)}\n`, "utf8");
+for (const targetPath of targets) {
+  if (!fs.existsSync(targetPath)) {
+    console.warn(`skip missing ${targetPath}`);
+    continue;
+  }
+  const document = alignDocument(JSON.parse(fs.readFileSync(targetPath, "utf8")));
+  fs.writeFileSync(targetPath, `${JSON.stringify(document, null, 2)}\n`);
+  console.log(`aligned pagination params in ${path.relative(repoRoot, targetPath)}`);
 }
-
-const aligned = alignDocument(JSON.parse(fs.readFileSync(authorityPath, "utf8")));
-writeJson(authorityPath, aligned);
-writeJson(sdkOpenApiPath, aligned);
-writeJson(sdkgenPath, aligned);
-console.log("aligned membership app-api list/search envelopes and pagination params");

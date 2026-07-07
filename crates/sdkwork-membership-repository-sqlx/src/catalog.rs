@@ -337,7 +337,10 @@ pub fn builtin_package_groups() -> Vec<AppMembershipPackageGroupItem> {
     ]
 }
 
-pub fn builtin_packages(package_group_id: Option<i64>, plan_id: Option<i64>) -> Vec<AppMembershipPackageItem> {
+pub fn builtin_packages(
+    package_group_id: Option<i64>,
+    plan_id: Option<i64>,
+) -> Vec<AppMembershipPackageItem> {
     let groups = builtin_package_groups();
     let mut packages: Vec<AppMembershipPackageItem> = Vec::new();
 
@@ -386,18 +389,16 @@ pub fn builtin_points_balance() -> AppMembershipPointsBalanceResponse {
 }
 
 pub fn builtin_points_history() -> Vec<AppMembershipPointsHistoryItem> {
-    vec![
-        AppMembershipPointsHistoryItem {
-            id: "points-1".to_string(),
-            change_type: "daily_reward".to_string(),
-            change_amount: 50,
-            before_balance: Some(0),
-            after_balance: 50,
-            source_type: "system".to_string(),
-            remark: Some("每日登录奖励".to_string()),
-            created_at: Some("2025-01-01T08:00:00Z".to_string()),
-        },
-    ]
+    vec![AppMembershipPointsHistoryItem {
+        id: "points-1".to_string(),
+        change_type: "daily_reward".to_string(),
+        change_amount: 50,
+        before_balance: Some(0),
+        after_balance: 50,
+        source_type: "system".to_string(),
+        remark: Some("每日登录奖励".to_string()),
+        created_at: Some("2025-01-01T08:00:00Z".to_string()),
+    }]
 }
 
 pub fn builtin_daily_reward_status() -> AppMembershipDailyRewardStatusResponse {

@@ -24,3 +24,13 @@ rules:
     severity: error
   - code: checksum_mismatch
     severity: error
+
+# Reference-only tables are owned by the commerce platform (T0) and registered
+# here for contract visibility. Drift on these tables is informational because
+# the membership module does not own their schema.
+reference_only_tables:
+  exempt: true
+  rules:
+    missing_table: info
+    missing_column: info
+    type_mismatch: warn

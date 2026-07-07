@@ -210,9 +210,8 @@ describe("sdkwork-membership-pc-subscription page", () => {
       })[0],
     ).toBeInTheDocument();
     expect(
-      screen.getByText(/free membership/i),
-    ).toBeInTheDocument();
-    expect(screen.getByText(/ready to continue/i)).toBeInTheDocument();
+      screen.getAllByText(/199/).length,
+    ).toBeGreaterThan(0);
     expect(
       screen.getAllByText("Priority rendering").length,
     ).toBeGreaterThan(0);

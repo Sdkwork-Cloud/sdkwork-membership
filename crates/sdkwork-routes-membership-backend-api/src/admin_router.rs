@@ -9,25 +9,31 @@ use std::sync::Arc;
 
 use axum::body::Bytes;
 use axum::extract::{Path, Query, State};
+use axum::http::header::AUTHORIZATION;
 use axum::http::HeaderMap;
-use axum::routing::{get, patch, put};
+use axum::routing::{get, patch, post, put};
 use axum::Router;
-use serde::{Deserialize, Serialize};
+use serde::Deserialize;
 use sqlx::{PgPool, SqlitePool};
 
-use crate::response::{finish_api_json, ApiProblem, ItemEnvelope};
-use crate::shared::{current_timestamp_string, normalize_optional_text};
+use crate::response::{
+    finish_api_created, finish_api_json, finish_api_no_content, ApiProblem, ItemEnvelope,
+};
 use crate::subject::numeric_runtime_subject_from_context;
-use crate::{
+use sdkwork_membership_repository_sqlx::shared::{
+    current_timestamp_string, normalize_optional_text,
+};
+use sdkwork_membership_repository_sqlx::{
     AdminMembershipPackageGroupMutation, AdminMembershipPackageMutation,
     AdminMembershipPlanMutation, AdminMembershipStore, AdminMembershipSubject,
-    AppMembershipBenefitItem, AppMembershipEntityIdGenerator, CreateAdminMembershipPackageCommand,
+    AppMembershipBenefitItem, AppMembershipEntityIdGenerator, AppMembershipStore,
+    AppMembershipSubject, CreateAdminMembershipPackageCommand,
     CreateAdminMembershipPackageGroupCommand, CreateAdminMembershipPlanCommand,
     DeleteAdminMembershipPackageCommand, DeleteAdminMembershipPackageGroupCommand,
-    DeleteAdminMembershipPlanCommand, ListAdminMembershipEntitlementsQuery,
-    ListAdminMembershipMembersQuery, ListAdminMembershipPackageGroupsQuery,
-    ListAdminMembershipPackagesQuery, ListAdminMembershipPlansQuery,
-    PostgresCommerceMembershipStore, SqliteCommerceMembershipStore,
+    DeleteAdminMembershipPlanCommand, FulfillMembershipPurchaseCommand,
+    ListAdminMembershipEntitlementsQuery, ListAdminMembershipMembersQuery,
+    ListAdminMembershipPackageGroupsQuery, ListAdminMembershipPackagesQuery,
+    ListAdminMembershipPlansQuery, PostgresCommerceMembershipStore, SqliteCommerceMembershipStore,
     TimestampMembershipEntityIdGenerator, UpdateAdminMembershipMemberStatusCommand,
     UpdateAdminMembershipPackageCommand, UpdateAdminMembershipPackageGroupCommand,
     UpdateAdminMembershipPlanCommand,
@@ -41,11 +47,11 @@ const DEFAULT_OPERATOR_TYPE: i32 = 1;
 #[derive(Clone)]
 struct AdminMembershipState {
     store: Arc<dyn AdminMembershipStore + Send + Sync>,
+    app_store: Arc<dyn AppMembershipStore + Send + Sync>,
     entity_id_generator: Arc<dyn AppMembershipEntityIdGenerator + Send + Sync>,
 }
 
 #[derive(Debug, Deserialize)]
-#[serde(rename_all = "camelCase")]
 struct AdminMembershipStatusQuery {
     status: Option<String>,
     page: Option<i64>,
@@ -54,7 +60,6 @@ struct AdminMembershipStatusQuery {
 }
 
 #[derive(Debug, Deserialize)]
-#[serde(rename_all = "camelCase")]
 struct AdminMembershipPackagesQuery {
     package_group_id: Option<String>,
     plan_id: Option<String>,
@@ -65,7 +70,6 @@ struct AdminMembershipPackagesQuery {
 }
 
 #[derive(Debug, Deserialize)]
-#[serde(rename_all = "camelCase")]
 struct AdminMembershipMembershipsQuery {
     user_id: Option<String>,
     plan_id: Option<String>,
@@ -76,7 +80,6 @@ struct AdminMembershipMembershipsQuery {
 }
 
 #[derive(Debug, Deserialize)]
-#[serde(rename_all = "camelCase")]
 struct AdminMembershipEntitlementsQuery {
     plan_id: Option<String>,
     membership_id: Option<String>,
@@ -141,43 +144,38 @@ struct AdminMembershipMembershipStatusRequest {
     status: Option<String>,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
-struct PlanDeletePayload {
-    deleted: bool,
-    plan_id: String,
-}
-
-#[derive(Debug, Serialize)]
-#[serde(rename_all = "camelCase")]
-struct PackageDeletePayload {
-    deleted: bool,
-    package_id: String,
-}
-
-#[derive(Debug, Serialize)]
-#[serde(rename_all = "camelCase")]
-struct PackageGroupDeletePayload {
-    deleted: bool,
-    package_group_id: String,
+struct FulfillMembershipPurchaseRequest {
+    tenant_id: i64,
+    organization_id: i64,
+    owner_user_id: i64,
+    order_id: String,
+    request_no: String,
+    idempotency_key: String,
 }
 
 pub fn admin_membership_router_with_sqlite_pool(pool: SqlitePool) -> Router {
+    let store = Arc::new(SqliteCommerceMembershipStore::new(pool));
     admin_membership_router_with_store(
-        Arc::new(SqliteCommerceMembershipStore::new(pool)),
+        store.clone(),
+        store,
         Arc::new(TimestampMembershipEntityIdGenerator::default()),
     )
 }
 
 pub fn admin_membership_router_with_postgres_pool(pool: PgPool) -> Router {
+    let store = Arc::new(PostgresCommerceMembershipStore::new(pool));
     admin_membership_router_with_store(
-        Arc::new(PostgresCommerceMembershipStore::new(pool)),
+        store.clone(),
+        store,
         Arc::new(TimestampMembershipEntityIdGenerator::default()),
     )
 }
 
 pub fn admin_membership_router_with_store(
     store: Arc<dyn AdminMembershipStore + Send + Sync>,
+    app_store: Arc<dyn AppMembershipStore + Send + Sync>,
     entity_id_generator: Arc<dyn AppMembershipEntityIdGenerator + Send + Sync>,
 ) -> Router {
     Router::new()
@@ -214,8 +212,13 @@ pub fn admin_membership_router_with_store(
             "/backend/v3/api/memberships/entitlements",
             get(list_entitlements),
         )
+        .route(
+            "/backend/v3/api/memberships/purchases/fulfillments",
+            post(fulfill_membership_purchase),
+        )
         .with_state(AdminMembershipState {
             store,
+            app_store,
             entity_id_generator,
         })
 }
@@ -233,7 +236,7 @@ async fn list_plans(
                 .store
                 .list_admin_membership_plans(ListAdminMembershipPlansQuery {
                     subject,
-                    status: params.status.and_then(normalize_optional_status),
+                    status: normalize_optional_status_filter(params.status)?,
                     page: params.page,
                     page_size: params.page_size,
                     cursor: normalize_optional_text(params.cursor),
@@ -254,7 +257,7 @@ async fn create_plan(
     headers: HeaderMap,
     body: Bytes,
 ) -> axum::response::Response {
-    finish_api_json(
+    finish_api_created(
         &ctx,
         async {
             let subject = admin_membership_subject_from_context(&ctx)?;
@@ -327,7 +330,7 @@ async fn delete_plan(
     headers: HeaderMap,
     Path(plan_id): Path<String>,
 ) -> axum::response::Response {
-    finish_api_json(
+    finish_api_no_content(
         &ctx,
         async {
             let subject = admin_membership_subject_from_context(&ctx)?;
@@ -346,10 +349,7 @@ async fn delete_plan(
                 .map_err(|e| {
                     ApiProblem::from_service("membership plan command store is unavailable", e)
                 })? {
-                true => Ok(PlanDeletePayload {
-                    deleted: true,
-                    plan_id,
-                }),
+                true => Ok(()),
                 false => Err(ApiProblem::not_found("membership plan was not found")),
             }
         }
@@ -372,7 +372,7 @@ async fn list_packages(
                     subject,
                     package_group_id: normalize_optional_text(params.package_group_id),
                     plan_id: normalize_optional_text(params.plan_id),
-                    status: params.status.and_then(normalize_optional_status),
+                    status: normalize_optional_status_filter(params.status)?,
                     page: params.page,
                     page_size: params.page_size,
                     cursor: normalize_optional_text(params.cursor),
@@ -393,7 +393,7 @@ async fn create_package(
     headers: HeaderMap,
     body: Bytes,
 ) -> axum::response::Response {
-    finish_api_json(
+    finish_api_created(
         &ctx,
         async {
             let subject = admin_membership_subject_from_context(&ctx)?;
@@ -467,7 +467,7 @@ async fn delete_package(
     headers: HeaderMap,
     Path(package_id): Path<String>,
 ) -> axum::response::Response {
-    finish_api_json(
+    finish_api_no_content(
         &ctx,
         async {
             let subject = admin_membership_subject_from_context(&ctx)?;
@@ -486,10 +486,7 @@ async fn delete_package(
                 .map_err(|e| {
                     ApiProblem::from_service("membership package command store is unavailable", e)
                 })? {
-                true => Ok(PackageDeletePayload {
-                    deleted: true,
-                    package_id,
-                }),
+                true => Ok(()),
                 false => Err(ApiProblem::not_found("membership package was not found")),
             }
         }
@@ -510,7 +507,7 @@ async fn list_package_groups(
                 .store
                 .list_admin_membership_package_groups(ListAdminMembershipPackageGroupsQuery {
                     subject,
-                    status: params.status.and_then(normalize_optional_status),
+                    status: normalize_optional_status_filter(params.status)?,
                     page: params.page,
                     page_size: params.page_size,
                     cursor: normalize_optional_text(params.cursor),
@@ -534,7 +531,7 @@ async fn create_package_group(
     headers: HeaderMap,
     body: Bytes,
 ) -> axum::response::Response {
-    finish_api_json(
+    finish_api_created(
         &ctx,
         async {
             let subject = admin_membership_subject_from_context(&ctx)?;
@@ -620,7 +617,7 @@ async fn delete_package_group(
     headers: HeaderMap,
     Path(package_group_id): Path<String>,
 ) -> axum::response::Response {
-    finish_api_json(
+    finish_api_no_content(
         &ctx,
         async {
             let subject = admin_membership_subject_from_context(&ctx)?;
@@ -643,10 +640,7 @@ async fn delete_package_group(
                         e,
                     )
                 })? {
-                true => Ok(PackageGroupDeletePayload {
-                    deleted: true,
-                    package_group_id,
-                }),
+                true => Ok(()),
                 false => Err(ApiProblem::not_found(
                     "membership package group was not found",
                 )),
@@ -671,7 +665,7 @@ async fn list_memberships(
                     subject,
                     user_id: normalize_optional_text(params.user_id),
                     plan_id: normalize_optional_text(params.plan_id),
-                    status: params.status.and_then(normalize_optional_membership_status),
+                    status: normalize_optional_membership_status_filter(params.status)?,
                     page: params.page,
                     page_size: params.page_size,
                     cursor: normalize_optional_text(params.cursor),
@@ -741,9 +735,7 @@ async fn list_entitlements(
                     subject,
                     plan_id: normalize_optional_text(params.plan_id),
                     membership_id: normalize_optional_text(params.membership_id),
-                    status: params
-                        .status
-                        .and_then(normalize_optional_entitlement_status),
+                    status: normalize_optional_entitlement_status_filter(params.status)?,
                     page: params.page,
                     page_size: params.page_size,
                     cursor: normalize_optional_text(params.cursor),
@@ -756,6 +748,103 @@ async fn list_entitlements(
         }
         .await,
     )
+}
+
+async fn fulfill_membership_purchase(
+    ctx: WebRequestContext,
+    State(state): State<AdminMembershipState>,
+    headers: HeaderMap,
+    body: Bytes,
+) -> axum::response::Response {
+    finish_api_created(
+        &ctx,
+        async {
+            validate_fulfillment_service_auth(&headers)?;
+            let request = parse_body::<FulfillMembershipPurchaseRequest>(
+                &body,
+                "membership purchase fulfillment",
+            )?;
+            let command = normalize_fulfillment_command(request)?;
+            let item = state
+                .app_store
+                .fulfill_purchase(command)
+                .await
+                .map_err(|e| {
+                    ApiProblem::from_service("membership fulfillment store is unavailable", e)
+                })?;
+            Ok(ItemEnvelope { item })
+        }
+        .await,
+    )
+}
+
+fn validate_fulfillment_service_auth(headers: &HeaderMap) -> Result<(), ApiProblem> {
+    let allow_insecure = std::env::var("MEMBERSHIP_FULFILL_ALLOW_INSECURE").as_deref() == Ok("1");
+    let expected = std::env::var("SDKWORK_ACCESS_TOKEN")
+        .ok()
+        .map(|value| value.trim().to_owned())
+        .filter(|value| !value.is_empty());
+
+    if expected.is_none() {
+        if allow_insecure {
+            return Ok(());
+        }
+        return Err(ApiProblem::unauthorized(
+            "membership fulfillment service auth token is required",
+        ));
+    }
+
+    let expected = expected.expect("membership fulfillment token checked above");
+    let auth_header = headers
+        .get(AUTHORIZATION)
+        .and_then(|value| value.to_str().ok())
+        .unwrap_or_default();
+    let token = auth_header
+        .strip_prefix("Bearer ")
+        .or_else(|| auth_header.strip_prefix("bearer "))
+        .unwrap_or_default()
+        .trim();
+    if token != expected {
+        return Err(ApiProblem::unauthorized(
+            "membership fulfillment service auth token is invalid",
+        ));
+    }
+    Ok(())
+}
+
+fn normalize_fulfillment_command(
+    request: FulfillMembershipPurchaseRequest,
+) -> Result<FulfillMembershipPurchaseCommand, ApiProblem> {
+    let order_id = request.order_id.trim().to_owned();
+    if order_id.is_empty() {
+        return Err(ApiProblem::bad_request("membership order id is required"));
+    }
+    let request_no = request.request_no.trim().to_owned();
+    if request_no.is_empty() {
+        return Err(ApiProblem::bad_request("membership request no is required"));
+    }
+    let idempotency_key = request.idempotency_key.trim().to_owned();
+    if idempotency_key.is_empty() {
+        return Err(ApiProblem::bad_request(
+            "membership fulfillment idempotency key is required",
+        ));
+    }
+    if request.tenant_id <= 0 || request.organization_id <= 0 || request.owner_user_id <= 0 {
+        return Err(ApiProblem::bad_request(
+            "membership fulfillment subject identifiers must be greater than zero",
+        ));
+    }
+
+    Ok(FulfillMembershipPurchaseCommand {
+        subject: AppMembershipSubject {
+            tenant_id: request.tenant_id,
+            organization_id: request.organization_id,
+            user_id: request.owner_user_id,
+        },
+        order_id,
+        request_no,
+        idempotency_key,
+    })
 }
 
 fn admin_membership_subject_from_context(
@@ -1054,28 +1143,47 @@ fn normalize_status(value: Option<&str>) -> Result<String, ApiProblem> {
 }
 
 fn normalize_membership_status(value: Option<&str>) -> Result<String, ApiProblem> {
-    match value.unwrap_or("").trim().to_ascii_lowercase().as_str() {
-        "active" | "inactive" | "expired" | "suspended" | "cancelled" => {
-            Ok(value.unwrap().trim().to_ascii_lowercase())
-        }
+    let normalized = value.unwrap_or("").trim().to_ascii_lowercase();
+    match normalized.as_str() {
+        "active" | "inactive" | "expired" | "suspended" | "cancelled" => Ok(normalized),
         _ => Err(ApiProblem::bad_request(
             "membership status must be active, inactive, expired, suspended, or cancelled",
         )),
     }
 }
 
-fn normalize_optional_status(value: String) -> Option<String> {
-    normalize_status(Some(&value)).ok()
+fn normalize_optional_status_filter(value: Option<String>) -> Result<Option<String>, ApiProblem> {
+    match value {
+        None => Ok(None),
+        Some(raw) if raw.trim().is_empty() => Ok(None),
+        Some(raw) => normalize_status(Some(&raw)).map(Some),
+    }
 }
 
-fn normalize_optional_membership_status(value: String) -> Option<String> {
-    normalize_membership_status(Some(&value)).ok()
+fn normalize_optional_membership_status_filter(
+    value: Option<String>,
+) -> Result<Option<String>, ApiProblem> {
+    match value {
+        None => Ok(None),
+        Some(raw) if raw.trim().is_empty() => Ok(None),
+        Some(raw) => normalize_membership_status(Some(&raw)).map(Some),
+    }
 }
 
-fn normalize_optional_entitlement_status(value: String) -> Option<String> {
-    match value.trim().to_ascii_lowercase().as_str() {
-        "active" | "inactive" | "disabled" | "exhausted" => Some(value.trim().to_ascii_lowercase()),
-        _ => None,
+fn normalize_optional_entitlement_status_filter(
+    value: Option<String>,
+) -> Result<Option<String>, ApiProblem> {
+    match value {
+        None => Ok(None),
+        Some(raw) if raw.trim().is_empty() => Ok(None),
+        Some(raw) => match raw.trim().to_ascii_lowercase().as_str() {
+            "active" | "inactive" | "disabled" | "exhausted" => {
+                Ok(Some(raw.trim().to_ascii_lowercase()))
+            }
+            _ => Err(ApiProblem::bad_request(
+                "entitlement status must be active, inactive, disabled, or exhausted",
+            )),
+        },
     }
 }
 

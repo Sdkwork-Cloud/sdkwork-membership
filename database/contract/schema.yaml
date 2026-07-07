@@ -178,7 +178,7 @@ tables:
     description: User asset accounts (points, cash) with available and frozen balances.
     reference_only: true
 
-  - name: commerce_account_ledger_entry
+  - name: commerce_account_ledger
     profile: ledger_entry
     compliance_level: L3
     system_of_record: true

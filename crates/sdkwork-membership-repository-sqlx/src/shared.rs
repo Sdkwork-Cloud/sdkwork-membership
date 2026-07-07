@@ -6,47 +6,85 @@ use serde_json::Value;
 
 use crate::{
     AppMembershipBenefitItem, AppMembershipPackageGroupItem, AppMembershipPackageItem,
-    AppMembershipPlanItem, AppMembershipPrivilegeUsageResponse,
+    AppMembershipPlanItem, AppMembershipPrivilegeUsageResponse, SubmitMembershipPurchaseCommand,
 };
 
 /// Trim and drop empty optional query/header values. Shared by app and admin routers.
-pub(crate) fn normalize_optional_text(value: Option<String>) -> Option<String> {
+pub fn normalize_optional_text(value: Option<String>) -> Option<String> {
     value.map(|v| v.trim().to_owned()).filter(|v| !v.is_empty())
 }
 
 /// Current UTC timestamp formatted as `%Y-%m-%d %H:%M:%S`. Shared by app and admin routers.
-pub(crate) fn current_timestamp_string() -> String {
+pub fn current_timestamp_string() -> String {
     format_unix_timestamp(Utc::now().timestamp())
 }
 
 /// Format a unix timestamp (seconds) as `%Y-%m-%d %H:%M:%S`. Shared by app and admin routers.
-pub(crate) fn format_unix_timestamp(seconds: i64) -> String {
+pub fn format_unix_timestamp(seconds: i64) -> String {
     Utc.timestamp_opt(seconds, 0)
         .single()
         .map(|ts| ts.format("%Y-%m-%d %H:%M:%S").to_string())
         .unwrap_or_else(|| format!("{seconds}"))
 }
 
-pub(crate) const POINTS_ASSET_TYPE: &str = "points";
+pub(crate) const POINTS_ASSET_CODE: &str = "points";
 pub(crate) const POINTS_CURRENCY_CODE: &str = "POINT";
 
-pub(crate) fn normalize_payment_method(method: &str) -> String {
-    method.trim().to_ascii_lowercase()
+/// Default catalog tenant used by membership catalog queries (plans, packages,
+/// package groups) whose trait signatures do not carry a request subject.
+/// Replaces the previously inline `'100001'` literal scattered across SQL.
+pub(crate) const DEFAULT_CATALOG_TENANT_ID: i64 = 100001;
+
+/// Default catalog organization used by membership catalog queries. Replaces
+/// the previously inline `'0'` literal scattered across SQL.
+pub(crate) const DEFAULT_CATALOG_ORGANIZATION_ID: i64 = 0;
+
+/// Resolve tenant scope for catalog reads from the authenticated subject, or the
+/// seeded demo tenant for guest browsing.
+pub(crate) fn resolve_catalog_scope(
+    catalog_subject: Option<crate::AppMembershipSubject>,
+) -> (i64, i64) {
+    catalog_subject
+        .map(|subject| (subject.tenant_id, subject.organization_id))
+        .unwrap_or((DEFAULT_CATALOG_TENANT_ID, DEFAULT_CATALOG_ORGANIZATION_ID))
 }
 
-pub(crate) fn payment_product_for_scan_qr(
-    method: &str,
-) -> Result<&'static str, CommerceServiceError> {
-    match method.trim().to_ascii_lowercase().as_str() {
-        "wechat_pay" => Ok("wechat_native"),
-        "alipay" => Ok("alipay_page"),
-        "paypal" => Ok("paypal_checkout"),
-        "card" => Ok("card"),
-        "apple_pay" => Ok("apple_pay"),
-        "google_pay" => Ok("google_pay"),
-        "wallet_balance" => Ok("wallet_balance"),
-        _ => Err(CommerceServiceError::conflict(
-            "membership payment method is unavailable",
+pub(crate) fn validate_membership_purchase_action(
+    action: &str,
+    membership_active: bool,
+    current_rank: i64,
+    target_plan_rank: i64,
+) -> Result<(), CommerceServiceError> {
+    match action.trim().to_ascii_lowercase().as_str() {
+        "purchase" => Ok(()),
+        "renew" => {
+            if !membership_active {
+                return Err(CommerceServiceError::validation(
+                    "membership renew requires an active membership",
+                ));
+            }
+            if target_plan_rank != current_rank {
+                return Err(CommerceServiceError::validation(
+                    "membership renew requires the same plan rank",
+                ));
+            }
+            Ok(())
+        }
+        "upgrade" => {
+            if !membership_active {
+                return Err(CommerceServiceError::validation(
+                    "membership upgrade requires an active membership",
+                ));
+            }
+            if target_plan_rank <= current_rank {
+                return Err(CommerceServiceError::validation(
+                    "membership upgrade requires a higher plan rank",
+                ));
+            }
+            Ok(())
+        }
+        _ => Err(CommerceServiceError::validation(
+            "membership purchase action is invalid",
         )),
     }
 }
@@ -93,12 +131,12 @@ pub(crate) fn map_membership_package_record(
     recommended: bool,
     tags_json: &str,
     group_external_id: i64,
-    group_name: String,
-    group_description: Option<String>,
-    group_sort_weight: i64,
+    _group_name: String,
+    _group_description: Option<String>,
+    _group_sort_weight: i64,
     plan_no: Option<String>,
     rank: i64,
-    sku_id: Option<String>,
+    _sku_id: Option<String>,
 ) -> Option<ParsedMembershipPackage> {
     if id <= 0 || group_external_id <= 0 {
         return None;
@@ -123,27 +161,110 @@ pub(crate) fn map_membership_package_record(
         tags: string_array_from_json(tags_json),
     };
     Some(ParsedMembershipPackage {
-        group_external_id,
-        group_name,
-        group_description,
-        group_sort_weight,
         plan_no,
         rank,
-        sku_id,
         item,
     })
 }
 
 #[derive(Debug, Clone)]
 pub(crate) struct ParsedMembershipPackage {
-    pub group_external_id: i64,
-    pub group_name: String,
-    pub group_description: Option<String>,
-    pub group_sort_weight: i64,
     pub plan_no: String,
     pub rank: i64,
-    pub sku_id: Option<String>,
     pub item: AppMembershipPackageItem,
+}
+
+#[derive(Debug, Clone)]
+pub(crate) struct CurrentMembershipSnapshot {
+    pub membership_id: String,
+    pub _rank: i64,
+    pub _status: String,
+    pub expires_at: String,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum MembershipPurchasePersistenceMode {
+    New,
+    Renew,
+    Upgrade,
+}
+
+#[derive(Debug, Clone)]
+pub(crate) struct MembershipPurchaseBinding {
+    pub membership_uuid: String,
+    pub period_starts_at: String,
+    pub persistence_mode: MembershipPurchasePersistenceMode,
+}
+
+pub(crate) fn resolve_membership_purchase_binding(
+    command: &SubmitMembershipPurchaseCommand,
+    current: Option<CurrentMembershipSnapshot>,
+    membership_active: bool,
+) -> MembershipPurchaseBinding {
+    let action = command.action.trim().to_ascii_lowercase();
+    match action.as_str() {
+        "renew" if membership_active => {
+            let current = current.expect("renew requires active membership");
+            MembershipPurchaseBinding {
+                membership_uuid: current.membership_id.clone(),
+                period_starts_at: later_membership_timestamp(
+                    &current.expires_at,
+                    &command.requested_at,
+                ),
+                persistence_mode: MembershipPurchasePersistenceMode::Renew,
+            }
+        }
+        "upgrade" if membership_active => {
+            let current = current.expect("upgrade requires active membership");
+            MembershipPurchaseBinding {
+                membership_uuid: current.membership_id.clone(),
+                period_starts_at: command.requested_at.clone(),
+                persistence_mode: MembershipPurchasePersistenceMode::Upgrade,
+            }
+        }
+        _ => MembershipPurchaseBinding {
+            membership_uuid: command.membership_uuid.clone(),
+            period_starts_at: command.requested_at.clone(),
+            persistence_mode: MembershipPurchasePersistenceMode::New,
+        },
+    }
+}
+
+pub(crate) fn later_membership_timestamp(current: &str, requested_at: &str) -> String {
+    match (
+        parse_membership_timestamp_seconds(current),
+        parse_membership_timestamp_seconds(requested_at),
+    ) {
+        (Some(left), Some(right)) if left >= right => current.trim().to_owned(),
+        (Some(_), Some(_)) => requested_at.trim().to_owned(),
+        (Some(_), None) => current.trim().to_owned(),
+        _ => requested_at.trim().to_owned(),
+    }
+}
+
+fn parse_membership_timestamp_seconds(timestamp: &str) -> Option<i64> {
+    let (date, time) = timestamp.trim().split_once(' ')?;
+    let mut date_parts = date.split('-');
+    let year = date_parts.next()?.parse::<i64>().ok()?;
+    let month = date_parts.next()?.parse::<i64>().ok()?;
+    let day = date_parts.next()?.parse::<i64>().ok()?;
+    let mut time_parts = time.split(':');
+    let hour = time_parts.next()?.parse::<i64>().ok()?;
+    let minute = time_parts.next()?.parse::<i64>().ok()?;
+    let second = time_parts.next()?.parse::<i64>().ok()?;
+    Some(
+        membership_days_from_civil(year, month, day) * 86_400 + hour * 3_600 + minute * 60 + second,
+    )
+}
+
+fn membership_days_from_civil(year: i64, month: i64, day: i64) -> i64 {
+    let year = year - if month <= 2 { 1 } else { 0 };
+    let era = if year >= 0 { year } else { year - 399 } / 400;
+    let yoe = year - era * 400;
+    let month = month + if month > 2 { -3 } else { 9 };
+    let doy = (153 * month + 2) / 5 + day - 1;
+    let doe = yoe * 365 + yoe / 4 - yoe / 100 + doy;
+    era * 146_097 + doe - 719_468
 }
 
 pub(crate) fn build_package_group_from_packages(
@@ -194,7 +315,7 @@ pub(crate) fn privilege_usage_from_benefits(
         speed_up_used: 0,
         speed_up_limit: benefit_limit(benefits, &["priority_speed_up"]),
         priority_queue_used: 0,
-        priority_queue_limit: benefit_limit(benefits, &["priority_speed_up"]),
+        priority_queue_limit: benefit_limit(benefits, &["priority_queue"]),
         exclusive_model_used: 0,
         exclusive_model_limit: benefit_limit(benefits, &["ai_quota"]),
     }

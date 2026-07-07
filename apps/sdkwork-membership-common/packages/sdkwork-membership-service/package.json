@@ -12,6 +12,7 @@
   },
   "dependencies": {
     "@sdkwork/membership-app-sdk": "workspace:*",
+    "@sdkwork/order-app-sdk": "workspace:*",
     "@sdkwork/membership-sdk-ports": "workspace:*",
     "@sdkwork/membership-contracts": "workspace:*",
     "@sdkwork/sdk-common": "workspace:*",

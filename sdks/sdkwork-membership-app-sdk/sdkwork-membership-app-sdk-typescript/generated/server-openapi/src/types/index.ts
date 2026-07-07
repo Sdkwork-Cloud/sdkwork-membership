@@ -10,3 +10,5 @@ export type { SdkWorkPlatformErrorCode } from './sdk-work-platform-error-code';
 export type { SdkWorkResourceResponse } from './sdk-work-resource-response';
 export type { SdkWorkListResponse } from './sdk-work-list-response';
 export type { SdkWorkCommandResponse } from './sdk-work-command-response';
+export type { SdkWorkResourceDataCommand } from './sdk-work-resource-data-command';
+export type { MembershipsPrivilegesSpeedUpsCreateResponse201 } from './memberships-privileges-speed-ups-create-response201';

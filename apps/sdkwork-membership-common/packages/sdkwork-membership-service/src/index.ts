@@ -30,6 +30,15 @@ export {
   type BootstrapSdkworkMembershipAppServiceInput,
 } from "./transport.ts";
 
+export {
+  bootstrapSdkworkOrderAppService,
+  configureSdkworkOrderAppServiceProvider,
+  createOrderAppTransportClient,
+  getSdkworkOrderAppService,
+  type BootstrapSdkworkOrderAppServiceInput,
+  type OrderAppTransportClient,
+} from "./order-transport.ts";
+
 export type { PageInfo, SdkWorkPageData };
 
 export {

@@ -10,7 +10,7 @@ name = "sdkwork-membership-standalone-gateway"
 path = "src/main.rs"
 
 [dependencies]
-sdkwork_membership_gateway_assembly = { package = "sdkwork-membership-gateway-assembly", path = "../sdkwork-membership-gateway-assembly" }
+sdkwork_membership_gateway_assembly.workspace = true
 axum = { workspace = true }
 tokio = { workspace = true }
 tracing = { workspace = true }

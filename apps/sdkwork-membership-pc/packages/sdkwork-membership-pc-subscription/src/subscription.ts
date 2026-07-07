@@ -14,6 +14,19 @@ import type {
 } from "@sdkwork/payment-pc-payment";
 
 export type SdkworkSubscriptionAction = "purchase" | "renew" | "upgrade";
+
+export function resolveAvailableSubscriptionActions(
+  summary: { isMember: boolean },
+): SdkworkSubscriptionAction[] {
+  return summary.isMember ? ["renew", "upgrade"] : ["purchase"];
+}
+
+export function isSdkworkSubscriptionActionAllowed(
+  summary: { isMember: boolean },
+  action: SdkworkSubscriptionAction,
+): boolean {
+  return resolveAvailableSubscriptionActions(summary).includes(action);
+}
 export type SdkworkSubscriptionCouponStatus = SdkworkCouponStatus;
 export type SdkworkSubscriptionPaymentMethod = "ALIPAY" | "WECHAT";
 export type SdkworkSubscriptionStage = "checkout" | "plans";

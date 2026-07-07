@@ -9,7 +9,6 @@ description = "SDKWork commerce membership SQLx integration, HTTP route adapters
 path = "src/lib.rs"
 
 [dependencies]
-axum = { workspace = true }
 chrono = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
@@ -18,7 +17,6 @@ sdkwork_contract_service.workspace = true
 sdkwork-database-config.workspace = true
 sdkwork-database-sqlx.workspace = true
 sdkwork-utils-rust.workspace = true
-sdkwork-web-core.workspace = true
 
 [dev-dependencies]
 http-body-util = "0.1"

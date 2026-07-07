@@ -14,12 +14,11 @@ export interface SdkworkSubscriptionPlanGridProps {
   summary: SdkworkMembershipSummary;
 }
 
-function CheckIcon() {
-  return (
-    <svg className="h-4 w-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-      <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-    </svg>
-  );
+function formatPlanPriceAmount(
+  price: number,
+  formatCurrencyCny: (value: number | null | undefined) => string,
+): string {
+  return formatCurrencyCny(price).replace(/^¥\s*/, "");
 }
 
 function resolvePeriodLabel(days: number | null | undefined, copy: ReturnType<typeof useSdkworkSubscriptionIntl>["copy"]): string {
@@ -66,27 +65,6 @@ export function SdkworkSubscriptionPlanGrid({
         tags: p.tags,
       }));
 
-  const allPlans = [
-    {
-      id: "free",
-      packageId: 0,
-      name: copy.planGrid.freeMembershipTitle,
-      description: copy.planGrid.freeMembershipDescription,
-      priceCny: 0,
-      originalPriceCny: null,
-      includedPoints: 50,
-      recommended: false,
-      tags: [copy.planGrid.entryTier],
-      levelName: "Free",
-      durationDays: null,
-      isFree: true,
-    },
-    ...paidPlans.map((p) => ({
-      ...p,
-      isFree: false,
-    })),
-  ];
-
   return (
     <section className="space-y-8">
       {!hideHeader ? (
@@ -131,11 +109,13 @@ export function SdkworkSubscriptionPlanGrid({
         </div>
       ) : null}
 
+      {paidPlans.length > 0 ? (
       <div className="grid gap-5 lg:grid-cols-4">
-        {allPlans.map((plan) => {
+        {paidPlans.map((plan) => {
           const isSelected = plan.packageId === selectedPackageId;
           const isRecommended = plan.recommended;
-          const isCurrentFree = plan.isFree && !summary.isMember;
+          const isFree = plan.priceCny === 0;
+          const isCurrentFree = isFree && !summary.isMember;
 
           return (
             <article
@@ -156,7 +136,7 @@ export function SdkworkSubscriptionPlanGrid({
                 </div>
               ) : null}
 
-              {plan.isFree ? (
+              {isFree ? (
                 <div className="absolute -top-3.5 left-1/2 -translate-x-1/2">
                   <span className="rounded-full bg-[var(--sdk-color-surface-panel-muted)] border border-[var(--sdk-color-border-subtle)] px-4 py-1 text-xs font-medium text-[var(--sdk-color-text-secondary)]">
                     {copy.planGrid.entryTier}
@@ -183,7 +163,7 @@ export function SdkworkSubscriptionPlanGrid({
                       <span className={`text-5xl font-bold tracking-tight ${
                         isRecommended ? "text-[var(--sdk-color-brand-primary)]" : "text-[var(--sdk-color-text-primary)]"
                       }`}>
-                        {plan.priceCny}
+                        {formatPlanPriceAmount(plan.priceCny, formatCurrencyCny)}
                       </span>
                     </>
                   ) : (
@@ -193,7 +173,7 @@ export function SdkworkSubscriptionPlanGrid({
                       ¥0
                     </span>
                   )}
-                  {!plan.isFree && plan.durationDays ? (
+                  {!isFree && plan.durationDays ? (
                     <span className="ml-2 text-sm text-[var(--sdk-color-text-muted)]">
                       {resolvePeriodLabel(plan.durationDays, copy)}
                     </span>
@@ -202,10 +182,10 @@ export function SdkworkSubscriptionPlanGrid({
                 {plan.originalPriceCny && plan.originalPriceCny > plan.priceCny ? (
                   <div className="mt-1 flex items-center gap-2">
                     <span className="text-sm text-[var(--sdk-color-text-muted)] line-through">
-                      ¥{plan.originalPriceCny}
+                      ¥{formatPlanPriceAmount(plan.originalPriceCny, formatCurrencyCny)}
                     </span>
                     <span className="rounded bg-red-50 px-1.5 py-0.5 text-xs font-medium text-red-500">
-                      {copy.planGrid.savingsLabel}¥{plan.originalPriceCny - plan.priceCny}
+                      {copy.planGrid.savingsLabel}¥{formatPlanPriceAmount(plan.originalPriceCny - plan.priceCny, formatCurrencyCny)}
                     </span>
                   </div>
                 ) : null}
@@ -234,7 +214,7 @@ export function SdkworkSubscriptionPlanGrid({
                 ) : null}
               </div>
 
-              {plan.isFree ? (
+              {isFree ? (
                 <Button
                   className="w-full rounded-2xl py-3.5 text-sm font-semibold"
                   disabled={isCurrentFree}
@@ -259,6 +239,11 @@ export function SdkworkSubscriptionPlanGrid({
           );
         })}
       </div>
+      ) : (
+        <div className="rounded-3xl border border-dashed border-[var(--sdk-color-border-subtle)] bg-[var(--sdk-color-surface-panel-muted)] px-8 py-12 text-center text-sm text-[var(--sdk-color-text-secondary)]">
+          {copy.planGrid.noPlans}
+        </div>
+      )}
     </section>
   );
 }

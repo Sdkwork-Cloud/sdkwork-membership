@@ -231,6 +231,25 @@
               "maximum": 200,
               "default": 20
             }
+          },
+          {
+            "name": "plan_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            },
+            "description": "Filter catalog results by membership plan rank (matches AppMembershipPlanItem.id)."
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Opaque cursor for keyset pagination continuation."
           }
         ],
         "responses": {
@@ -356,6 +375,15 @@
               "maximum": 200,
               "default": 20
             }
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Opaque cursor for keyset pagination continuation."
           }
         ],
         "responses": {
@@ -481,6 +509,35 @@
               "maximum": 200,
               "default": 20
             }
+          },
+          {
+            "name": "plan_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            },
+            "description": "Filter catalog results by membership plan rank (matches AppMembershipPlanItem.id)."
+          },
+          {
+            "name": "recommended_only",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "default": false
+            },
+            "description": "When true, return only recommended packages or groups with recommended packages."
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Opaque cursor for keyset pagination continuation."
           }
         ],
         "responses": {
@@ -718,6 +775,35 @@
               "maximum": 200,
               "default": 20
             }
+          },
+          {
+            "name": "plan_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            },
+            "description": "Filter catalog results by membership plan rank (matches AppMembershipPlanItem.id)."
+          },
+          {
+            "name": "recommended_only",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "default": false
+            },
+            "description": "When true, return only recommended packages or groups with recommended packages."
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Opaque cursor for keyset pagination continuation."
           }
         ],
         "responses": {
@@ -843,6 +929,35 @@
               "maximum": 200,
               "default": 20
             }
+          },
+          {
+            "name": "package_group_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            },
+            "description": "Filter packages by package group external id."
+          },
+          {
+            "name": "plan_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            },
+            "description": "Filter catalog results by membership plan rank (matches AppMembershipPlanItem.id)."
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Opaque cursor for keyset pagination continuation."
           }
         ],
         "responses": {
@@ -1045,8 +1160,8 @@
         "operationId": "memberships.purchases.create",
         "parameters": [],
         "responses": {
-          "200": {
-            "description": "Success",
+          "201": {
+            "description": "Created",
             "content": {
               "application/json": {
                 "schema": {
@@ -1481,7 +1596,8 @@
             "required": false,
             "schema": {
               "type": "string"
-            }
+            },
+            "description": "Opaque cursor for keyset pagination continuation."
           }
         ],
         "responses": {
@@ -1580,8 +1696,8 @@
         "operationId": "memberships.points.dailyRewards.create",
         "parameters": [],
         "responses": {
-          "200": {
-            "description": "Success",
+          "201": {
+            "description": "Created",
             "content": {
               "application/json": {
                 "schema": {
@@ -1875,12 +1991,24 @@
         "operationId": "memberships.privileges.speedUps.create",
         "parameters": [],
         "responses": {
-          "200": {
-            "description": "Success",
+          "201": {
+            "description": "Created",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/SdkWorkCommandResponse"
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/SdkWorkApiResponse"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "$ref": "#/components/schemas/SdkWorkResourceData_Command"
+                        }
+                      }
+                    }
+                  ]
                 }
               }
             }
@@ -2239,6 +2367,19 @@
             }
           }
         ]
+      },
+      "SdkWorkResourceData_Command": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "item"
+        ],
+        "description": "Typed resource data wrapper for command acknowledgement.",
+        "properties": {
+          "item": {
+            "$ref": "#/components/schemas/SdkWorkCommandData"
+          }
+        }
       }
     }
   }

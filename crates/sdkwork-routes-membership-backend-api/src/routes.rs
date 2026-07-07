@@ -1,8 +1,8 @@
-use axum::Router;
-use sdkwork_database_sqlx::DatabasePool;
-use sdkwork_membership_repository_sqlx::{
+use crate::admin_router::{
     admin_membership_router_with_postgres_pool, admin_membership_router_with_sqlite_pool,
 };
+use axum::Router;
+use sdkwork_database_sqlx::DatabasePool;
 use sdkwork_membership_service_host::MembershipServiceHost;
 use std::sync::Arc;
 

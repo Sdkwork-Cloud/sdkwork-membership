@@ -48,11 +48,7 @@ pub fn offset_page<T>(
 }
 
 /// SQL already applied `LIMIT page_size + 1 OFFSET offset`.
-pub fn bounded_sql_page<T>(
-    records: Vec<T>,
-    page_size: usize,
-    offset: usize,
-) -> SdkWorkPageData<T> {
+pub fn bounded_sql_page<T>(records: Vec<T>, page_size: usize, offset: usize) -> SdkWorkPageData<T> {
     let has_more = records.len() > page_size;
     let mut items = records;
     if has_more {

@@ -25,6 +25,16 @@ This package is implemented as an independent SDKWork commerce capability. It ow
 
 All remote commerce access goes through `@sdkwork/membership-service` or through sibling commerce services that use the same boundary. Generated SDK clients remain behind the shared service contract.
 
+Subscription catalog reads and purchases are orchestrated by:
+
+- `subscription-catalog-service` — `memberships.packageGroups.list`, `plans.list`, `benefits.list`, purchase delegation
+- `subscription-service` — checkout dashboard, coupons, payment methods, `memberships.purchases.*`
+- `subscription-catalog-controller` — page lifecycle for `SubscriptionCatalogPage`
+
+Static fixtures in `subscription-catalog-content.ts` are offline fallbacks only; production paths load data from app-api via SDK.
+
+**Commerce checkout boundary:** Payment execution uses `@sdkwork/payment-app-sdk` (cashier). PSP webhooks and settlement are handled by `@sdkwork/order-app-sdk` / order gateway—not by membership or a payment→membership callback. After order payment success (`subject=membership`), membership fulfills `pending_activation` subscriptions. See `docs/architecture/tech/TECH_ARCHITECTURE.md` §10.3 and `../sdkwork-order/docs/architecture/commerce/COMMERCE_CHECKOUT_ARCHITECTURE.md`.
+
 ## Verification
 
 Use the package `typecheck` script and focused Vitest coverage for service, controller, and UI behavior when changing this package.

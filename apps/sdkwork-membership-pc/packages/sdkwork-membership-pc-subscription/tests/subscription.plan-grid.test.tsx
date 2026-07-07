@@ -41,7 +41,7 @@ const summary = {
 };
 
 describe("sdkwork-membership-pc-subscription plan grid", () => {
-  it("renders the free tier alongside paid plans and selects a plan on click", () => {
+  it("renders only backend plans without a synthetic free tier and selects a plan on click", () => {
     const onSelectPlan = vi.fn();
 
     render(
@@ -60,8 +60,9 @@ describe("sdkwork-membership-pc-subscription plan grid", () => {
     expect(
       screen.getByRole("heading", { level: 2, name: /choose a premium package/i }),
     ).toBeInTheDocument();
-    expect(screen.getByText(/free membership/i)).toBeInTheDocument();
     expect(screen.getByText("Pro Monthly")).toBeInTheDocument();
+    // No synthetic free tier is injected; only backend plans render.
+    expect(screen.queryByText(/free membership/i)).not.toBeInTheDocument();
 
     // The recommended paid plan exposes a selection action.
     fireEvent.click(screen.getByRole("button", { name: /activate membership/i }));

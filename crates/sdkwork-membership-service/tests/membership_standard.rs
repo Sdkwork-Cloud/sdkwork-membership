@@ -228,8 +228,8 @@ fn validates_membership_package_catalog_shape_and_prices() {
         Some("sku-membership-month-pro"),
         "Monthly Pro",
         Some("Advanced model access"),
-        "69.90",
-        Some("129.00"),
+        "6990",
+        Some("12900"),
         "CNY",
         45_000,
         30,
@@ -242,7 +242,7 @@ fn validates_membership_package_catalog_shape_and_prices() {
     assert_eq!(package.external_id, 303);
     assert_eq!(package.package_group_id, "membership-package-group-month");
     assert_eq!(package.plan_id, "membership-plan-pro");
-    assert_eq!(package.price_amount, "69.90");
+    assert_eq!(package.price_amount, "6990");
     assert_eq!(package.duration_days, 30);
     assert!(package.recommended);
     assert_eq!(package.tags, vec!["monthly", "advanced"]);
@@ -257,7 +257,7 @@ fn validates_membership_package_catalog_shape_and_prices() {
         None,
         "Monthly Pro",
         None,
-        "-1.00",
+        "-100",
         None,
         "CNY",
         45_000,
@@ -277,7 +277,7 @@ fn validates_membership_package_catalog_shape_and_prices() {
         None,
         "Monthly Pro",
         None,
-        "69.90",
+        "6990",
         None,
         "CNY",
         45_000,

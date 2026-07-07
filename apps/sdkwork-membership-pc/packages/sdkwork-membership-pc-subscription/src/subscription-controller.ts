@@ -5,6 +5,7 @@ import {
 import { resolveSdkworkUserCouponRequestId } from "@sdkwork/promotion-pc-coupon";
 import {
   estimateSdkworkSubscriptionCheckout,
+  isSdkworkSubscriptionActionAllowed,
   resolveSdkworkSubscriptionPaymentMethod,
   resolveSdkworkSubscriptionPaymentMethodOption,
   type SdkworkSubscriptionAction,
@@ -424,6 +425,9 @@ export function createSdkworkSubscriptionController(
     service,
 
     setAction(action) {
+      if (!isSdkworkSubscriptionActionAllowed(state.dashboard.summary, action)) {
+        return;
+      }
       setState({
         activeAction: action,
       });

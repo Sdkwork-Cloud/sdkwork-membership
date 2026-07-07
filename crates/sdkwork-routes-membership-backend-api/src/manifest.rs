@@ -34,7 +34,7 @@ pub const BACKEND_API_ROUTE_MANIFEST: &[RouteManifestEntry] = &[
         auth_mode: "dual-token",
     },
     RouteManifestEntry {
-        path: "/plans/:id",
+        path: "/plans/{id}",
         method: "PUT",
         operation_id: "memberships.plans.update",
         request_context: "WebRequestContext",
@@ -42,7 +42,7 @@ pub const BACKEND_API_ROUTE_MANIFEST: &[RouteManifestEntry] = &[
         auth_mode: "dual-token",
     },
     RouteManifestEntry {
-        path: "/plans/:id",
+        path: "/plans/{id}",
         method: "DELETE",
         operation_id: "memberships.plans.delete",
         request_context: "WebRequestContext",
@@ -50,7 +50,7 @@ pub const BACKEND_API_ROUTE_MANIFEST: &[RouteManifestEntry] = &[
         auth_mode: "dual-token",
     },
     RouteManifestEntry {
-        path: "/packageGroups",
+        path: "/package_groups",
         method: "GET",
         operation_id: "memberships.packageGroups.list",
         request_context: "WebRequestContext",
@@ -58,7 +58,7 @@ pub const BACKEND_API_ROUTE_MANIFEST: &[RouteManifestEntry] = &[
         auth_mode: "dual-token",
     },
     RouteManifestEntry {
-        path: "/packageGroups",
+        path: "/package_groups",
         method: "POST",
         operation_id: "memberships.packageGroups.create",
         request_context: "WebRequestContext",
@@ -66,7 +66,7 @@ pub const BACKEND_API_ROUTE_MANIFEST: &[RouteManifestEntry] = &[
         auth_mode: "dual-token",
     },
     RouteManifestEntry {
-        path: "/packageGroups/:id",
+        path: "/package_groups/{id}",
         method: "PUT",
         operation_id: "memberships.packageGroups.update",
         request_context: "WebRequestContext",
@@ -74,7 +74,7 @@ pub const BACKEND_API_ROUTE_MANIFEST: &[RouteManifestEntry] = &[
         auth_mode: "dual-token",
     },
     RouteManifestEntry {
-        path: "/packageGroups/:id",
+        path: "/package_groups/{id}",
         method: "DELETE",
         operation_id: "memberships.packageGroups.delete",
         request_context: "WebRequestContext",
@@ -98,7 +98,7 @@ pub const BACKEND_API_ROUTE_MANIFEST: &[RouteManifestEntry] = &[
         auth_mode: "dual-token",
     },
     RouteManifestEntry {
-        path: "/packages/:id",
+        path: "/packages/{id}",
         method: "PUT",
         operation_id: "memberships.packages.update",
         request_context: "WebRequestContext",
@@ -106,7 +106,7 @@ pub const BACKEND_API_ROUTE_MANIFEST: &[RouteManifestEntry] = &[
         auth_mode: "dual-token",
     },
     RouteManifestEntry {
-        path: "/packages/:id",
+        path: "/packages/{id}",
         method: "DELETE",
         operation_id: "memberships.packages.delete",
         request_context: "WebRequestContext",
@@ -122,7 +122,7 @@ pub const BACKEND_API_ROUTE_MANIFEST: &[RouteManifestEntry] = &[
         auth_mode: "dual-token",
     },
     RouteManifestEntry {
-        path: "/members/:id/status",
+        path: "/members/{id}/status",
         method: "PATCH",
         operation_id: "memberships.members.status.update",
         request_context: "WebRequestContext",
@@ -136,6 +136,14 @@ pub const BACKEND_API_ROUTE_MANIFEST: &[RouteManifestEntry] = &[
         request_context: "WebRequestContext",
         api_surface: "backend-api",
         auth_mode: "dual-token",
+    },
+    RouteManifestEntry {
+        path: "/purchases/fulfillments",
+        method: "POST",
+        operation_id: "memberships.purchases.fulfillments.create",
+        request_context: "WebRequestContext",
+        api_surface: "backend-api",
+        auth_mode: "service-token",
     },
 ];
 

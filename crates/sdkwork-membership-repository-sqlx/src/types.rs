@@ -2,7 +2,7 @@ use std::future::Future;
 use std::pin::Pin;
 
 use sdkwork_contract_service::CommerceServiceError;
-use sdkwork_utils_rust::SdkWorkPageData;
+use sdkwork_utils_rust::{SdkWorkCommandData, SdkWorkPageData};
 use serde::{Deserialize, Serialize};
 
 pub use crate::pagination::MembershipListQuery as AppMembershipListQuery;
@@ -13,6 +13,9 @@ pub type AppMembershipReadFuture<'a, T> =
     Pin<Box<dyn Future<Output = AppMembershipResult<T>> + Send + 'a>>;
 pub type AppMembershipCommandFuture<'a> =
     Pin<Box<dyn Future<Output = AppMembershipResult<AppMembershipPurchaseOutcome>> + Send + 'a>>;
+pub type AppMembershipFulfillmentFuture<'a> = Pin<
+    Box<dyn Future<Output = AppMembershipResult<FulfillMembershipPurchaseOutcome>> + Send + 'a>,
+>;
 pub type AdminMembershipFuture<'a, T> =
     Pin<Box<dyn Future<Output = AppMembershipResult<T>> + Send + 'a>>;
 
@@ -196,6 +199,22 @@ pub struct SubmitMembershipPurchaseCommand {
     pub requested_at: String,
     pub expire_at: String,
     pub action: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct FulfillMembershipPurchaseCommand {
+    pub subject: AppMembershipSubject,
+    pub order_id: String,
+    pub request_no: String,
+    pub idempotency_key: String,
+}
+
+#[derive(Debug, Clone, Default, Serialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct FulfillMembershipPurchaseOutcome {
+    pub accepted: bool,
+    pub replayed: bool,
+    pub fulfillment_status: String,
 }
 
 #[derive(Debug, Clone, Default, Serialize, PartialEq)]
@@ -465,6 +484,7 @@ pub trait AppMembershipStore {
 
     fn load_plans<'a>(
         &'a self,
+        catalog_subject: Option<AppMembershipSubject>,
         query: AppMembershipListQuery,
     ) -> AppMembershipReadFuture<'a, SdkWorkPageData<AppMembershipPlanItem>>;
 
@@ -477,6 +497,7 @@ pub trait AppMembershipStore {
 
     fn load_packages<'a>(
         &'a self,
+        catalog_subject: Option<AppMembershipSubject>,
         package_group_id: Option<i64>,
         plan_id: Option<i64>,
         query: AppMembershipListQuery,
@@ -484,11 +505,13 @@ pub trait AppMembershipStore {
 
     fn load_package<'a>(
         &'a self,
+        catalog_subject: Option<AppMembershipSubject>,
         package_id: i64,
     ) -> AppMembershipReadFuture<'a, Option<AppMembershipPackageItem>>;
 
     fn load_package_groups<'a>(
         &'a self,
+        catalog_subject: Option<AppMembershipSubject>,
         plan_id: Option<i64>,
         recommended_only: bool,
         query: AppMembershipListQuery,
@@ -496,6 +519,7 @@ pub trait AppMembershipStore {
 
     fn load_package_group<'a>(
         &'a self,
+        catalog_subject: Option<AppMembershipSubject>,
         package_group_id: i64,
     ) -> AppMembershipReadFuture<'a, Option<AppMembershipPackageGroupItem>>;
 
@@ -530,12 +554,17 @@ pub trait AppMembershipStore {
         &'a self,
         subject: AppMembershipSubject,
         requested_at: String,
-    ) -> AppMembershipReadFuture<'a, ()>;
+    ) -> AppMembershipReadFuture<'a, SdkWorkCommandData>;
 
     fn submit_purchase<'a>(
         &'a self,
         command: SubmitMembershipPurchaseCommand,
     ) -> AppMembershipCommandFuture<'a>;
+
+    fn fulfill_purchase<'a>(
+        &'a self,
+        command: FulfillMembershipPurchaseCommand,
+    ) -> AppMembershipFulfillmentFuture<'a>;
 }
 
 pub trait AdminMembershipStore {

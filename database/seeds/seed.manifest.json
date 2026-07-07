@@ -6,7 +6,9 @@
   "activeLocales": ["zh-CN"],
   "profiles": {
     "standard": {
-      "common": [],
+      "common": [
+        "001_bootstrap.sql"
+      ],
       "locales": {
         "zh-CN": []
       }

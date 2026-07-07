@@ -3,10 +3,454 @@
 -- Application is in initialization state: full DDL lives here; migrations/ is reserved for post-GA changes.
 
 -- baseline source: ddl/baseline/postgres/0001_membership_baseline.sql
--- Membership extension tables migration (PostgreSQL)
--- Adds membership-specific tables owned by sdkwork-membership capability.
--- Existing commerce domain tables (membership_plan, membership_package, etc.)
--- are created by the commerce platform initial migration.
+-- Membership initialization tables (PostgreSQL).
+-- This repository is self-contained for local membership frontend/backend
+-- integration. Order creation remains owned by sdkwork-order; this baseline
+-- does not create commerce_order and seeds do not insert order rows.
+
+-- 0. Local support tables required by membership catalog, entitlement, and
+-- authenticated frontend flows.
+CREATE TABLE IF NOT EXISTS commerce_product_spu (
+    id              TEXT NOT NULL,
+    tenant_id       TEXT NOT NULL,
+    organization_id TEXT NOT NULL DEFAULT '0',
+    spu_no          TEXT NOT NULL,
+    name            TEXT,
+    title           TEXT,
+    status          TEXT NOT NULL DEFAULT 'active',
+    created_at      TIMESTAMPTZ NOT NULL,
+    updated_at      TIMESTAMPTZ NOT NULL,
+    CONSTRAINT pk_commerce_product_spu PRIMARY KEY (id),
+    CONSTRAINT uk_commerce_product_spu_tenant_no UNIQUE (tenant_id, organization_id, spu_no)
+);
+
+CREATE TABLE IF NOT EXISTS commerce_product_sku (
+    id                    TEXT NOT NULL,
+    tenant_id             TEXT NOT NULL,
+    organization_id       TEXT NOT NULL DEFAULT '0',
+    spu_id                TEXT NOT NULL,
+    sku_no                TEXT NOT NULL,
+    name                  TEXT,
+    title                 TEXT,
+    price_amount          TEXT,
+    original_price_amount TEXT,
+    currency_code         TEXT,
+    fulfillment_type      TEXT,
+    inventory_tracking    TEXT,
+    status                TEXT NOT NULL DEFAULT 'active',
+    spec_json             TEXT NOT NULL DEFAULT '{}',
+    created_at            TIMESTAMPTZ NOT NULL,
+    updated_at            TIMESTAMPTZ NOT NULL,
+    CONSTRAINT pk_commerce_product_sku PRIMARY KEY (id),
+    CONSTRAINT uk_commerce_product_sku_tenant_no UNIQUE (tenant_id, organization_id, sku_no)
+);
+
+CREATE INDEX IF NOT EXISTS idx_commerce_product_sku_spu
+    ON commerce_product_sku (tenant_id, spu_id, status);
+
+CREATE TABLE IF NOT EXISTS membership_plan (
+    id              TEXT NOT NULL,
+    uuid            VARCHAR(64),
+    tenant_id       TEXT NOT NULL,
+    organization_id TEXT NOT NULL DEFAULT '0',
+    plan_no         TEXT NOT NULL,
+    plan_code       TEXT,
+    name            TEXT NOT NULL,
+    rank            INTEGER NOT NULL DEFAULT 0,
+    description     TEXT,
+    status          TEXT NOT NULL DEFAULT 'active',
+    version         BIGINT NOT NULL DEFAULT 0,
+    deleted_at      TIMESTAMPTZ,
+    created_at      TIMESTAMPTZ NOT NULL,
+    updated_at      TIMESTAMPTZ NOT NULL,
+    CONSTRAINT pk_membership_plan PRIMARY KEY (id),
+    CONSTRAINT uk_membership_plan_tenant_no UNIQUE (tenant_id, organization_id, plan_no)
+);
+
+CREATE UNIQUE INDEX IF NOT EXISTS uk_membership_plan_uuid
+    ON membership_plan (uuid);
+
+CREATE TABLE IF NOT EXISTS membership_plan_version (
+    id               TEXT NOT NULL,
+    uuid             VARCHAR(64),
+    tenant_id        TEXT NOT NULL,
+    organization_id  TEXT NOT NULL DEFAULT '0',
+    plan_id          TEXT NOT NULL,
+    version_no       TEXT NOT NULL,
+    title            TEXT,
+    description      TEXT,
+    lifecycle_status TEXT NOT NULL DEFAULT 'draft',
+    effective_from   TIMESTAMPTZ,
+    effective_to     TIMESTAMPTZ,
+    published_at     TIMESTAMPTZ,
+    version          BIGINT NOT NULL DEFAULT 0,
+    created_at       TIMESTAMPTZ NOT NULL,
+    updated_at       TIMESTAMPTZ NOT NULL,
+    CONSTRAINT pk_membership_plan_version PRIMARY KEY (id),
+    CONSTRAINT uk_membership_plan_version_tenant_plan_no UNIQUE (tenant_id, plan_id, version_no)
+);
+
+CREATE UNIQUE INDEX IF NOT EXISTS uk_membership_plan_version_uuid
+    ON membership_plan_version (uuid);
+CREATE INDEX IF NOT EXISTS idx_membership_plan_version_published
+    ON membership_plan_version (tenant_id, plan_id, lifecycle_status, version_no);
+
+CREATE TABLE IF NOT EXISTS benefit_definition (
+    id               TEXT NOT NULL,
+    uuid             VARCHAR(64),
+    tenant_id        TEXT NOT NULL,
+    organization_id  TEXT NOT NULL DEFAULT '0',
+    benefit_code     TEXT NOT NULL,
+    name             TEXT NOT NULL,
+    benefit_type     TEXT NOT NULL,
+    value_unit       TEXT,
+    measurement_type TEXT,
+    description      TEXT,
+    status           TEXT NOT NULL DEFAULT 'active',
+    version          BIGINT NOT NULL DEFAULT 0,
+    created_at       TIMESTAMPTZ NOT NULL,
+    updated_at       TIMESTAMPTZ NOT NULL,
+    CONSTRAINT pk_benefit_definition PRIMARY KEY (id),
+    CONSTRAINT uk_benefit_definition_tenant_code UNIQUE (tenant_id, organization_id, benefit_code)
+);
+
+CREATE UNIQUE INDEX IF NOT EXISTS uk_benefit_definition_uuid
+    ON benefit_definition (uuid);
+
+CREATE TABLE IF NOT EXISTS membership_plan_benefit (
+    id              TEXT NOT NULL,
+    tenant_id       TEXT NOT NULL,
+    organization_id TEXT NOT NULL DEFAULT '0',
+    plan_id         TEXT NOT NULL,
+    plan_version_id TEXT NOT NULL,
+    benefit_id      TEXT NOT NULL,
+    benefit_code    TEXT NOT NULL,
+    grant_quantity  TEXT NOT NULL DEFAULT '0',
+    grant_period    TEXT,
+    reset_policy    TEXT,
+    usage_policy    TEXT,
+    sort_weight     INTEGER NOT NULL DEFAULT 0,
+    status          TEXT NOT NULL DEFAULT 'active',
+    created_at      TIMESTAMPTZ NOT NULL,
+    updated_at      TIMESTAMPTZ NOT NULL,
+    CONSTRAINT pk_membership_plan_benefit PRIMARY KEY (id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_membership_plan_benefit_plan
+    ON membership_plan_benefit (tenant_id, plan_id, status, sort_weight);
+
+CREATE TABLE IF NOT EXISTS membership_package_group (
+    id              TEXT NOT NULL,
+    uuid            VARCHAR(64),
+    tenant_id       TEXT NOT NULL,
+    organization_id TEXT NOT NULL DEFAULT '0',
+    external_id     INTEGER,
+    group_no        TEXT NOT NULL,
+    name            TEXT NOT NULL,
+    description     TEXT,
+    billing_cycle   TEXT,
+    duration_days   INTEGER NOT NULL DEFAULT 0,
+    display_channel TEXT,
+    sort_weight     INTEGER NOT NULL DEFAULT 0,
+    status          TEXT NOT NULL DEFAULT 'active',
+    version         BIGINT NOT NULL DEFAULT 0,
+    deleted_at      TIMESTAMPTZ,
+    created_at      TIMESTAMPTZ NOT NULL,
+    updated_at      TIMESTAMPTZ NOT NULL,
+    CONSTRAINT pk_membership_package_group PRIMARY KEY (id),
+    CONSTRAINT uk_membership_package_group_tenant_no UNIQUE (tenant_id, organization_id, group_no)
+);
+
+CREATE UNIQUE INDEX IF NOT EXISTS uk_membership_package_group_uuid
+    ON membership_package_group (uuid);
+
+CREATE TABLE IF NOT EXISTS membership_package (
+    id                    TEXT NOT NULL,
+    uuid                  VARCHAR(64),
+    tenant_id             TEXT NOT NULL,
+    organization_id       TEXT NOT NULL DEFAULT '0',
+    external_id           INTEGER NOT NULL,
+    package_no            TEXT NOT NULL,
+    package_group_id      TEXT NOT NULL,
+    plan_id               TEXT NOT NULL,
+    plan_version_id       TEXT,
+    sku_id                TEXT,
+    name                  TEXT NOT NULL,
+    description           TEXT,
+    price_amount          TEXT NOT NULL,
+    original_price_amount TEXT,
+    currency_code         TEXT NOT NULL DEFAULT 'CNY',
+    point_amount          INTEGER NOT NULL DEFAULT 0,
+    duration_days         INTEGER NOT NULL,
+    recurrence_cycle      TEXT,
+    sort_weight           INTEGER NOT NULL DEFAULT 0,
+    recommended           INTEGER NOT NULL DEFAULT 0,
+    status                TEXT NOT NULL DEFAULT 'active',
+    starts_at             TIMESTAMPTZ,
+    ends_at               TIMESTAMPTZ,
+    tags                  JSONB NOT NULL DEFAULT '[]'::jsonb,
+    version               BIGINT NOT NULL DEFAULT 0,
+    deleted_at            TIMESTAMPTZ,
+    created_at            TIMESTAMPTZ NOT NULL,
+    updated_at            TIMESTAMPTZ NOT NULL,
+    CONSTRAINT pk_membership_package PRIMARY KEY (id),
+    CONSTRAINT uk_membership_package_tenant_no UNIQUE (tenant_id, organization_id, package_no)
+);
+
+CREATE UNIQUE INDEX IF NOT EXISTS uk_membership_package_uuid
+    ON membership_package (uuid);
+CREATE INDEX IF NOT EXISTS idx_membership_package_external_id
+    ON membership_package (tenant_id, organization_id, external_id);
+
+CREATE TABLE IF NOT EXISTS membership_subscription (
+    id                       TEXT NOT NULL,
+    uuid                     VARCHAR(64),
+    tenant_id                TEXT NOT NULL,
+    organization_id          TEXT NOT NULL DEFAULT '0',
+    subscription_no          TEXT NOT NULL,
+    subject_type             TEXT NOT NULL,
+    subject_id               TEXT NOT NULL,
+    owner_user_id            TEXT NOT NULL,
+    plan_id                  TEXT NOT NULL,
+    plan_version_id          TEXT,
+    package_id               TEXT,
+    current_period_id        TEXT,
+    source_order_id          TEXT,
+    source_payment_intent_id TEXT,
+    status                   TEXT NOT NULL DEFAULT 'pending',
+    starts_at                TIMESTAMPTZ NOT NULL,
+    expires_at               TIMESTAMPTZ NOT NULL,
+    grace_until              TIMESTAMPTZ,
+    cancel_at_period_end     INTEGER NOT NULL DEFAULT 0,
+    auto_renew               INTEGER NOT NULL DEFAULT 0,
+    growth_value             BIGINT NOT NULL DEFAULT 0,
+    request_no               TEXT,
+    idempotency_key          TEXT,
+    version                  BIGINT NOT NULL DEFAULT 0,
+    created_at               TIMESTAMPTZ NOT NULL,
+    updated_at               TIMESTAMPTZ NOT NULL,
+    CONSTRAINT pk_membership_subscription PRIMARY KEY (id)
+);
+
+CREATE UNIQUE INDEX IF NOT EXISTS uk_membership_subscription_uuid
+    ON membership_subscription (uuid);
+CREATE INDEX IF NOT EXISTS idx_membership_subscription_idempotency
+    ON membership_subscription (tenant_id, owner_user_id, idempotency_key);
+CREATE INDEX IF NOT EXISTS idx_membership_subscription_order
+    ON membership_subscription (tenant_id, source_order_id);
+
+CREATE TABLE IF NOT EXISTS membership_period (
+    id                       TEXT NOT NULL,
+    uuid                     VARCHAR(64),
+    tenant_id                TEXT NOT NULL,
+    organization_id          TEXT NOT NULL DEFAULT '0',
+    period_no                TEXT NOT NULL,
+    subscription_id          TEXT NOT NULL,
+    subject_type             TEXT NOT NULL,
+    subject_id               TEXT NOT NULL,
+    plan_id                  TEXT NOT NULL,
+    plan_version_id          TEXT,
+    starts_at                TIMESTAMPTZ NOT NULL,
+    ends_at                  TIMESTAMPTZ NOT NULL,
+    status                   TEXT NOT NULL,
+    source_order_id          TEXT,
+    source_payment_intent_id TEXT,
+    request_no               TEXT,
+    idempotency_key          TEXT,
+    created_at               TIMESTAMPTZ NOT NULL,
+    updated_at               TIMESTAMPTZ NOT NULL,
+    CONSTRAINT pk_membership_period PRIMARY KEY (id)
+);
+
+CREATE UNIQUE INDEX IF NOT EXISTS uk_membership_period_uuid
+    ON membership_period (uuid);
+CREATE INDEX IF NOT EXISTS idx_membership_period_subscription
+    ON membership_period (tenant_id, subscription_id, starts_at);
+
+CREATE TABLE IF NOT EXISTS entitlement_account (
+    id              TEXT NOT NULL,
+    uuid            VARCHAR(64),
+    tenant_id       TEXT NOT NULL,
+    organization_id TEXT NOT NULL DEFAULT '0',
+    account_no      TEXT NOT NULL,
+    benefit_id      TEXT NOT NULL,
+    subject_type    TEXT NOT NULL,
+    subject_id      TEXT NOT NULL,
+    total_granted   TEXT NOT NULL DEFAULT '0',
+    total_used      TEXT NOT NULL DEFAULT '0',
+    balance         TEXT NOT NULL DEFAULT '0',
+    status          TEXT NOT NULL DEFAULT 'pending',
+    expires_at      TIMESTAMPTZ,
+    version         BIGINT NOT NULL DEFAULT 0,
+    created_at      TIMESTAMPTZ NOT NULL,
+    updated_at      TIMESTAMPTZ NOT NULL,
+    CONSTRAINT pk_entitlement_account PRIMARY KEY (id),
+    CONSTRAINT uk_entitlement_account_subject_benefit UNIQUE (tenant_id, subject_type, subject_id, benefit_id)
+);
+
+CREATE UNIQUE INDEX IF NOT EXISTS uk_entitlement_account_uuid
+    ON entitlement_account (uuid);
+
+CREATE TABLE IF NOT EXISTS entitlement_grant (
+    id               TEXT NOT NULL,
+    uuid             VARCHAR(64),
+    tenant_id        TEXT NOT NULL,
+    organization_id  TEXT NOT NULL DEFAULT '0',
+    grant_no         TEXT NOT NULL,
+    benefit_id       TEXT NOT NULL,
+    subject_type     TEXT NOT NULL,
+    subject_id       TEXT NOT NULL,
+    source_type      TEXT NOT NULL,
+    source_id        TEXT NOT NULL,
+    grant_policy     TEXT,
+    granted_quantity TEXT NOT NULL DEFAULT '0',
+    status           TEXT NOT NULL DEFAULT 'pending',
+    starts_at        TIMESTAMPTZ,
+    expires_at       TIMESTAMPTZ,
+    request_no       TEXT,
+    idempotency_key  TEXT,
+    created_at       TIMESTAMPTZ NOT NULL,
+    updated_at       TIMESTAMPTZ NOT NULL,
+    CONSTRAINT pk_entitlement_grant PRIMARY KEY (id)
+);
+
+CREATE UNIQUE INDEX IF NOT EXISTS uk_entitlement_grant_uuid
+    ON entitlement_grant (uuid);
+
+CREATE TABLE IF NOT EXISTS entitlement_ledger_entry (
+    id              TEXT NOT NULL,
+    uuid            VARCHAR(64),
+    tenant_id       TEXT NOT NULL,
+    organization_id TEXT NOT NULL DEFAULT '0',
+    ledger_no       TEXT NOT NULL,
+    account_id      TEXT NOT NULL,
+    grant_id        TEXT,
+    benefit_id      TEXT NOT NULL,
+    subject_type    TEXT NOT NULL,
+    subject_id      TEXT NOT NULL,
+    direction       TEXT NOT NULL,
+    amount          TEXT NOT NULL,
+    balance_after   TEXT NOT NULL,
+    business_type   TEXT NOT NULL,
+    source_type     TEXT NOT NULL,
+    source_id       TEXT NOT NULL,
+    request_no      TEXT,
+    idempotency_key TEXT,
+    occurred_at     TIMESTAMPTZ NOT NULL,
+    created_at      TIMESTAMPTZ NOT NULL,
+    CONSTRAINT pk_entitlement_ledger_entry PRIMARY KEY (id)
+);
+
+CREATE UNIQUE INDEX IF NOT EXISTS uk_entitlement_ledger_uuid
+    ON entitlement_ledger_entry (uuid);
+
+CREATE TABLE IF NOT EXISTS commerce_account (
+    id               BIGINT NOT NULL,
+    uuid             VARCHAR(64) NOT NULL,
+    tenant_id        BIGINT NOT NULL,
+    organization_id  BIGINT NOT NULL DEFAULT 0,
+    owner_type       VARCHAR(32) NOT NULL DEFAULT 'USER',
+    owner_id         BIGINT NOT NULL,
+    asset_code       VARCHAR(32) NOT NULL,
+    currency_code    VARCHAR(16) NOT NULL,
+    account_purpose  VARCHAR(32) NOT NULL DEFAULT 'GENERAL',
+    available_amount BIGINT NOT NULL DEFAULT 0,
+    frozen_amount    BIGINT NOT NULL DEFAULT 0,
+    pending_amount   BIGINT NOT NULL DEFAULT 0,
+    status           INTEGER NOT NULL DEFAULT 1,
+    version          BIGINT NOT NULL DEFAULT 0,
+    closed_at        TIMESTAMPTZ,
+    created_at       TIMESTAMPTZ NOT NULL,
+    updated_at       TIMESTAMPTZ NOT NULL,
+    CONSTRAINT pk_commerce_account PRIMARY KEY (id),
+    CONSTRAINT uk_commerce_account_uuid UNIQUE (uuid),
+    CONSTRAINT uk_commerce_account_owner_asset UNIQUE (
+        tenant_id, organization_id, owner_type, owner_id,
+        asset_code, currency_code, account_purpose
+    )
+);
+
+CREATE INDEX IF NOT EXISTS idx_commerce_account_tenant_owner
+    ON commerce_account (tenant_id, organization_id, owner_type, owner_id, asset_code);
+
+CREATE TABLE IF NOT EXISTS commerce_account_ledger (
+    id                     BIGINT NOT NULL,
+    uuid                   VARCHAR(64) NOT NULL,
+    tenant_id              BIGINT NOT NULL,
+    organization_id        BIGINT NOT NULL DEFAULT 0,
+    account_id             BIGINT NOT NULL,
+    journal_id             BIGINT,
+    owner_type             VARCHAR(32) NOT NULL,
+    owner_id               BIGINT NOT NULL,
+    asset_code             VARCHAR(32) NOT NULL,
+    currency_code          VARCHAR(16) NOT NULL,
+    ledger_type            VARCHAR(32) NOT NULL DEFAULT 'AVAILABLE',
+    entry_type             VARCHAR(32) NOT NULL,
+    direction              VARCHAR(16) NOT NULL,
+    amount                 BIGINT NOT NULL,
+    balance_before         BIGINT NOT NULL,
+    balance_after          BIGINT NOT NULL,
+    business_type          VARCHAR(64) NOT NULL,
+    business_no            VARCHAR(128) NOT NULL,
+    request_no             VARCHAR(128) NOT NULL,
+    idempotency_key        VARCHAR(200) NOT NULL,
+    source_type            VARCHAR(64),
+    source_id              BIGINT,
+    hold_id                BIGINT,
+    transfer_id            BIGINT,
+    exchange_snapshot_id   BIGINT,
+    settlement_snapshot_id BIGINT,
+    reversed_ledger_id     BIGINT,
+    reference_no           VARCHAR(128),
+    remark                 VARCHAR(512),
+    metadata_json          JSONB NOT NULL DEFAULT '{}'::jsonb,
+    trace_id               VARCHAR(128) NOT NULL,
+    created_at             TIMESTAMPTZ NOT NULL,
+    CONSTRAINT pk_commerce_account_ledger PRIMARY KEY (id),
+    CONSTRAINT uk_commerce_account_ledger_uuid UNIQUE (uuid),
+    CONSTRAINT uk_commerce_account_ledger_business_no UNIQUE (tenant_id, business_no),
+    CONSTRAINT uk_commerce_account_ledger_idempotency UNIQUE (tenant_id, idempotency_key)
+);
+
+CREATE INDEX IF NOT EXISTS idx_commerce_account_ledger_account_created
+    ON commerce_account_ledger (tenant_id, account_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_commerce_account_ledger_owner_created
+    ON commerce_account_ledger (tenant_id, organization_id, owner_type, owner_id, asset_code, created_at DESC);
+
+CREATE TABLE IF NOT EXISTS commerce_order_amount_breakdown (
+    id              TEXT NOT NULL,
+    tenant_id       TEXT NOT NULL,
+    organization_id TEXT,
+    order_id        TEXT NOT NULL,
+    allocation_type TEXT NOT NULL DEFAULT 'order_total',
+    payable_amount  TEXT NOT NULL DEFAULT '0',
+    discount_amount TEXT NOT NULL DEFAULT '0',
+    created_at      TIMESTAMPTZ NOT NULL,
+    CONSTRAINT pk_commerce_order_amount_breakdown PRIMARY KEY (id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_commerce_order_amount_breakdown_order
+    ON commerce_order_amount_breakdown (tenant_id, order_id, allocation_type);
+
+CREATE TABLE IF NOT EXISTS commerce_payment_intent (
+    id                TEXT NOT NULL,
+    tenant_id         TEXT NOT NULL,
+    organization_id   TEXT,
+    owner_user_id     TEXT,
+    order_id          TEXT,
+    payment_intent_no TEXT,
+    payment_method    TEXT,
+    provider_code     TEXT,
+    status            TEXT NOT NULL DEFAULT 'created',
+    amount            TEXT,
+    currency_code     TEXT,
+    created_at        TIMESTAMPTZ NOT NULL,
+    updated_at        TIMESTAMPTZ NOT NULL,
+    CONSTRAINT pk_commerce_payment_intent PRIMARY KEY (id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_commerce_payment_intent_order
+    ON commerce_payment_intent (tenant_id, order_id, status);
 
 -- 1. Daily reward tracking table
 CREATE TABLE IF NOT EXISTS commerce_membership_daily_reward (
@@ -22,16 +466,19 @@ CREATE TABLE IF NOT EXISTS commerce_membership_daily_reward (
     status          VARCHAR(32)  NOT NULL DEFAULT 'claimed',
     idempotency_key VARCHAR(64),
     created_at      TIMESTAMPTZ  NOT NULL DEFAULT NOW(),
+    version         BIGINT       NOT NULL DEFAULT 0,
+    updated_at      TIMESTAMPTZ  NOT NULL DEFAULT NOW(),
     CONSTRAINT pk_commerce_membership_daily_reward PRIMARY KEY (id),
     CONSTRAINT uk_commerce_membership_daily_reward_uuid UNIQUE (uuid),
     CONSTRAINT uk_commerce_membership_daily_reward_user_date UNIQUE (tenant_id, user_id, reward_date),
+    CONSTRAINT uk_commerce_membership_daily_reward_idempotency UNIQUE (idempotency_key),
     CONSTRAINT chk_daily_reward_points CHECK (reward_points >= 0),
     CONSTRAINT chk_daily_reward_consecutive CHECK (consecutive_days >= 1),
     CONSTRAINT chk_daily_reward_status CHECK (status IN ('claimed', 'revoked'))
 );
 
 CREATE INDEX IF NOT EXISTS idx_daily_reward_user_recent
-    ON commerce_membership_daily_reward (tenant_id, user_id, reward_date DESC);
+    ON commerce_membership_daily_reward (tenant_id, user_id, reward_date DESC, id DESC);
 
 -- 2. Privilege usage tracking table
 CREATE TABLE IF NOT EXISTS commerce_membership_privilege_usage (
@@ -54,11 +501,14 @@ CREATE TABLE IF NOT EXISTS commerce_membership_privilege_usage (
     CONSTRAINT uk_commerce_membership_privilege_usage_uuid UNIQUE (uuid),
     CONSTRAINT uk_commerce_membership_privilege_usage_unique UNIQUE (tenant_id, user_id, benefit_code, period_start),
     CONSTRAINT chk_priv_usage_used CHECK (used_count >= 0),
-    CONSTRAINT chk_priv_usage_limit CHECK (usage_limit >= 0)
+    CONSTRAINT chk_priv_usage_limit CHECK (usage_limit >= 0),
+    CONSTRAINT chk_priv_usage_period CHECK (period_end >= period_start)
 );
 
 CREATE INDEX IF NOT EXISTS idx_priv_usage_user_period
     ON commerce_membership_privilege_usage (tenant_id, user_id, period_end);
+CREATE INDEX IF NOT EXISTS idx_priv_usage_subscription
+    ON commerce_membership_privilege_usage (subscription_id, created_at DESC);
 
 -- 3. Membership change audit log (immutable)
 CREATE TABLE IF NOT EXISTS commerce_membership_change_log (
@@ -77,110 +527,22 @@ CREATE TABLE IF NOT EXISTS commerce_membership_change_log (
     operator_type   VARCHAR(32)  DEFAULT 'system',
     reason          VARCHAR(256),
     metadata        JSONB,
-    request_id      VARCHAR(64),
+    trace_id        VARCHAR(64),
     created_at      TIMESTAMPTZ  NOT NULL DEFAULT NOW(),
     CONSTRAINT pk_commerce_membership_change_log PRIMARY KEY (id),
     CONSTRAINT uk_commerce_membership_change_log_uuid UNIQUE (uuid),
     CONSTRAINT chk_change_log_action CHECK (action IN (
         'activate', 'renew', 'upgrade', 'downgrade',
         'expire', 'cancel', 'grace', 'restore'
-    ))
+    )),
+    CONSTRAINT chk_change_log_from_status CHECK (from_status IS NULL OR from_status IN ('active', 'expired', 'cancelled', 'grace_period', 'pending')),
+    CONSTRAINT chk_change_log_to_status CHECK (to_status IS NULL OR to_status IN ('active', 'expired', 'cancelled', 'grace_period', 'pending'))
 );
 
 CREATE INDEX IF NOT EXISTS idx_change_log_subscription
-    ON commerce_membership_change_log (subscription_id, created_at DESC);
+    ON commerce_membership_change_log (subscription_id, created_at DESC, id DESC);
 CREATE INDEX IF NOT EXISTS idx_change_log_tenant_user
-    ON commerce_membership_change_log (tenant_id, user_id, created_at DESC);
-
--- folded migration: migrations/postgres/0001_membership_extension_tables.up.sql
--- Membership extension tables migration (PostgreSQL)
--- Adds membership-specific tables owned by sdkwork-membership capability.
--- Existing commerce domain tables (membership_plan, membership_package, etc.)
--- are created by the commerce platform initial migration.
-
--- 1. Daily reward tracking table
-CREATE TABLE IF NOT EXISTS commerce_membership_daily_reward (
-    id              BIGINT       NOT NULL,
-    uuid            VARCHAR(64)  NOT NULL,
-    tenant_id       BIGINT       NOT NULL,
-    organization_id BIGINT       NOT NULL DEFAULT 0,
-    user_id         BIGINT       NOT NULL,
-    reward_date     DATE         NOT NULL,
-    reward_points   BIGINT       NOT NULL DEFAULT 0,
-    consecutive_days INTEGER     NOT NULL DEFAULT 1,
-    total_days      INTEGER      NOT NULL DEFAULT 1,
-    status          VARCHAR(32)  NOT NULL DEFAULT 'claimed',
-    idempotency_key VARCHAR(64),
-    created_at      TIMESTAMPTZ  NOT NULL DEFAULT NOW(),
-    CONSTRAINT pk_commerce_membership_daily_reward PRIMARY KEY (id),
-    CONSTRAINT uk_commerce_membership_daily_reward_uuid UNIQUE (uuid),
-    CONSTRAINT uk_commerce_membership_daily_reward_user_date UNIQUE (tenant_id, user_id, reward_date),
-    CONSTRAINT chk_daily_reward_points CHECK (reward_points >= 0),
-    CONSTRAINT chk_daily_reward_consecutive CHECK (consecutive_days >= 1),
-    CONSTRAINT chk_daily_reward_status CHECK (status IN ('claimed', 'revoked'))
-);
-
-CREATE INDEX IF NOT EXISTS idx_daily_reward_user_recent
-    ON commerce_membership_daily_reward (tenant_id, user_id, reward_date DESC);
-
--- 2. Privilege usage tracking table
-CREATE TABLE IF NOT EXISTS commerce_membership_privilege_usage (
-    id              BIGINT       NOT NULL,
-    uuid            VARCHAR(64)  NOT NULL,
-    tenant_id       BIGINT       NOT NULL,
-    organization_id BIGINT       NOT NULL DEFAULT 0,
-    user_id         BIGINT       NOT NULL,
-    subscription_id BIGINT,
-    benefit_code    VARCHAR(64)  NOT NULL,
-    period_start    TIMESTAMPTZ  NOT NULL,
-    period_end      TIMESTAMPTZ  NOT NULL,
-    used_count      BIGINT       NOT NULL DEFAULT 0,
-    usage_limit     BIGINT       NOT NULL DEFAULT 0,
-    last_used_at    TIMESTAMPTZ,
-    version         BIGINT       NOT NULL DEFAULT 0,
-    created_at      TIMESTAMPTZ  NOT NULL DEFAULT NOW(),
-    updated_at      TIMESTAMPTZ  NOT NULL DEFAULT NOW(),
-    CONSTRAINT pk_commerce_membership_privilege_usage PRIMARY KEY (id),
-    CONSTRAINT uk_commerce_membership_privilege_usage_uuid UNIQUE (uuid),
-    CONSTRAINT uk_commerce_membership_privilege_usage_unique UNIQUE (tenant_id, user_id, benefit_code, period_start),
-    CONSTRAINT chk_priv_usage_used CHECK (used_count >= 0),
-    CONSTRAINT chk_priv_usage_limit CHECK (usage_limit >= 0)
-);
-
-CREATE INDEX IF NOT EXISTS idx_priv_usage_user_period
-    ON commerce_membership_privilege_usage (tenant_id, user_id, period_end);
-
--- 3. Membership change audit log (immutable)
-CREATE TABLE IF NOT EXISTS commerce_membership_change_log (
-    id              BIGINT       NOT NULL,
-    uuid            VARCHAR(64)  NOT NULL,
-    tenant_id       BIGINT       NOT NULL,
-    organization_id BIGINT       NOT NULL DEFAULT 0,
-    subscription_id BIGINT       NOT NULL,
-    user_id         BIGINT       NOT NULL,
-    action          VARCHAR(64)  NOT NULL,
-    from_status     VARCHAR(32),
-    to_status       VARCHAR(32),
-    from_plan_id    VARCHAR(128),
-    to_plan_id      VARCHAR(128),
-    operator_id     BIGINT,
-    operator_type   VARCHAR(32)  DEFAULT 'system',
-    reason          VARCHAR(256),
-    metadata        JSONB,
-    request_id      VARCHAR(64),
-    created_at      TIMESTAMPTZ  NOT NULL DEFAULT NOW(),
-    CONSTRAINT pk_commerce_membership_change_log PRIMARY KEY (id),
-    CONSTRAINT uk_commerce_membership_change_log_uuid UNIQUE (uuid),
-    CONSTRAINT chk_change_log_action CHECK (action IN (
-        'activate', 'renew', 'upgrade', 'downgrade',
-        'expire', 'cancel', 'grace', 'restore'
-    ))
-);
-
-CREATE INDEX IF NOT EXISTS idx_change_log_subscription
-    ON commerce_membership_change_log (subscription_id, created_at DESC);
-CREATE INDEX IF NOT EXISTS idx_change_log_tenant_user
-    ON commerce_membership_change_log (tenant_id, user_id, created_at DESC);
+    ON commerce_membership_change_log (tenant_id, user_id, created_at DESC, id DESC);
 
 -- 4. Add missing standard columns to existing membership tables
 -- These ALTER TABLE statements are idempotent via DO blocks.
@@ -383,3 +745,22 @@ CREATE INDEX IF NOT EXISTS idx_entitlement_grant_expire
 
 CREATE INDEX IF NOT EXISTS idx_entitlement_ledger_account
     ON entitlement_ledger_entry (account_id, occurred_at DESC);
+
+-- 6. updated_at maintenance triggers for membership-owned mutable tables
+CREATE OR REPLACE FUNCTION fn_membership_set_updated_at()
+RETURNS TRIGGER AS $$
+BEGIN
+    NEW.updated_at = NOW();
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+DROP TRIGGER IF EXISTS trg_membership_priv_usage_updated ON commerce_membership_privilege_usage;
+CREATE TRIGGER trg_membership_priv_usage_updated
+    BEFORE UPDATE ON commerce_membership_privilege_usage
+    FOR EACH ROW EXECUTE FUNCTION fn_membership_set_updated_at();
+
+DROP TRIGGER IF EXISTS trg_membership_daily_reward_updated ON commerce_membership_daily_reward;
+CREATE TRIGGER trg_membership_daily_reward_updated
+    BEFORE UPDATE ON commerce_membership_daily_reward
+    FOR EACH ROW EXECUTE FUNCTION fn_membership_set_updated_at();

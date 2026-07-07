@@ -13,7 +13,7 @@ use axum::Json;
 use sdkwork_contract_service::CommerceServiceError;
 use sdkwork_utils_rust::SdkWorkApiResponse;
 
-pub use sdkwork_utils_rust::SdkWorkPageData;
+pub use sdkwork_utils_rust::SdkWorkCommandData;
 use sdkwork_web_core::{
     problem_response, WebFrameworkError, WebFrameworkErrorKind, WebRequestContext,
 };
@@ -23,6 +23,26 @@ use serde::Serialize;
 #[derive(Serialize)]
 pub struct ItemEnvelope<T> {
     pub item: T,
+}
+
+/// Wrap a single resource for handlers that return `SdkWorkResourceData`.
+pub fn item_envelope<T>(item: T) -> ItemEnvelope<T> {
+    ItemEnvelope { item }
+}
+
+/// Standard command acknowledgement (`data.accepted`).
+#[allow(dead_code)]
+pub fn command_accepted() -> SdkWorkCommandData {
+    SdkWorkCommandData::accepted()
+}
+
+#[allow(dead_code)]
+pub fn command_accepted_with_resource(resource_id: impl Into<String>) -> SdkWorkCommandData {
+    SdkWorkCommandData {
+        accepted: true,
+        resource_id: Some(resource_id.into()),
+        status: None,
+    }
 }
 
 /// Canonical success result: handler returns typed payload, framework wraps it.
@@ -39,11 +59,42 @@ pub fn finish_api_json<T: Serialize>(ctx: &WebRequestContext, result: ApiResult<
     }
 }
 
+/// Finish a typed create result with HTTP 201 and canonical JSON envelope.
+pub fn finish_api_created<T: Serialize>(ctx: &WebRequestContext, result: ApiResult<T>) -> Response {
+    match result {
+        Ok(data) => success_json_with_status(ctx, StatusCode::CREATED, data),
+        Err(problem) => problem.into_response_for(ctx),
+    }
+}
+
+/// Finish a delete command with HTTP 204 and no JSON success body.
+#[allow(dead_code)]
+pub fn finish_api_no_content(ctx: &WebRequestContext, result: ApiResult<()>) -> Response {
+    match result {
+        Ok(()) => {
+            let trace_id = ctx.resolved_trace_id();
+            let mut response = StatusCode::NO_CONTENT.into_response();
+            attach_trace_header(&mut response, &trace_id);
+            response
+        }
+        Err(problem) => problem.into_response_for(ctx),
+    }
+}
+
 /// Wrap a typed payload into a canonical `SdkWorkApiResponse` (HTTP 200).
 pub fn success_json<T: Serialize>(ctx: &WebRequestContext, data: T) -> Response {
+    success_json_with_status(ctx, StatusCode::OK, data)
+}
+
+/// Wrap a typed payload into a canonical `SdkWorkApiResponse`.
+pub fn success_json_with_status<T: Serialize>(
+    ctx: &WebRequestContext,
+    status: StatusCode,
+    data: T,
+) -> Response {
     let trace_id = ctx.resolved_trace_id();
     let envelope = SdkWorkApiResponse::success(data, trace_id.clone());
-    let mut response = (StatusCode::OK, Json(envelope)).into_response();
+    let mut response = (status, Json(envelope)).into_response();
     attach_trace_header(&mut response, &trace_id);
     response
 }
@@ -74,6 +125,7 @@ impl ApiProblem {
         }
     }
 
+    #[allow(dead_code)]
     pub fn forbidden(message: impl Into<String>) -> Self {
         Self {
             message: message.into(),
@@ -138,6 +190,7 @@ impl ApiProblem {
 }
 
 /// Map an `AppMembershipResult<T>` into an `ApiResult<T>` using `from_service`.
+#[allow(dead_code)]
 pub fn map_service_result<T>(
     context: &str,
     result: Result<T, CommerceServiceError>,

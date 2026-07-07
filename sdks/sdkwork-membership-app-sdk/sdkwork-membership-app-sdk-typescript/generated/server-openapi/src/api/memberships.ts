@@ -157,6 +157,9 @@ export interface MembershipsPackagesListParams {
   status?: string;
   page?: number;
   pageSize?: number;
+  packageGroupId?: string;
+  planId?: string;
+  cursor?: string;
 }
 
 export class MembershipsPackagesApi {
@@ -173,6 +176,9 @@ export class MembershipsPackagesApi {
       { name: 'status', value: params?.status, style: 'form', explode: true, allowReserved: false },
       { name: 'page', value: params?.page, style: 'form', explode: true, allowReserved: false },
       { name: 'page_size', value: params?.pageSize, style: 'form', explode: true, allowReserved: false },
+      { name: 'package_group_id', value: params?.packageGroupId, style: 'form', explode: true, allowReserved: false },
+      { name: 'plan_id', value: params?.planId, style: 'form', explode: true, allowReserved: false },
+      { name: 'cursor', value: params?.cursor, style: 'form', explode: true, allowReserved: false },
     ]);
     return this.client.get<SdkWorkPageData>(appendQueryString(appApiPath(`/memberships/packages`), query));
   }
@@ -187,6 +193,9 @@ export interface MembershipsPackageGroupsPackagesListParams {
   status?: string;
   page?: number;
   pageSize?: number;
+  planId?: string;
+  recommendedOnly?: boolean;
+  cursor?: string;
 }
 
 export class MembershipsPackageGroupsPackagesApi {
@@ -203,6 +212,9 @@ export class MembershipsPackageGroupsPackagesApi {
       { name: 'status', value: params?.status, style: 'form', explode: true, allowReserved: false },
       { name: 'page', value: params?.page, style: 'form', explode: true, allowReserved: false },
       { name: 'page_size', value: params?.pageSize, style: 'form', explode: true, allowReserved: false },
+      { name: 'plan_id', value: params?.planId, style: 'form', explode: true, allowReserved: false },
+      { name: 'recommended_only', value: params?.recommendedOnly, style: 'form', explode: true, allowReserved: false },
+      { name: 'cursor', value: params?.cursor, style: 'form', explode: true, allowReserved: false },
     ]);
     return this.client.get<SdkWorkPageData>(appendQueryString(appApiPath(`/memberships/package_groups/${serializePathParameter(packageGroupId, { name: 'packageGroupId', style: 'simple', explode: false })}/packages`), query));
   }
@@ -212,6 +224,9 @@ export interface MembershipsPackageGroupsListParams {
   status?: string;
   page?: number;
   pageSize?: number;
+  planId?: string;
+  recommendedOnly?: boolean;
+  cursor?: string;
 }
 
 export class MembershipsPackageGroupsApi {
@@ -230,6 +245,9 @@ export class MembershipsPackageGroupsApi {
       { name: 'status', value: params?.status, style: 'form', explode: true, allowReserved: false },
       { name: 'page', value: params?.page, style: 'form', explode: true, allowReserved: false },
       { name: 'page_size', value: params?.pageSize, style: 'form', explode: true, allowReserved: false },
+      { name: 'plan_id', value: params?.planId, style: 'form', explode: true, allowReserved: false },
+      { name: 'recommended_only', value: params?.recommendedOnly, style: 'form', explode: true, allowReserved: false },
+      { name: 'cursor', value: params?.cursor, style: 'form', explode: true, allowReserved: false },
     ]);
     return this.client.get<SdkWorkPageData>(appendQueryString(appApiPath(`/memberships/package_groups`), query));
   }
@@ -244,6 +262,7 @@ export interface MembershipsPlansListParams {
   status?: string;
   page?: number;
   pageSize?: number;
+  cursor?: string;
 }
 
 export class MembershipsPlansApi {
@@ -260,6 +279,7 @@ export class MembershipsPlansApi {
       { name: 'status', value: params?.status, style: 'form', explode: true, allowReserved: false },
       { name: 'page', value: params?.page, style: 'form', explode: true, allowReserved: false },
       { name: 'page_size', value: params?.pageSize, style: 'form', explode: true, allowReserved: false },
+      { name: 'cursor', value: params?.cursor, style: 'form', explode: true, allowReserved: false },
     ]);
     return this.client.get<SdkWorkPageData>(appendQueryString(appApiPath(`/memberships/plans`), query));
   }
@@ -268,6 +288,8 @@ export class MembershipsPlansApi {
 export interface MembershipsBenefitsListParams {
   page?: number;
   pageSize?: number;
+  planId?: string;
+  cursor?: string;
 }
 
 export class MembershipsBenefitsApi {
@@ -283,6 +305,8 @@ export class MembershipsBenefitsApi {
     const query = buildQueryString([
       { name: 'page', value: params?.page, style: 'form', explode: true, allowReserved: false },
       { name: 'page_size', value: params?.pageSize, style: 'form', explode: true, allowReserved: false },
+      { name: 'plan_id', value: params?.planId, style: 'form', explode: true, allowReserved: false },
+      { name: 'cursor', value: params?.cursor, style: 'form', explode: true, allowReserved: false },
     ]);
     return this.client.get<SdkWorkPageData>(appendQueryString(appApiPath(`/memberships/benefits`), query));
   }

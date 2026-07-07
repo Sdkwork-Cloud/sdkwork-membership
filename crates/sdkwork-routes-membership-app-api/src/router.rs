@@ -16,27 +16,34 @@ use sdkwork_contract_service::CommerceServiceError;
 use serde::Deserialize;
 use sqlx::{PgPool, SqlitePool};
 
-use crate::catalog::{
+use crate::response::{
+    command_accepted, finish_api_created, finish_api_json, item_envelope, ApiProblem, ApiResult,
+};
+use crate::subject::numeric_runtime_subject_from_context;
+use sdkwork_membership_repository_sqlx::catalog::{
     builtin_benefits, builtin_daily_reward_claim, builtin_daily_reward_status, builtin_info,
     builtin_package, builtin_package_group, builtin_package_groups, builtin_packages,
     builtin_plans, builtin_points_balance, builtin_points_history, builtin_privilege_usage,
     builtin_status,
 };
-use crate::pagination::{cursor_page, offset_page};
-use crate::response::{finish_api_json, ApiProblem, ApiResult};
-use crate::shared::{current_timestamp_string, format_unix_timestamp, normalize_optional_text};
-use crate::subject::numeric_runtime_subject_from_context;
-use sdkwork_utils_rust::SdkWorkPageData;
-use crate::{
+use sdkwork_membership_repository_sqlx::pagination::{cursor_page, offset_page};
+use sdkwork_membership_repository_sqlx::shared::{
+    current_timestamp_string, format_unix_timestamp, normalize_optional_text,
+};
+use sdkwork_membership_repository_sqlx::{
     AppMembershipBenefitItem, AppMembershipCommandFuture, AppMembershipDailyRewardResponse,
     AppMembershipDailyRewardStatusResponse, AppMembershipEntityIdGenerator,
-    AppMembershipInfoResponse, AppMembershipListQuery, AppMembershipPackageGroupItem,
-    AppMembershipPackageItem, AppMembershipPlanItem, AppMembershipPointsBalanceResponse,
-    AppMembershipPointsHistoryItem, AppMembershipPointsHistoryQuery, AppMembershipPurchaseOutcome,
-    AppMembershipPrivilegeUsageResponse, AppMembershipReadFuture, AppMembershipResult,
+    AppMembershipFulfillmentFuture, AppMembershipInfoResponse, AppMembershipListQuery,
+    AppMembershipPackageGroupItem, AppMembershipPackageItem, AppMembershipPlanItem,
+    AppMembershipPointsBalanceResponse, AppMembershipPointsHistoryItem,
+    AppMembershipPointsHistoryQuery, AppMembershipPrivilegeUsageResponse,
+    AppMembershipPurchaseOutcome, AppMembershipReadFuture, AppMembershipResult,
     AppMembershipStatusResponse, AppMembershipStore, AppMembershipSubject,
-    PostgresCommerceMembershipStore, SqliteCommerceMembershipStore, SubmitMembershipPurchaseCommand,
+    FulfillMembershipPurchaseCommand, FulfillMembershipPurchaseOutcome,
+    PostgresCommerceMembershipStore, SqliteCommerceMembershipStore,
+    SubmitMembershipPurchaseCommand,
 };
+use sdkwork_utils_rust::SdkWorkPageData;
 use sdkwork_web_core::WebRequestContext;
 
 const PAYMENT_EXPIRE_SECONDS: i64 = 1_800;
@@ -89,6 +96,8 @@ struct MembershipPointsHistoryQuery {
 #[serde(rename_all = "camelCase")]
 struct SubmitMembershipPurchaseRequest {
     package_id: i64,
+    order_id: String,
+    request_no: String,
     coupon_id: Option<String>,
 }
 
@@ -117,10 +126,12 @@ fn list_query_from_params(
     }
 }
 
+#[allow(dead_code)]
 fn empty_list_page<T>(query: AppMembershipListQuery) -> SdkWorkPageData<T> {
     offset_page(Vec::new(), 0, query.offset_params())
 }
 
+#[allow(dead_code)]
 struct EmptyAppMembershipStore;
 
 impl AppMembershipStore for EmptyAppMembershipStore {
@@ -140,6 +151,7 @@ impl AppMembershipStore for EmptyAppMembershipStore {
 
     fn load_plans<'a>(
         &'a self,
+        _catalog_subject: Option<AppMembershipSubject>,
         query: AppMembershipListQuery,
     ) -> AppMembershipReadFuture<'a, SdkWorkPageData<AppMembershipPlanItem>> {
         Box::pin(async move { Ok(empty_list_page(query)) })
@@ -156,6 +168,7 @@ impl AppMembershipStore for EmptyAppMembershipStore {
 
     fn load_packages<'a>(
         &'a self,
+        _catalog_subject: Option<AppMembershipSubject>,
         _package_group_id: Option<i64>,
         _plan_id: Option<i64>,
         query: AppMembershipListQuery,
@@ -165,6 +178,7 @@ impl AppMembershipStore for EmptyAppMembershipStore {
 
     fn load_package<'a>(
         &'a self,
+        _catalog_subject: Option<AppMembershipSubject>,
         _package_id: i64,
     ) -> AppMembershipReadFuture<'a, Option<AppMembershipPackageItem>> {
         Box::pin(async { Ok(None) })
@@ -172,6 +186,7 @@ impl AppMembershipStore for EmptyAppMembershipStore {
 
     fn load_package_groups<'a>(
         &'a self,
+        _catalog_subject: Option<AppMembershipSubject>,
         _plan_id: Option<i64>,
         _recommended_only: bool,
         query: AppMembershipListQuery,
@@ -181,6 +196,7 @@ impl AppMembershipStore for EmptyAppMembershipStore {
 
     fn load_package_group<'a>(
         &'a self,
+        _catalog_subject: Option<AppMembershipSubject>,
         _package_group_id: i64,
     ) -> AppMembershipReadFuture<'a, Option<AppMembershipPackageGroupItem>> {
         Box::pin(async { Ok(None) })
@@ -237,7 +253,7 @@ impl AppMembershipStore for EmptyAppMembershipStore {
         &'a self,
         _subject: AppMembershipSubject,
         _requested_at: String,
-    ) -> AppMembershipReadFuture<'a, ()> {
+    ) -> AppMembershipReadFuture<'a, sdkwork_utils_rust::SdkWorkCommandData> {
         Box::pin(async {
             Err(CommerceServiceError::storage(
                 "membership command store is unavailable without database configuration",
@@ -255,10 +271,22 @@ impl AppMembershipStore for EmptyAppMembershipStore {
             ))
         })
     }
+
+    fn fulfill_purchase<'a>(
+        &'a self,
+        _command: FulfillMembershipPurchaseCommand,
+    ) -> AppMembershipFulfillmentFuture<'a> {
+        Box::pin(async {
+            Err(CommerceServiceError::storage(
+                "membership fulfillment store is unavailable without database configuration",
+            ))
+        })
+    }
 }
 
 /// In-memory catalog used only by `app_membership_router_with_builtin_catalog()` for unit tests.
 /// Production gateways MUST use the DB-backed store from `app_membership_router()`.
+#[allow(dead_code)]
 struct CatalogAppMembershipStore;
 
 impl AppMembershipStore for CatalogAppMembershipStore {
@@ -278,6 +306,7 @@ impl AppMembershipStore for CatalogAppMembershipStore {
 
     fn load_plans<'a>(
         &'a self,
+        _catalog_subject: Option<AppMembershipSubject>,
         query: AppMembershipListQuery,
     ) -> AppMembershipReadFuture<'a, SdkWorkPageData<AppMembershipPlanItem>> {
         Box::pin(async move {
@@ -286,11 +315,7 @@ impl AppMembershipStore for CatalogAppMembershipStore {
             let total = items.len() as i64;
             let offset = params.offset as usize;
             let page_size = params.page_size as usize;
-            let page_items = items
-                .into_iter()
-                .skip(offset)
-                .take(page_size)
-                .collect();
+            let page_items = items.into_iter().skip(offset).take(page_size).collect();
             Ok(offset_page(page_items, total, params))
         })
     }
@@ -307,17 +332,14 @@ impl AppMembershipStore for CatalogAppMembershipStore {
             let total = items.len() as i64;
             let offset = params.offset as usize;
             let page_size = params.page_size as usize;
-            let page_items = items
-                .into_iter()
-                .skip(offset)
-                .take(page_size)
-                .collect();
+            let page_items = items.into_iter().skip(offset).take(page_size).collect();
             Ok(offset_page(page_items, total, params))
         })
     }
 
     fn load_packages<'a>(
         &'a self,
+        _catalog_subject: Option<AppMembershipSubject>,
         package_group_id: Option<i64>,
         plan_id: Option<i64>,
         query: AppMembershipListQuery,
@@ -328,17 +350,14 @@ impl AppMembershipStore for CatalogAppMembershipStore {
             let total = items.len() as i64;
             let offset = params.offset as usize;
             let page_size = params.page_size as usize;
-            let page_items = items
-                .into_iter()
-                .skip(offset)
-                .take(page_size)
-                .collect();
+            let page_items = items.into_iter().skip(offset).take(page_size).collect();
             Ok(offset_page(page_items, total, params))
         })
     }
 
     fn load_package<'a>(
         &'a self,
+        _catalog_subject: Option<AppMembershipSubject>,
         package_id: i64,
     ) -> AppMembershipReadFuture<'a, Option<AppMembershipPackageItem>> {
         Box::pin(async move { Ok(builtin_package(package_id)) })
@@ -346,6 +365,7 @@ impl AppMembershipStore for CatalogAppMembershipStore {
 
     fn load_package_groups<'a>(
         &'a self,
+        _catalog_subject: Option<AppMembershipSubject>,
         _plan_id: Option<i64>,
         _recommended_only: bool,
         query: AppMembershipListQuery,
@@ -356,17 +376,14 @@ impl AppMembershipStore for CatalogAppMembershipStore {
             let total = items.len() as i64;
             let offset = params.offset as usize;
             let page_size = params.page_size as usize;
-            let page_items = items
-                .into_iter()
-                .skip(offset)
-                .take(page_size)
-                .collect();
+            let page_items = items.into_iter().skip(offset).take(page_size).collect();
             Ok(offset_page(page_items, total, params))
         })
     }
 
     fn load_package_group<'a>(
         &'a self,
+        _catalog_subject: Option<AppMembershipSubject>,
         package_group_id: i64,
     ) -> AppMembershipReadFuture<'a, Option<AppMembershipPackageGroupItem>> {
         Box::pin(async move { Ok(builtin_package_group(package_group_id)) })
@@ -422,8 +439,8 @@ impl AppMembershipStore for CatalogAppMembershipStore {
         &'a self,
         _subject: AppMembershipSubject,
         _requested_at: String,
-    ) -> AppMembershipReadFuture<'a, ()> {
-        Box::pin(async { Ok(()) })
+    ) -> AppMembershipReadFuture<'a, sdkwork_utils_rust::SdkWorkCommandData> {
+        Box::pin(async move { Ok(command_accepted()) })
     }
 
     fn submit_purchase<'a>(
@@ -462,8 +479,22 @@ impl AppMembershipStore for CatalogAppMembershipStore {
             })
         })
     }
+
+    fn fulfill_purchase<'a>(
+        &'a self,
+        _command: FulfillMembershipPurchaseCommand,
+    ) -> AppMembershipFulfillmentFuture<'a> {
+        Box::pin(async {
+            Ok(FulfillMembershipPurchaseOutcome {
+                accepted: true,
+                replayed: false,
+                fulfillment_status: "active".to_owned(),
+            })
+        })
+    }
 }
 
+#[allow(dead_code)]
 pub fn app_membership_router() -> Router {
     app_membership_router_with_state(
         Arc::new(EmptyAppMembershipStore),
@@ -472,6 +503,7 @@ pub fn app_membership_router() -> Router {
     )
 }
 
+#[allow(dead_code)]
 pub fn app_membership_router_with_builtin_catalog() -> Router {
     app_membership_router_with_state(
         Arc::new(CatalogAppMembershipStore),
@@ -570,12 +602,10 @@ async fn fetch_info(
         &ctx,
         async {
             let subject = resolve_membership_subject(&state, &ctx)?;
-            let data = state
-                .store
-                .load_info(subject)
-                .await
-                .map_err(|e| ApiProblem::from_service("membership info read model is unavailable", e))?;
-            Ok(data)
+            let data = state.store.load_info(subject).await.map_err(|e| {
+                ApiProblem::from_service("membership info read model is unavailable", e)
+            })?;
+            Ok(item_envelope(data))
         }
         .await,
     )
@@ -589,14 +619,10 @@ async fn fetch_status(
         &ctx,
         async {
             let subject = resolve_membership_subject(&state, &ctx)?;
-            let data = state
-                .store
-                .load_status(subject)
-                .await
-                .map_err(|e| {
-                    ApiProblem::from_service("membership status read model is unavailable", e)
-                })?;
-            Ok(data)
+            let data = state.store.load_status(subject).await.map_err(|e| {
+                ApiProblem::from_service("membership status read model is unavailable", e)
+            })?;
+            Ok(item_envelope(data))
         }
         .await,
     )
@@ -610,13 +636,13 @@ async fn fetch_plans(
     finish_api_json(
         &ctx,
         async {
+            let catalog_subject = resolve_membership_subject(&state, &ctx)?;
             let data = state
                 .store
-                .load_plans(list_query_from_params(
-                    query.page,
-                    query.page_size,
-                    query.cursor,
-                ))
+                .load_plans(
+                    catalog_subject,
+                    list_query_from_params(query.page, query.page_size, query.cursor),
+                )
                 .await
                 .map_err(|e| {
                     ApiProblem::from_service("membership plans read model is unavailable", e)
@@ -661,9 +687,11 @@ async fn fetch_package_groups(
     finish_api_json(
         &ctx,
         async {
+            let catalog_subject = resolve_membership_subject(&state, &ctx)?;
             let data = state
                 .store
                 .load_package_groups(
+                    catalog_subject,
                     query.plan_id,
                     query.recommended_only.unwrap_or(false),
                     list_query_from_params(query.page, query.page_size, query.cursor),
@@ -689,9 +717,10 @@ async fn fetch_package_group(
     finish_api_json(
         &ctx,
         async {
-            state
+            let catalog_subject = resolve_membership_subject(&state, &ctx)?;
+            let item = state
                 .store
-                .load_package_group(package_group_id)
+                .load_package_group(catalog_subject, package_group_id)
                 .await
                 .map_err(|e| {
                     ApiProblem::from_service(
@@ -699,9 +728,8 @@ async fn fetch_package_group(
                         e,
                     )
                 })?
-                .ok_or_else(|| {
-                    ApiProblem::not_found("membership package group was not found")
-                })
+                .ok_or_else(|| ApiProblem::not_found("membership package group was not found"))?;
+            Ok(item_envelope(item))
         }
         .await,
     )
@@ -716,9 +744,11 @@ async fn fetch_package_group_packages(
     finish_api_json(
         &ctx,
         async {
+            let catalog_subject = resolve_membership_subject(&state, &ctx)?;
             let data = state
                 .store
                 .load_packages(
+                    catalog_subject,
                     Some(package_group_id),
                     query.plan_id,
                     list_query_from_params(query.page, query.page_size, query.cursor),
@@ -741,9 +771,11 @@ async fn fetch_packages(
     finish_api_json(
         &ctx,
         async {
+            let catalog_subject = resolve_membership_subject(&state, &ctx)?;
             let data = state
                 .store
                 .load_packages(
+                    catalog_subject,
                     query.package_group_id,
                     query.plan_id,
                     list_query_from_params(query.page, query.page_size, query.cursor),
@@ -766,14 +798,16 @@ async fn fetch_package(
     finish_api_json(
         &ctx,
         async {
-            state
+            let catalog_subject = resolve_membership_subject(&state, &ctx)?;
+            let item = state
                 .store
-                .load_package(package_id)
+                .load_package(catalog_subject, package_id)
                 .await
                 .map_err(|e| {
                     ApiProblem::from_service("membership package read model is unavailable", e)
                 })?
-                .ok_or_else(|| ApiProblem::not_found("membership package was not found"))
+                .ok_or_else(|| ApiProblem::not_found("membership package was not found"))?;
+            Ok(item_envelope(item))
         }
         .await,
     )
@@ -797,7 +831,7 @@ async fn fetch_points_balance(
                         e,
                     )
                 })?;
-            Ok(data)
+            Ok(item_envelope(data))
         }
         .await,
     )
@@ -848,12 +882,9 @@ async fn fetch_daily_reward_status(
                 .load_daily_reward_status(subject)
                 .await
                 .map_err(|e| {
-                    ApiProblem::from_service(
-                        "membership daily reward status is unavailable",
-                        e,
-                    )
+                    ApiProblem::from_service("membership daily reward status is unavailable", e)
                 })?;
-            Ok(data)
+            Ok(item_envelope(data))
         }
         .await,
     )
@@ -877,7 +908,7 @@ async fn fetch_privilege_usage(
                         e,
                     )
                 })?;
-            Ok(data)
+            Ok(item_envelope(data))
         }
         .await,
     )
@@ -888,7 +919,7 @@ async fn purchase(
     State(state): State<AppMembershipState>,
     Json(request): Json<SubmitMembershipPurchaseRequest>,
 ) -> axum::response::Response {
-    finish_api_json(
+    finish_api_created(
         &ctx,
         submit_purchase(&ctx, &state, request, "purchase").await,
     )
@@ -899,10 +930,7 @@ async fn renew(
     State(state): State<AppMembershipState>,
     Json(request): Json<SubmitMembershipPurchaseRequest>,
 ) -> axum::response::Response {
-    finish_api_json(
-        &ctx,
-        submit_purchase(&ctx, &state, request, "renew").await,
-    )
+    finish_api_json(&ctx, submit_purchase(&ctx, &state, request, "renew").await)
 }
 
 async fn upgrade(
@@ -920,7 +948,7 @@ async fn claim_daily_reward(
     ctx: WebRequestContext,
     State(state): State<AppMembershipState>,
 ) -> axum::response::Response {
-    finish_api_json(
+    finish_api_created(
         &ctx,
         async {
             let subject = resolve_required_membership_subject(&state, &ctx)?;
@@ -931,6 +959,7 @@ async fn claim_daily_reward(
                 .map_err(|e| {
                     ApiProblem::from_service("membership daily reward command is unavailable", e)
                 })
+                .map(item_envelope)
         }
         .await,
     )
@@ -940,7 +969,7 @@ async fn create_speed_up(
     ctx: WebRequestContext,
     State(state): State<AppMembershipState>,
 ) -> axum::response::Response {
-    finish_api_json(
+    finish_api_created(
         &ctx,
         async {
             let subject = resolve_required_membership_subject(&state, &ctx)?;
@@ -950,8 +979,8 @@ async fn create_speed_up(
                 .await
                 .map_err(|e| {
                     ApiProblem::from_service("membership speed up command is unavailable", e)
-                })?;
-            Ok(())
+                })
+                .map(item_envelope)
         }
         .await,
     )
@@ -962,11 +991,19 @@ async fn submit_purchase(
     state: &AppMembershipState,
     request: SubmitMembershipPurchaseRequest,
     action: &str,
-) -> ApiResult<AppMembershipPurchaseOutcome> {
+) -> ApiResult<crate::response::ItemEnvelope<AppMembershipPurchaseOutcome>> {
     let subject = resolve_required_membership_subject(state, ctx)?;
-    let package_id = validate_purchase_request(request)?;
+    let (package_id, order_id, request_no) = validate_purchase_request(request)?;
     let idempotency_key = ctx.request_id.0.clone();
-    let command = build_submit_purchase_command(state, subject, package_id, action, idempotency_key)?;
+    let command = build_submit_purchase_command(
+        state,
+        subject,
+        package_id,
+        order_id,
+        request_no,
+        action,
+        idempotency_key,
+    )?;
     state
         .store
         .submit_purchase(command)
@@ -974,6 +1011,7 @@ async fn submit_purchase(
         .map_err(|e| {
             ApiProblem::from_service("membership purchase command store is unavailable", e)
         })
+        .map(item_envelope)
 }
 
 fn resolve_membership_subject(
@@ -1012,12 +1050,20 @@ fn app_membership_subject_from_context(
 
 fn validate_purchase_request(
     request: SubmitMembershipPurchaseRequest,
-) -> Result<i64, ApiProblem> {
+) -> Result<(i64, String, String), ApiProblem> {
     let package_id = request.package_id;
     if package_id <= 0 {
         return Err(ApiProblem::bad_request(
             "membership package id must be greater than zero",
         ));
+    }
+    let order_id = request.order_id.trim().to_owned();
+    if order_id.is_empty() {
+        return Err(ApiProblem::bad_request("membership order id is required"));
+    }
+    let request_no = request.request_no.trim().to_owned();
+    if request_no.is_empty() {
+        return Err(ApiProblem::bad_request("membership request no is required"));
     }
     if let Some(coupon_id) = request.coupon_id.as_deref() {
         if !coupon_id.trim().is_empty() {
@@ -1026,25 +1072,19 @@ fn validate_purchase_request(
             ));
         }
     }
-    Ok(package_id)
+    Ok((package_id, order_id, request_no))
 }
 
 fn build_submit_purchase_command(
     state: &AppMembershipState,
     subject: AppMembershipSubject,
     package_id: i64,
+    order_id: String,
+    request_no: String,
     action: &str,
     idempotency_key: String,
 ) -> Result<SubmitMembershipPurchaseCommand, ApiProblem> {
-    let order_uuid = state
-        .entity_id_generator
-        .generate_entity_uuid()
-        .map_err(|e| ApiProblem::from_service("membership purchase id generation failed", e))?;
     let order_item_uuid = state
-        .entity_id_generator
-        .generate_entity_uuid()
-        .map_err(|e| ApiProblem::from_service("membership purchase id generation failed", e))?;
-    let payment_uuid = state
         .entity_id_generator
         .generate_entity_uuid()
         .map_err(|e| ApiProblem::from_service("membership purchase id generation failed", e))?;
@@ -1062,7 +1102,6 @@ fn build_submit_purchase_command(
         .map_err(|e| ApiProblem::from_service("membership purchase id generation failed", e))?;
     let now = current_unix_timestamp();
     let token = compact_token(&nonce_uuid);
-    let order_no = format!("MEMBERSHIP{now}{}", take_prefix(&token, 16));
     let out_trade_no = format!("MEMBERSHIPTRADE{now}{}", take_prefix(&token, 32));
     let requested_at = format_unix_timestamp(now);
     let expire_at = format_unix_timestamp(now + PAYMENT_EXPIRE_SECONDS);
@@ -1070,12 +1109,12 @@ fn build_submit_purchase_command(
     Ok(SubmitMembershipPurchaseCommand {
         subject,
         package_id,
-        order_uuid,
+        order_uuid: order_id,
         order_item_uuid,
-        payment_uuid,
+        payment_uuid: String::new(),
         attempt_uuid,
         membership_uuid,
-        order_no,
+        order_no: request_no,
         out_trade_no,
         idempotency_key,
         requested_at,

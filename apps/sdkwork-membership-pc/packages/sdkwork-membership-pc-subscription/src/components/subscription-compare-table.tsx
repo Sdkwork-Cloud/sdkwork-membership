@@ -22,7 +22,7 @@ interface FeatureRow {
 
 function CheckMark() {
   return (
-    <span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-emerald-100 text-emerald-600">
+    <span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-[color-mix(in_srgb,var(--sdk-color-state-success)_14%,transparent)] text-[var(--sdk-color-state-success)]">
       <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
         <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
       </svg>
@@ -32,7 +32,7 @@ function CheckMark() {
 
 function CrossMark() {
   return (
-    <span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-gray-100 text-gray-400">
+    <span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-[var(--sdk-color-surface-panel-muted)] text-[var(--sdk-color-text-muted)]">
       <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
         <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
       </svg>
@@ -72,13 +72,22 @@ function resolveBenefitMinTier(benefit: SdkworkMembershipBenefit, index: number)
   if (benefitKey === "daily_points") {
     return 0;
   }
-  if (benefitKey === "standard_queue" || benefitKey === "no_watermark") {
+  if (
+    benefitKey === "standard_queue"
+    || benefitKey === "no_watermark"
+    || benefitKey === "priority_queue"
+  ) {
     return 1;
   }
-  if (benefitKey === "fast_queue") {
+  if (benefitKey === "fast_queue" || benefitKey === "priority_speed_up") {
     return 2;
   }
-  if (benefitKey === "vip_queue" || benefitKey === "vip_support") {
+  if (
+    benefitKey === "vip_queue"
+    || benefitKey === "vip_support"
+    || benefitKey === "ai_quota"
+    || benefitKey === "exclusive_model"
+  ) {
     return 3;
   }
   return Math.min(index, 3);
@@ -179,10 +188,10 @@ export function SdkworkSubscriptionCompareTable({
   );
 
   const planHeaders = [
-    { key: "free" as const, name: copy.compareTable.freePlan, color: "text-gray-600" },
-    { key: "basic" as const, name: copy.compareTable.planBasic, color: "text-blue-600" },
-    { key: "standard" as const, name: copy.compareTable.planStandard, color: "text-purple-600" },
-    { key: "premium" as const, name: copy.compareTable.planPremium, color: "text-amber-600" },
+    { key: "free" as const, name: copy.compareTable.freePlan, color: "text-[var(--sdk-color-text-muted)]" },
+    { key: "basic" as const, name: copy.compareTable.planBasic, color: "text-[var(--sdk-color-brand-accent)]" },
+    { key: "standard" as const, name: copy.compareTable.planStandard, color: "text-[var(--sdk-color-brand-primary)]" },
+    { key: "premium" as const, name: copy.compareTable.planPremium, color: "text-[var(--sdk-color-state-warning)]" },
   ];
 
   return (

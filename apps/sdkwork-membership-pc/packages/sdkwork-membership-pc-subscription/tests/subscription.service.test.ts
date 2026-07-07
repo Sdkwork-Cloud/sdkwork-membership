@@ -3,10 +3,20 @@ import { resolve } from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   configureMembershipServiceMockSession,
+  configureOrderServiceMock,
   createMembershipAppServiceMock,
+  createOrderAppServiceMock,
   resetMembershipServiceMockSession,
 } from "../../../tests/test-utils/membership-service-mock";
 import { createSdkworkSubscriptionService } from "../src";
+
+function wrapSdkworkMembershipResourceResponse<T>(data: T) {
+  return {
+    code: 0,
+    data,
+    traceId: "membership-test-trace",
+  };
+}
 
 describe("sdkwork-membership-pc-subscription service", () => {
   const RETIRED_TIER_ROOT = "v" + "ip";
@@ -467,6 +477,25 @@ describe("sdkwork-membership-pc-subscription service", () => {
     ).rejects.toThrow("请先登录后再管理订阅。");
 
     configureMembershipServiceMockSession({ authToken: "subscription-auth-token" });
+    configureOrderServiceMock(createOrderAppServiceMock({
+      memberships: {
+        orders: {
+          create: vi.fn().mockResolvedValue(
+            wrapSdkworkMembershipResourceResponse({
+              orderId: "order-uuid-purchase",
+              orderNo: "MEMBERSHIP-ORDER-001",
+            }),
+          ),
+        },
+      },
+      orders: {
+        pay: vi.fn().mockResolvedValue(
+          wrapSdkworkMembershipResourceResponse({
+            paymentParams: { cashierUrl: "https://example.test/cashier" },
+          }),
+        ),
+      },
+    }));
     const localizedMutationService = createSdkworkSubscriptionService({
       membershipAppService: createMembershipAppServiceMock({
         memberships: {

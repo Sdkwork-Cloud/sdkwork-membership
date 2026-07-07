@@ -2,6 +2,18 @@ import type { SdkworkMembershipPcRouteContribution } from "@sdkwork/membership-p
 
 export const sdkworkMembershipPcSubscriptionRoutes = [
   {
+    auth: "public",
+    capability: "subscription",
+    domain: "membership",
+    id: "app.membership.subscription.catalog",
+    packageName: "@sdkwork/membership-pc-subscription",
+    path: "/app/subscription/catalog",
+    screen: "catalog",
+    surface: "app",
+    title: "Subscription Catalog",
+    titleKey: "subscription.routes.catalog.title",
+  },
+  {
     auth: "required",
     capability: "subscription",
     domain: "membership",

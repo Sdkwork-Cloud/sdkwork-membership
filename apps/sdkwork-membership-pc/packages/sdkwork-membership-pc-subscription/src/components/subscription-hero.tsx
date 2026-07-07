@@ -1,5 +1,10 @@
+import { useMemo } from "react";
 import type { SdkworkMembershipSummary } from "@sdkwork/membership-pc-membership";
-import type { SdkworkSubscriptionAction } from "../subscription";
+import { createSdkworkHeroStyle } from "@sdkwork/ui-pc-react/theme";
+import {
+  resolveAvailableSubscriptionActions,
+  type SdkworkSubscriptionAction,
+} from "../subscription";
 import { useSdkworkSubscriptionIntl } from "../subscription-intl";
 
 export interface SdkworkSubscriptionHeroProps {
@@ -7,8 +12,6 @@ export interface SdkworkSubscriptionHeroProps {
   onActionChange: (action: SdkworkSubscriptionAction) => void;
   summary: SdkworkMembershipSummary;
 }
-
-const ACTIONS: SdkworkSubscriptionAction[] = ["purchase", "upgrade", "renew"];
 
 function interpolate(template: string, values: Record<string, number | string>): string {
   return Object.entries(values).reduce(
@@ -30,19 +33,26 @@ export function SdkworkSubscriptionHero({
   } = useSdkworkSubscriptionIntl();
 
   const isVip = summary.isMember;
+  const availableActions = useMemo(
+    () => resolveAvailableSubscriptionActions(summary),
+    [summary.isMember],
+  );
   const displayName = summary.currentLevelName || copy.hero.freeTierLabel;
   const balanceValue = summary.pointBalance ?? summary.points ?? 0;
 
   return (
-    <section className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-violet-600 via-purple-600 to-indigo-700 px-8 py-10 text-white shadow-2xl sm:px-12 sm:py-14">
+    <section
+      className="relative overflow-hidden rounded-3xl px-8 py-10 text-white shadow-2xl sm:px-12 sm:py-14"
+      style={createSdkworkHeroStyle()}
+    >
       <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,_rgba(255,255,255,0.15),_transparent_60%)]" />
       <div className="absolute -right-20 -top-20 h-80 w-80 rounded-full bg-white/5 blur-3xl" />
-      <div className="absolute -bottom-20 -left-20 h-60 w-60 rounded-full bg-amber-400/10 blur-3xl" />
+      <div className="absolute -bottom-20 -left-20 h-60 w-60 rounded-full bg-[color-mix(in_srgb,var(--sdk-color-brand-accent)_12%,transparent)] blur-3xl" />
 
       <div className="relative flex flex-col gap-8 lg:flex-row lg:items-end lg:justify-between">
         <div className="space-y-5">
           <div className="inline-flex items-center gap-2 rounded-full bg-white/15 px-4 py-1.5 backdrop-blur-sm">
-            <span className="h-2 w-2 rounded-full bg-amber-400 animate-pulse" />
+            <span className="h-2 w-2 rounded-full bg-[var(--sdk-color-state-warning)] animate-pulse" />
             <span className="text-xs font-semibold uppercase tracking-wider text-white/90">
               {isVip ? copy.hero.memberBadgeLabel : copy.hero.upgradeBadgeLabel}
             </span>
@@ -53,14 +63,14 @@ export function SdkworkSubscriptionHero({
               {isVip ? (
                 <>
                   {copy.hero.welcomeBackLabel}
-                  <span className="bg-gradient-to-r from-amber-200 to-yellow-400 bg-clip-text text-transparent">
+                  <span className="bg-gradient-to-r from-[var(--sdk-color-brand-accent)] to-[var(--sdk-color-brand-primary)] bg-clip-text text-transparent">
                     {displayName}
                   </span>
                 </>
               ) : (
                 <>
                   {copy.hero.freeUserTitle}
-                  <span className="bg-gradient-to-r from-amber-200 to-yellow-400 bg-clip-text text-transparent">
+                  <span className="bg-gradient-to-r from-[var(--sdk-color-brand-accent)] to-[var(--sdk-color-brand-primary)] bg-clip-text text-transparent">
                     {copy.hero.freeUserTitleHighlight}
                   </span>
                   {copy.hero.freeUserTitleSuffix}
@@ -73,13 +83,13 @@ export function SdkworkSubscriptionHero({
           </div>
 
           <div className="flex flex-wrap gap-2">
-            {ACTIONS.map((action) => (
+            {availableActions.map((action) => (
               <button
                 key={action}
                 onClick={() => onActionChange(action)}
                 className={`rounded-full px-5 py-2 text-sm font-medium transition-all duration-200 ${
                   activeAction === action
-                    ? "bg-white text-purple-700 shadow-lg"
+                    ? "bg-[var(--sdk-color-surface-panel)] text-[var(--sdk-color-brand-primary)] shadow-lg"
                     : "bg-white/10 text-white/80 hover:bg-white/20 hover:text-white backdrop-blur-sm"
                 }`}
                 type="button"

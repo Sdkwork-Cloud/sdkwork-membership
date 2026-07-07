@@ -1667,12 +1667,15 @@ name = "sdkwork-iam-bootstrap"
 version = "0.1.0"
 dependencies = [
  "aes-gcm",
+ "argon2",
  "base64",
  "chrono",
  "rand_core 0.6.4",
+ "rsa",
  "sdkwork-database-id",
  "sdkwork-iam-context-service",
  "sdkwork-iam-module-registry",
+ "serde_json",
  "sha2",
  "sqlx",
  "uuid",
@@ -1760,14 +1763,12 @@ dependencies = [
 name = "sdkwork-membership-repository-sqlx"
 version = "0.1.0"
 dependencies = [
- "axum",
  "chrono",
  "http-body-util",
  "sdkwork-contract-service",
  "sdkwork-database-config",
  "sdkwork-database-sqlx",
  "sdkwork-utils-rust",
- "sdkwork-web-core",
  "serde",
  "serde_json",
  "sqlx",
@@ -1812,16 +1813,19 @@ name = "sdkwork-routes-membership-app-api"
 version = "0.1.0"
 dependencies = [
  "axum",
+ "sdkwork-contract-service",
  "sdkwork-database-sqlx",
  "sdkwork-iam-web-adapter",
  "sdkwork-membership-repository-sqlx",
  "sdkwork-membership-service",
  "sdkwork-membership-service-host",
+ "sdkwork-utils-rust",
  "sdkwork-web-axum",
  "sdkwork-web-bootstrap",
  "sdkwork-web-core",
  "serde",
  "serde_json",
+ "sqlx",
 ]
 
 [[package]]
@@ -1829,16 +1833,20 @@ name = "sdkwork-routes-membership-backend-api"
 version = "0.1.0"
 dependencies = [
  "axum",
+ "sdkwork-contract-service",
  "sdkwork-database-sqlx",
  "sdkwork-iam-web-adapter",
  "sdkwork-membership-repository-sqlx",
  "sdkwork-membership-service",
  "sdkwork-membership-service-host",
+ "sdkwork-utils-rust",
  "sdkwork-web-axum",
  "sdkwork-web-bootstrap",
  "sdkwork-web-core",
  "serde",
  "serde_json",
+ "sqlx",
+ "tokio",
 ]
 
 [[package]]

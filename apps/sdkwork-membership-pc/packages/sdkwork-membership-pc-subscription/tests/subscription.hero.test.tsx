@@ -35,16 +35,38 @@ describe("sdkwork-membership-pc-subscription hero", () => {
     const heading = screen.getByRole("heading", { level: 1 });
     expect(heading.textContent).toContain("Pro");
 
-    // The three subscription actions render as labelled switcher buttons.
+    // Members see renew and upgrade actions only.
     const labels = screen
       .getAllByRole("button")
       .map((button) => button.textContent);
-    expect(labels).toEqual(
-      expect.arrayContaining(["Purchase", "Renew", "Upgrade"]),
-    );
+    expect(labels).toEqual(["Renew", "Upgrade"]);
 
     // Selecting an action propagates the change to the parent.
     fireEvent.click(screen.getByRole("button", { name: "Renew" }));
     expect(onActionChange).toHaveBeenCalledWith("renew");
+  });
+
+  it("shows purchase only for guests", () => {
+    render(
+      <SdkworkThemeProvider defaultTheme="light">
+        <SdkworkSubscriptionHero
+          activeAction="purchase"
+          onActionChange={vi.fn()}
+          summary={{
+            ...summary,
+            currentLevelName: "Free",
+            currentLevelValue: 0,
+            isMember: false,
+            remainingDays: null,
+            totalSpent: 0,
+          }}
+        />
+      </SdkworkThemeProvider>,
+    );
+
+    const labels = screen
+      .getAllByRole("button")
+      .map((button) => button.textContent);
+    expect(labels).toEqual(["Purchase"]);
   });
 });

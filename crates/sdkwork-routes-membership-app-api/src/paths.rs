@@ -1,45 +1,45 @@
 //! App API path constants for the membership capability.
 //!
-//! All app-api routes are mounted under `/app/v3/api/membership`.
+//! All app-api routes are mounted under `/app/v3/api/memberships`.
 
 /// Base prefix for app-api membership routes.
-pub const APP_API_PREFIX: &str = "/app/v3/api/membership";
+pub const APP_API_PREFIX: &str = "/app/v3/api/memberships";
 
-/// Current membership info: `GET /app/v3/api/membership/current`
+/// Current membership info: `GET /app/v3/api/memberships/current`
 pub const CURRENT: &str = "/current";
 
-/// Membership status: `GET /app/v3/api/membership/current/status`
+/// Membership status: `GET /app/v3/api/memberships/current/status`
 pub const CURRENT_STATUS: &str = "/current/status";
 
-/// Benefit list: `GET /app/v3/api/membership/benefits`
+/// Benefit list: `GET /app/v3/api/memberships/benefits`
 pub const BENEFITS: &str = "/benefits";
 
-/// Package group list: `GET /app/v3/api/membership/packageGroups`
-pub const PACKAGE_GROUPS: &str = "/packageGroups";
+/// Package group list: `GET /app/v3/api/memberships/package_groups`
+pub const PACKAGE_GROUPS: &str = "/package_groups";
 
-/// Package group detail: `GET /app/v3/api/membership/packageGroups/:id`
-pub const PACKAGE_GROUP_DETAIL: &str = "/packageGroups/:id";
+/// Package group detail: `GET /app/v3/api/memberships/package_groups/:id`
+pub const PACKAGE_GROUP_DETAIL: &str = "/package_groups/:id";
 
-/// Package list: `GET /app/v3/api/membership/packages`
+/// Package list: `GET /app/v3/api/memberships/packages`
 pub const PACKAGES: &str = "/packages";
 
-/// Plan list: `GET /app/v3/api/membership/plans`
+/// Plan list: `GET /app/v3/api/memberships/plans`
 pub const PLANS: &str = "/plans";
 
-/// Points balance: `GET /app/v3/api/membership/points/balance`
+/// Points balance: `GET /app/v3/api/memberships/points/balance`
 pub const POINTS_BALANCE: &str = "/points/balance";
 
-/// Points history: `GET /app/v3/api/membership/points/history`
+/// Points history: `GET /app/v3/api/memberships/points/history`
 pub const POINTS_HISTORY: &str = "/points/history";
 
-/// Daily reward status: `GET /app/v3/api/membership/points/dailyRewards/status`
-pub const DAILY_REWARD_STATUS: &str = "/points/dailyRewards/status";
+/// Daily reward status: `GET /app/v3/api/memberships/points/daily_rewards/status`
+pub const DAILY_REWARD_STATUS: &str = "/points/daily_rewards/status";
 
-/// Claim daily reward: `POST /app/v3/api/membership/points/dailyRewards`
-pub const DAILY_REWARD_CLAIM: &str = "/points/dailyRewards";
+/// Claim daily reward: `POST /app/v3/api/memberships/points/daily_rewards`
+pub const DAILY_REWARD_CLAIM: &str = "/points/daily_rewards";
 
-/// Privilege usage: `GET /app/v3/api/membership/privileges/usage`
+/// Privilege usage: `GET /app/v3/api/memberships/privileges/usage`
 pub const PRIVILEGE_USAGE: &str = "/privileges/usage";
 
-/// Submit purchase: `POST /app/v3/api/membership/purchases`
+/// Submit purchase: `POST /app/v3/api/memberships/purchases`
 pub const PURCHASES: &str = "/purchases";

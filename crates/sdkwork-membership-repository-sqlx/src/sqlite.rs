@@ -1,7 +1,7 @@
 use std::collections::BTreeMap;
 
-use sdkwork_contract_service::{CommercePaymentStatus, CommerceServiceError};
-use sdkwork_utils_rust::SdkWorkPageData;
+use sdkwork_contract_service::CommerceServiceError;
+use sdkwork_utils_rust::{SdkWorkCommandData, SdkWorkPageData};
 use sqlx::{Row, Sqlite, SqlitePool, Transaction};
 
 use crate::pagination::{
@@ -11,26 +11,28 @@ use crate::pagination::{
 
 use crate::read_model::is_missing_sqlite_read_model;
 use crate::shared::{
-    build_package_group_from_packages, decimal_string,
-    map_membership_package_record, normalize_payment_method, parse_points_amount,
-    payment_product_for_scan_qr, plan_code_from_rank, plan_rank_from_code,
-    privilege_usage_from_benefits, ParsedMembershipPackage, StoredMembershipPlan,
-    POINTS_ASSET_TYPE, POINTS_CURRENCY_CODE,
+    build_package_group_from_packages, decimal_string, map_membership_package_record,
+    parse_points_amount, plan_code_from_rank, plan_rank_from_code, privilege_usage_from_benefits,
+    resolve_catalog_scope, resolve_membership_purchase_binding,
+    validate_membership_purchase_action, CurrentMembershipSnapshot, MembershipPurchaseBinding,
+    MembershipPurchasePersistenceMode, ParsedMembershipPackage, StoredMembershipPlan,
+    DEFAULT_CATALOG_ORGANIZATION_ID, DEFAULT_CATALOG_TENANT_ID, POINTS_ASSET_CODE,
+    POINTS_CURRENCY_CODE,
 };
 use crate::{
     AdminMembershipEntitlementItem, AdminMembershipFuture, AdminMembershipMemberItem,
     AdminMembershipPackageGroupItem, AdminMembershipPackageItem, AdminMembershipPlanItem,
     AdminMembershipStore, AppMembershipBenefitItem, AppMembershipCommandFuture,
-    AppMembershipListQuery,
     AppMembershipDailyRewardResponse, AppMembershipDailyRewardStatusResponse,
-    AppMembershipInfoResponse, AppMembershipPackageGroupItem, AppMembershipPackageItem,
-    AppMembershipPlanItem, AppMembershipPointsBalanceResponse, AppMembershipPointsHistoryItem,
-    AppMembershipPointsHistoryQuery, AppMembershipPrivilegeUsageResponse,
-    AppMembershipPurchaseOutcome, AppMembershipReadFuture, AppMembershipResult,
-    AppMembershipStatusResponse, AppMembershipStore, AppMembershipSubject,
+    AppMembershipInfoResponse, AppMembershipListQuery, AppMembershipPackageGroupItem,
+    AppMembershipPackageItem, AppMembershipPlanItem, AppMembershipPointsBalanceResponse,
+    AppMembershipPointsHistoryItem, AppMembershipPointsHistoryQuery,
+    AppMembershipPrivilegeUsageResponse, AppMembershipPurchaseOutcome, AppMembershipReadFuture,
+    AppMembershipResult, AppMembershipStatusResponse, AppMembershipStore, AppMembershipSubject,
     CreateAdminMembershipPackageCommand, CreateAdminMembershipPackageGroupCommand,
     CreateAdminMembershipPlanCommand, DeleteAdminMembershipPackageCommand,
     DeleteAdminMembershipPackageGroupCommand, DeleteAdminMembershipPlanCommand,
+    FulfillMembershipPurchaseCommand, FulfillMembershipPurchaseOutcome,
     ListAdminMembershipEntitlementsQuery, ListAdminMembershipMembersQuery,
     ListAdminMembershipPackageGroupsQuery, ListAdminMembershipPackagesQuery,
     ListAdminMembershipPlansQuery, SubmitMembershipPurchaseCommand,
@@ -49,7 +51,7 @@ SELECT
     CAST(p.duration_days AS INTEGER) AS duration_days,
     CAST(COALESCE(p.sort_weight, 0) AS INTEGER) AS sort_weight,
     CAST(COALESCE(p.recommended, 0) AS INTEGER) AS recommended,
-    '[]' AS tags_json,
+    COALESCE(NULLIF(json_extract(s.spec_json, '$.tags'), ''), '[]') AS tags_json,
     p.id AS package_storage_id,
     p.package_group_id AS package_group_storage_id,
     p.plan_id AS plan_storage_id,
@@ -66,10 +68,12 @@ JOIN membership_package_group g
     ON g.id = p.package_group_id
 LEFT JOIN membership_plan l
     ON l.id = p.plan_id
-WHERE (p.tenant_id = '100001' OR p.tenant_id IS NULL)
-  AND (p.organization_id = '0' OR p.organization_id IS NULL)
-  AND (g.tenant_id = '100001' OR g.tenant_id IS NULL)
-  AND (g.organization_id = '0' OR g.organization_id IS NULL)
+LEFT JOIN commerce_product_sku s
+    ON s.id = p.sku_id
+WHERE (p.tenant_id = CAST(?1 AS TEXT) OR p.tenant_id IS NULL)
+  AND (p.organization_id = CAST(?2 AS TEXT) OR p.organization_id IS NULL)
+  AND (g.tenant_id = CAST(?1 AS TEXT) OR g.tenant_id IS NULL)
+  AND (g.organization_id = CAST(?2 AS TEXT) OR g.organization_id IS NULL)
   AND p.status = 'active'
   AND g.status = 'active'
 "#;
@@ -85,7 +89,7 @@ SELECT
     CAST(p.duration_days AS INTEGER) AS duration_days,
     CAST(COALESCE(p.sort_weight, 0) AS INTEGER) AS sort_weight,
     CAST(COALESCE(p.recommended, 0) AS INTEGER) AS recommended,
-    '[]' AS tags_json,
+    COALESCE(NULLIF(json_extract(s.spec_json, '$.tags'), ''), '[]') AS tags_json,
     p.id AS package_storage_id,
     p.package_group_id AS package_group_storage_id,
     p.plan_id AS plan_storage_id,
@@ -102,11 +106,13 @@ JOIN membership_package_group g
     ON g.id = p.package_group_id
 LEFT JOIN membership_plan l
     ON l.id = p.plan_id
-WHERE p.external_id = ?1
-  AND (p.tenant_id = '100001' OR p.tenant_id IS NULL)
-  AND (p.organization_id = '0' OR p.organization_id IS NULL)
-  AND (g.tenant_id = '100001' OR g.tenant_id IS NULL)
-  AND (g.organization_id = '0' OR g.organization_id IS NULL)
+LEFT JOIN commerce_product_sku s
+    ON s.id = p.sku_id
+WHERE (p.tenant_id = CAST(?1 AS TEXT) OR p.tenant_id IS NULL)
+  AND (p.organization_id = CAST(?2 AS TEXT) OR p.organization_id IS NULL)
+  AND (g.tenant_id = CAST(?1 AS TEXT) OR g.tenant_id IS NULL)
+  AND (g.organization_id = CAST(?2 AS TEXT) OR g.organization_id IS NULL)
+  AND p.external_id = ?3
   AND p.status = 'active'
   AND g.status = 'active'
 LIMIT 1
@@ -138,10 +144,10 @@ LEFT JOIN membership_plan_benefit b
 LEFT JOIN benefit_definition d
     ON d.id = b.benefit_id
    AND d.tenant_id = b.tenant_id
-WHERE (p.tenant_id = '100001' OR p.tenant_id IS NULL)
-  AND (p.organization_id = '0' OR p.organization_id IS NULL)
+WHERE (p.tenant_id = CAST(?1 AS TEXT) OR p.tenant_id IS NULL)
+  AND (p.organization_id = CAST(?2 AS TEXT) OR p.organization_id IS NULL)
   AND p.status = 'active'
-  AND CAST(p.rank AS INTEGER) = ?1
+  AND CAST(p.rank AS INTEGER) = ?3
 ORDER BY b.sort_weight ASC, b.id ASC
 "#;
 
@@ -176,12 +182,13 @@ SELECT
     CAST(available_amount AS TEXT) AS available_amount,
     CAST(frozen_amount AS TEXT) AS frozen_amount
 FROM commerce_account
-WHERE tenant_id = CAST(?1 AS TEXT)
-  AND (organization_id IS NULL OR organization_id = CAST(?2 AS TEXT))
-  AND owner_user_id = CAST(?3 AS TEXT)
-  AND asset_type = ?4
+WHERE tenant_id = CAST(?1 AS INTEGER)
+  AND (organization_id IS NULL OR organization_id = CAST(?2 AS INTEGER))
+  AND owner_type = 'USER'
+  AND owner_id = CAST(?3 AS INTEGER)
+  AND asset_code = ?4
   AND (currency_code = ?5 OR currency_code IS NULL)
-  AND status = 'active'
+  AND status = 1
 ORDER BY updated_at DESC, id DESC
 LIMIT 1
 "#;
@@ -196,11 +203,12 @@ SELECT
     source_type,
     remark,
     CAST(created_at AS TEXT) AS created_at
-FROM commerce_account_ledger_entry
-WHERE tenant_id = CAST(?1 AS TEXT)
-  AND (organization_id IS NULL OR organization_id = CAST(?2 AS TEXT))
-  AND owner_user_id = CAST(?3 AS TEXT)
-  AND asset_type = ?4
+FROM commerce_account_ledger
+WHERE tenant_id = CAST(?1 AS INTEGER)
+  AND (organization_id IS NULL OR organization_id = CAST(?2 AS INTEGER))
+  AND owner_type = 'USER'
+  AND owner_id = CAST(?3 AS INTEGER)
+  AND asset_code = ?4
 ORDER BY created_at DESC, id DESC
 LIMIT ?5 OFFSET ?6
 "#;
@@ -215,27 +223,15 @@ SELECT
     source_type,
     remark,
     CAST(created_at AS TEXT) AS created_at
-FROM commerce_account_ledger_entry
-WHERE tenant_id = CAST(?1 AS TEXT)
-  AND (organization_id IS NULL OR organization_id = CAST(?2 AS TEXT))
-  AND owner_user_id = CAST(?3 AS TEXT)
-  AND asset_type = ?4
+FROM commerce_account_ledger
+WHERE tenant_id = CAST(?1 AS INTEGER)
+  AND (organization_id IS NULL OR organization_id = CAST(?2 AS INTEGER))
+  AND owner_type = 'USER'
+  AND owner_id = CAST(?3 AS INTEGER)
+  AND asset_code = ?4
   AND id < ?5
 ORDER BY created_at DESC, id DESC
 LIMIT ?6
-"#;
-
-const LOAD_PAYMENT_METHOD: &str = r#"
-SELECT
-    method_key,
-    provider_code
-FROM commerce_payment_method
-WHERE (tenant_id = CAST(?1 AS TEXT) OR tenant_id = '100001')
-  AND (organization_id = CAST(?2 AS TEXT) OR organization_id = '0')
-  AND status = 'active'
-  AND LOWER(method_key) = ?3
-ORDER BY tenant_id DESC, organization_id DESC, sort_order ASC, id ASC
-LIMIT 1
 "#;
 
 #[derive(Debug, Clone)]
@@ -264,9 +260,10 @@ impl SqliteCommerceMembershipStore {
 
     pub fn load_plans<'a>(
         &'a self,
+        catalog_subject: Option<AppMembershipSubject>,
         query: AppMembershipListQuery,
     ) -> AppMembershipReadFuture<'a, SdkWorkPageData<AppMembershipPlanItem>> {
-        <Self as AppMembershipStore>::load_plans(self, query)
+        <Self as AppMembershipStore>::load_plans(self, catalog_subject, query)
     }
 
     pub fn load_benefits<'a>(
@@ -280,34 +277,50 @@ impl SqliteCommerceMembershipStore {
 
     pub fn load_packages<'a>(
         &'a self,
+        catalog_subject: Option<AppMembershipSubject>,
         package_group_id: Option<i64>,
         plan_id: Option<i64>,
         query: AppMembershipListQuery,
     ) -> AppMembershipReadFuture<'a, SdkWorkPageData<AppMembershipPackageItem>> {
-        <Self as AppMembershipStore>::load_packages(self, package_group_id, plan_id, query)
+        <Self as AppMembershipStore>::load_packages(
+            self,
+            catalog_subject,
+            package_group_id,
+            plan_id,
+            query,
+        )
     }
 
     pub fn load_package<'a>(
         &'a self,
+        catalog_subject: Option<AppMembershipSubject>,
         package_id: i64,
     ) -> AppMembershipReadFuture<'a, Option<AppMembershipPackageItem>> {
-        <Self as AppMembershipStore>::load_package(self, package_id)
+        <Self as AppMembershipStore>::load_package(self, catalog_subject, package_id)
     }
 
     pub fn load_package_groups<'a>(
         &'a self,
+        catalog_subject: Option<AppMembershipSubject>,
         plan_id: Option<i64>,
         recommended_only: bool,
         query: AppMembershipListQuery,
     ) -> AppMembershipReadFuture<'a, SdkWorkPageData<AppMembershipPackageGroupItem>> {
-        <Self as AppMembershipStore>::load_package_groups(self, plan_id, recommended_only, query)
+        <Self as AppMembershipStore>::load_package_groups(
+            self,
+            catalog_subject,
+            plan_id,
+            recommended_only,
+            query,
+        )
     }
 
     pub fn load_package_group<'a>(
         &'a self,
+        catalog_subject: Option<AppMembershipSubject>,
         package_group_id: i64,
     ) -> AppMembershipReadFuture<'a, Option<AppMembershipPackageGroupItem>> {
-        <Self as AppMembershipStore>::load_package_group(self, package_group_id)
+        <Self as AppMembershipStore>::load_package_group(self, catalog_subject, package_group_id)
     }
 
     pub fn load_points_balance<'a>(
@@ -372,9 +385,13 @@ impl AppMembershipStore for SqliteCommerceMembershipStore {
 
     fn load_plans<'a>(
         &'a self,
+        catalog_subject: Option<AppMembershipSubject>,
         query: AppMembershipListQuery,
     ) -> AppMembershipReadFuture<'a, SdkWorkPageData<AppMembershipPlanItem>> {
-        Box::pin(async move { load_plans_page(&self.pool, query).await })
+        Box::pin(async move {
+            let (tenant_id, organization_id) = resolve_catalog_scope(catalog_subject);
+            load_plans_page(&self.pool, tenant_id, organization_id, query).await
+        })
     }
 
     fn load_benefits<'a>(
@@ -388,38 +405,67 @@ impl AppMembershipStore for SqliteCommerceMembershipStore {
 
     fn load_packages<'a>(
         &'a self,
+        catalog_subject: Option<AppMembershipSubject>,
         package_group_id: Option<i64>,
         plan_id: Option<i64>,
         query: AppMembershipListQuery,
     ) -> AppMembershipReadFuture<'a, SdkWorkPageData<AppMembershipPackageItem>> {
         Box::pin(async move {
-            load_package_rows(&self.pool, package_group_id, plan_id, query, false).await
+            let (tenant_id, organization_id) = resolve_catalog_scope(catalog_subject);
+            load_package_rows(
+                &self.pool,
+                tenant_id,
+                organization_id,
+                package_group_id,
+                plan_id,
+                query,
+                false,
+            )
+            .await
         })
     }
 
     fn load_package<'a>(
         &'a self,
+        catalog_subject: Option<AppMembershipSubject>,
         package_id: i64,
     ) -> AppMembershipReadFuture<'a, Option<AppMembershipPackageItem>> {
-        Box::pin(async move { load_package_by_id(&self.pool, package_id).await })
+        Box::pin(async move {
+            let (tenant_id, organization_id) = resolve_catalog_scope(catalog_subject);
+            load_package_by_id(&self.pool, tenant_id, organization_id, package_id).await
+        })
     }
 
     fn load_package_groups<'a>(
         &'a self,
+        catalog_subject: Option<AppMembershipSubject>,
         plan_id: Option<i64>,
         recommended_only: bool,
         query: AppMembershipListQuery,
     ) -> AppMembershipReadFuture<'a, SdkWorkPageData<AppMembershipPackageGroupItem>> {
         Box::pin(async move {
-            load_package_groups_page(&self.pool, plan_id, recommended_only, query).await
+            let (tenant_id, organization_id) = resolve_catalog_scope(catalog_subject);
+            load_package_groups_page(
+                &self.pool,
+                tenant_id,
+                organization_id,
+                plan_id,
+                recommended_only,
+                query,
+            )
+            .await
         })
     }
 
     fn load_package_group<'a>(
         &'a self,
+        catalog_subject: Option<AppMembershipSubject>,
         package_group_id: i64,
     ) -> AppMembershipReadFuture<'a, Option<AppMembershipPackageGroupItem>> {
-        Box::pin(async move { load_package_group_by_id(&self.pool, package_group_id).await })
+        Box::pin(async move {
+            let (tenant_id, organization_id) = resolve_catalog_scope(catalog_subject);
+            load_package_group_by_id(&self.pool, tenant_id, organization_id, package_group_id).await
+        })
     }
 
     fn load_points_balance<'a>(
@@ -471,7 +517,10 @@ impl AppMembershipStore for SqliteCommerceMembershipStore {
                 &self.pool,
                 subject,
                 None,
-                AppMembershipListQuery::default(),
+                AppMembershipListQuery {
+                    page_size: Some(200),
+                    ..Default::default()
+                },
             )
             .await?
             .items;
@@ -482,6 +531,17 @@ impl AppMembershipStore for SqliteCommerceMembershipStore {
                     usage.priority_queue_used = actual.priority_queue_used;
                     usage.exclusive_model_used = actual.exclusive_model_used;
                 }
+                if let Ok(entitlement) =
+                    load_entitlement_account_usage_sqlite(&self.pool, subject).await
+                {
+                    usage.speed_up_used = usage.speed_up_used.max(entitlement.speed_up_used);
+                    usage.priority_queue_used = usage
+                        .priority_queue_used
+                        .max(entitlement.priority_queue_used);
+                    usage.exclusive_model_used = usage
+                        .exclusive_model_used
+                        .max(entitlement.exclusive_model_used);
+                }
             }
             Ok(usage)
         })
@@ -491,7 +551,7 @@ impl AppMembershipStore for SqliteCommerceMembershipStore {
         &'a self,
         subject: AppMembershipSubject,
         requested_at: String,
-    ) -> AppMembershipReadFuture<'a, ()> {
+    ) -> AppMembershipReadFuture<'a, SdkWorkCommandData> {
         Box::pin(async move { consume_speed_up(&self.pool, subject, requested_at).await })
     }
 
@@ -500,6 +560,13 @@ impl AppMembershipStore for SqliteCommerceMembershipStore {
         command: SubmitMembershipPurchaseCommand,
     ) -> AppMembershipCommandFuture<'a> {
         Box::pin(async move { submit_purchase(&self.pool, command).await })
+    }
+
+    fn fulfill_purchase<'a>(
+        &'a self,
+        command: FulfillMembershipPurchaseCommand,
+    ) -> crate::AppMembershipFulfillmentFuture<'a> {
+        Box::pin(async move { fulfill_purchase_by_order(&self.pool, command).await })
     }
 }
 
@@ -776,7 +843,7 @@ async fn update_admin_membership_plan(
     .fetch_optional(pool)
     .await
     .map_err(sql_error)?
-    .ok_or_else(|| CommerceServiceError::conflict("membership plan was not found"))?;
+    .ok_or_else(|| CommerceServiceError::not_found("membership plan was not found"))?;
     let plan_id = string_cell(&row, "id");
     let plan_version_id = ensure_admin_membership_plan_version(
         pool,
@@ -1152,7 +1219,7 @@ async fn update_admin_membership_package(
     .fetch_optional(pool)
     .await
     .map_err(sql_error)?
-    .ok_or_else(|| CommerceServiceError::conflict("membership package was not found"))?;
+    .ok_or_else(|| CommerceServiceError::not_found("membership package was not found"))?;
     let package_id = package_id_for_update(pool, &tenant_id, &command.package_id).await?;
     let sku_id = optional_string_cell(&current, "sku_id")
         .filter(|value| !value.trim().is_empty())
@@ -1339,7 +1406,7 @@ async fn update_admin_membership_member_status(
     .await
     .map_err(|error| store_error("failed to update membership membership status", error))?;
     if result.rows_affected() == 0 {
-        return Err(CommerceServiceError::conflict(
+        return Err(CommerceServiceError::not_found(
             "membership membership was not found",
         ));
     }
@@ -1486,7 +1553,7 @@ async fn load_admin_membership_plan(
     admin_plans_from_rows(&rows)
         .into_iter()
         .next()
-        .ok_or_else(|| CommerceServiceError::conflict("membership plan was not found"))
+        .ok_or_else(|| CommerceServiceError::not_found("membership plan was not found"))
 }
 
 async fn load_admin_membership_package(
@@ -1510,7 +1577,7 @@ async fn load_admin_membership_package(
     .fetch_optional(pool)
     .await
     .map_err(sql_error)?
-    .ok_or_else(|| CommerceServiceError::conflict("membership package was not found"))?;
+    .ok_or_else(|| CommerceServiceError::not_found("membership package was not found"))?;
     Ok(map_admin_package(&row))
 }
 
@@ -1535,7 +1602,7 @@ async fn load_admin_membership_package_group(
     .fetch_optional(pool)
     .await
     .map_err(sql_error)?
-    .ok_or_else(|| CommerceServiceError::conflict("membership package group was not found"))?;
+    .ok_or_else(|| CommerceServiceError::not_found("membership package group was not found"))?;
     Ok(map_admin_package_group(&row))
 }
 
@@ -1559,7 +1626,7 @@ async fn load_admin_membership(
     .fetch_optional(pool)
     .await
     .or_else(none_when_read_model_is_missing)?
-    .ok_or_else(|| CommerceServiceError::conflict("membership membership was not found"))?;
+    .ok_or_else(|| CommerceServiceError::not_found("membership membership was not found"))?;
     Ok(map_admin_membership(&row))
 }
 
@@ -1572,7 +1639,7 @@ async fn ensure_admin_plan_exists(pool: &SqlitePool, plan_id: &str) -> AppMember
             .map_err(sql_error)?;
     exists
         .map(|_| ())
-        .ok_or_else(|| CommerceServiceError::conflict("membership target plan was not found"))
+        .ok_or_else(|| CommerceServiceError::not_found("membership target plan was not found"))
 }
 
 async fn ensure_admin_membership_plan_version(
@@ -1598,7 +1665,7 @@ async fn ensure_admin_membership_plan_version(
     .fetch_optional(pool)
     .await
     .map_err(sql_error)?
-    .ok_or_else(|| CommerceServiceError::conflict("membership target plan was not found"))?;
+    .ok_or_else(|| CommerceServiceError::not_found("membership target plan was not found"))?;
     let plan_id = string_cell(&row, "id");
     let existing: Option<String> = sqlx::query_scalar(
         r#"
@@ -1756,7 +1823,7 @@ async fn ensure_admin_package_group_exists(
     .map_err(sql_error)?;
     exists
         .map(|_| ())
-        .ok_or_else(|| CommerceServiceError::conflict("membership package group was not found"))
+        .ok_or_else(|| CommerceServiceError::not_found("membership package group was not found"))
 }
 
 async fn next_admin_package_external_id(pool: &SqlitePool) -> AppMembershipResult<i64> {
@@ -1795,7 +1862,7 @@ async fn package_id_for_update(
     .fetch_optional(pool)
     .await
     .map_err(sql_error)?
-    .ok_or_else(|| CommerceServiceError::conflict("membership package was not found"))?;
+    .ok_or_else(|| CommerceServiceError::not_found("membership package was not found"))?;
     Ok(string_cell(&row, "id"))
 }
 
@@ -1818,7 +1885,7 @@ async fn package_group_external_id_for_update(
     .fetch_optional(pool)
     .await
     .map_err(sql_error)?
-    .ok_or_else(|| CommerceServiceError::conflict("membership package group was not found"))?;
+    .ok_or_else(|| CommerceServiceError::not_found("membership package group was not found"))?;
     Ok(string_cell(&row, "id"))
 }
 
@@ -2025,6 +2092,9 @@ async fn load_benefits_page(
     let params = query.offset_params();
     let page_size = params.page_size;
     let offset = params.offset;
+    let (tenant_id, organization_id) = subject
+        .map(|s| (s.tenant_id, s.organization_id))
+        .unwrap_or((DEFAULT_CATALOG_TENANT_ID, DEFAULT_CATALOG_ORGANIZATION_ID));
 
     let total: i64 = sqlx::query_scalar(
         r#"
@@ -2038,12 +2108,14 @@ async fn load_benefits_page(
             ON b.plan_version_id = v.id
            AND b.tenant_id = p.tenant_id
            AND b.status = 'active'
-        WHERE (p.tenant_id = '100001' OR p.tenant_id IS NULL)
-          AND (p.organization_id = '0' OR p.organization_id IS NULL)
+        WHERE (p.tenant_id = CAST(?1 AS TEXT) OR p.tenant_id IS NULL)
+          AND (p.organization_id = CAST(?2 AS TEXT) OR p.organization_id IS NULL)
           AND p.status = 'active'
-          AND CAST(p.rank AS INTEGER) = ?1
+          AND CAST(p.rank AS INTEGER) = ?3
         "#,
     )
+    .bind(tenant_id)
+    .bind(organization_id)
     .bind(rank)
     .fetch_one(pool)
     .await
@@ -2071,14 +2143,16 @@ async fn load_benefits_page(
         LEFT JOIN benefit_definition d
             ON d.id = b.benefit_id
            AND d.tenant_id = b.tenant_id
-        WHERE (p.tenant_id = '100001' OR p.tenant_id IS NULL)
-          AND (p.organization_id = '0' OR p.organization_id IS NULL)
+        WHERE (p.tenant_id = CAST(?1 AS TEXT) OR p.tenant_id IS NULL)
+          AND (p.organization_id = CAST(?2 AS TEXT) OR p.organization_id IS NULL)
           AND p.status = 'active'
-          AND CAST(p.rank AS INTEGER) = ?1
+          AND CAST(p.rank AS INTEGER) = ?3
         ORDER BY b.sort_weight ASC, b.id ASC
-        LIMIT ?2 OFFSET ?3
+        LIMIT ?4 OFFSET ?5
         "#,
     )
+    .bind(tenant_id)
+    .bind(organization_id)
     .bind(rank)
     .bind(page_size)
     .bind(offset)
@@ -2093,6 +2167,8 @@ async fn load_benefits_page(
     Ok(offset_page(items, total, params))
 }
 
+/// Resolves the plan rank filter for catalog queries.
+/// App API `plan_id` maps to `AppMembershipPlanItem.id`, which is the plan rank.
 async fn resolve_plan_rank(
     pool: &SqlitePool,
     subject: Option<AppMembershipSubject>,
@@ -2112,6 +2188,8 @@ async fn resolve_plan_rank(
 
 async fn load_plans_page(
     pool: &SqlitePool,
+    tenant_id: i64,
+    organization_id: i64,
     query: MembershipListQuery,
 ) -> AppMembershipResult<SdkWorkPageData<AppMembershipPlanItem>> {
     let params = query.offset_params();
@@ -2122,11 +2200,13 @@ async fn load_plans_page(
         r#"
         SELECT COUNT(*)
         FROM membership_plan p
-        WHERE (p.tenant_id = '100001' OR p.tenant_id IS NULL)
-          AND (p.organization_id = '0' OR p.organization_id IS NULL)
+        WHERE (p.tenant_id = CAST(?1 AS TEXT) OR p.tenant_id IS NULL)
+          AND (p.organization_id = CAST(?2 AS TEXT) OR p.organization_id IS NULL)
           AND p.status = 'active'
         "#,
     )
+    .bind(tenant_id)
+    .bind(organization_id)
     .fetch_one(pool)
     .await
     .map_err(sql_error)?;
@@ -2135,13 +2215,15 @@ async fn load_plans_page(
         r#"
         SELECT p.id
         FROM membership_plan p
-        WHERE (p.tenant_id = '100001' OR p.tenant_id IS NULL)
-          AND (p.organization_id = '0' OR p.organization_id IS NULL)
+        WHERE (p.tenant_id = CAST(?1 AS TEXT) OR p.tenant_id IS NULL)
+          AND (p.organization_id = CAST(?2 AS TEXT) OR p.organization_id IS NULL)
           AND p.status = 'active'
         ORDER BY p.rank ASC, p.plan_no ASC
-        LIMIT ?1 OFFSET ?2
+        LIMIT ?3 OFFSET ?4
         "#,
     )
+    .bind(tenant_id)
+    .bind(organization_id)
     .bind(page_size)
     .bind(offset)
     .fetch_all(pool)
@@ -2206,6 +2288,8 @@ async fn load_stored_plan_by_rank(
     rank: i64,
 ) -> AppMembershipResult<Option<StoredMembershipPlan>> {
     let rows = sqlx::query(LOAD_MEMBERSHIP_PLAN_BY_RANK)
+        .bind(DEFAULT_CATALOG_TENANT_ID)
+        .bind(DEFAULT_CATALOG_ORGANIZATION_ID)
         .bind(rank)
         .fetch_all(pool)
         .await
@@ -2293,6 +2377,8 @@ fn plan_badge(plan_no: &str) -> &'static str {
 
 async fn load_package_rows(
     pool: &SqlitePool,
+    tenant_id: i64,
+    organization_id: i64,
     package_group_id: Option<i64>,
     plan_id: Option<i64>,
     query: MembershipListQuery,
@@ -2316,7 +2402,7 @@ async fn load_package_rows(
     sql.push_str("ORDER BY g.sort_weight ASC, p.sort_weight ASC, p.external_id ASC\n");
     sql.push_str("LIMIT ? OFFSET ?\n");
 
-    let mut db_query = sqlx::query(&sql);
+    let mut db_query = sqlx::query(&sql).bind(tenant_id).bind(organization_id);
     if let Some(group_id) = package_group_id {
         db_query = db_query.bind(group_id);
     }
@@ -2335,14 +2421,21 @@ async fn load_package_rows(
 
 async fn load_package_by_id(
     pool: &SqlitePool,
+    tenant_id: i64,
+    organization_id: i64,
     package_id: i64,
 ) -> AppMembershipResult<Option<AppMembershipPackageItem>> {
     let row = sqlx::query(LOAD_MEMBERSHIP_PACKAGE_BY_ID)
+        .bind(tenant_id)
+        .bind(organization_id)
         .bind(package_id)
         .fetch_optional(pool)
         .await
         .map_err(sql_error)?;
-    Ok(row.as_ref().and_then(map_package).map(|package| package.item))
+    Ok(row
+        .as_ref()
+        .and_then(map_package)
+        .map(|package| package.item))
 }
 
 fn map_package(row: &sqlx::sqlite::SqliteRow) -> Option<ParsedMembershipPackage> {
@@ -2383,6 +2476,8 @@ fn plan_items(plans: Vec<StoredMembershipPlan>) -> Vec<AppMembershipPlanItem> {
 
 async fn load_package_groups_page(
     pool: &SqlitePool,
+    tenant_id: i64,
+    organization_id: i64,
     plan_id: Option<i64>,
     recommended_only: bool,
     query: MembershipListQuery,
@@ -2395,11 +2490,25 @@ async fn load_package_groups_page(
         r#"
         SELECT COUNT(*)
         FROM membership_package_group g
-        WHERE (g.tenant_id = '100001' OR g.tenant_id IS NULL)
-          AND (g.organization_id = '0' OR g.organization_id IS NULL)
+        WHERE (g.tenant_id = CAST(?1 AS TEXT) OR g.tenant_id IS NULL)
+          AND (g.organization_id = CAST(?2 AS TEXT) OR g.organization_id IS NULL)
           AND g.status = 'active'
+          AND EXISTS (
+            SELECT 1
+            FROM membership_package p
+            LEFT JOIN membership_plan l ON l.id = p.plan_id
+            WHERE p.package_group_id = g.id
+              AND (p.tenant_id = CAST(?1 AS TEXT) OR p.tenant_id IS NULL)
+              AND (p.organization_id = CAST(?2 AS TEXT) OR p.organization_id IS NULL)
+              AND (?3 = 0 OR p.recommended != 0)
+              AND (?4 IS NULL OR l.rank = ?4)
+          )
         "#,
     )
+    .bind(tenant_id)
+    .bind(organization_id)
+    .bind(i64::from(recommended_only))
+    .bind(plan_id)
     .fetch_one(pool)
     .await
     .map_err(sql_error)?;
@@ -2412,15 +2521,29 @@ async fn load_package_groups_page(
             g.description,
             CAST(COALESCE(g.sort_weight, 0) AS INTEGER) AS sort_weight
         FROM membership_package_group g
-        WHERE (g.tenant_id = '100001' OR g.tenant_id IS NULL)
-          AND (g.organization_id = '0' OR g.organization_id IS NULL)
+        WHERE (g.tenant_id = CAST(?1 AS TEXT) OR g.tenant_id IS NULL)
+          AND (g.organization_id = CAST(?2 AS TEXT) OR g.organization_id IS NULL)
           AND g.status = 'active'
+          AND EXISTS (
+            SELECT 1
+            FROM membership_package p
+            LEFT JOIN membership_plan l ON l.id = p.plan_id
+            WHERE p.package_group_id = g.id
+              AND (p.tenant_id = CAST(?1 AS TEXT) OR p.tenant_id IS NULL)
+              AND (p.organization_id = CAST(?2 AS TEXT) OR p.organization_id IS NULL)
+              AND (?5 = 0 OR p.recommended != 0)
+              AND (?6 IS NULL OR l.rank = ?6)
+          )
         ORDER BY g.sort_weight ASC, g.external_id ASC
-        LIMIT ?1 OFFSET ?2
+        LIMIT ?3 OFFSET ?4
         "#,
     )
+    .bind(tenant_id)
+    .bind(organization_id)
     .bind(page_size)
     .bind(offset)
+    .bind(i64::from(recommended_only))
+    .bind(plan_id)
     .fetch_all(pool)
     .await
     .map_err(sql_error)?;
@@ -2430,6 +2553,8 @@ async fn load_package_groups_page(
         let group_external_id = integer_cell(&row, "external_id");
         let packages = load_package_rows(
             pool,
+            tenant_id,
+            organization_id,
             Some(group_external_id),
             plan_id,
             MembershipListQuery {
@@ -2441,9 +2566,6 @@ async fn load_package_groups_page(
         )
         .await?
         .items;
-        if recommended_only && packages.is_empty() {
-            continue;
-        }
         groups.push(build_package_group_from_packages(
             group_external_id,
             string_cell(&row, "name"),
@@ -2457,6 +2579,8 @@ async fn load_package_groups_page(
 
 async fn load_package_group_by_id(
     pool: &SqlitePool,
+    tenant_id: i64,
+    organization_id: i64,
     package_group_id: i64,
 ) -> AppMembershipResult<Option<AppMembershipPackageGroupItem>> {
     let row = sqlx::query(
@@ -2467,13 +2591,15 @@ async fn load_package_group_by_id(
             g.description,
             CAST(COALESCE(g.sort_weight, 0) AS INTEGER) AS sort_weight
         FROM membership_package_group g
-        WHERE g.external_id = ?1
-          AND (g.tenant_id = '100001' OR g.tenant_id IS NULL)
-          AND (g.organization_id = '0' OR g.organization_id IS NULL)
+        WHERE (g.tenant_id = CAST(?1 AS TEXT) OR g.tenant_id IS NULL)
+          AND (g.organization_id = CAST(?2 AS TEXT) OR g.organization_id IS NULL)
+          AND g.external_id = ?3
           AND g.status = 'active'
         LIMIT 1
         "#,
     )
+    .bind(tenant_id)
+    .bind(organization_id)
     .bind(package_group_id)
     .fetch_optional(pool)
     .await
@@ -2484,6 +2610,8 @@ async fn load_package_group_by_id(
     let group_external_id = integer_cell(&row, "external_id");
     let packages = load_package_rows(
         pool,
+        tenant_id,
+        organization_id,
         Some(group_external_id),
         None,
         MembershipListQuery {
@@ -2515,7 +2643,7 @@ async fn load_points_balance(
         .bind(subject.tenant_id)
         .bind(subject.organization_id)
         .bind(subject.user_id)
-        .bind(POINTS_ASSET_TYPE)
+        .bind(POINTS_ASSET_CODE)
         .bind(POINTS_CURRENCY_CODE)
         .fetch_optional(pool)
         .await
@@ -2557,7 +2685,7 @@ async fn load_points_history(
             .bind(subject.tenant_id)
             .bind(subject.organization_id)
             .bind(subject.user_id)
-            .bind(POINTS_ASSET_TYPE)
+            .bind(POINTS_ASSET_CODE)
             .bind(cursor)
             .bind(fetch_limit)
             .fetch_all(pool)
@@ -2568,23 +2696,31 @@ async fn load_points_history(
             .bind(subject.tenant_id)
             .bind(subject.organization_id)
             .bind(subject.user_id)
-            .bind(POINTS_ASSET_TYPE)
+            .bind(POINTS_ASSET_CODE)
             .bind(fetch_limit)
             .bind(offset)
             .fetch_all(pool)
             .await
     }
     .map_err(sql_error)?;
-    let has_more = rows.len() > page_size;
-    let items: Vec<_> = rows
-        .iter()
-        .take(page_size)
-        .map(map_points_history_item)
-        .collect();
-    let next_cursor = has_more
-        .then(|| items.last().map(|item| item.id.clone()))
-        .flatten();
-    Ok(cursor_page(items, page_size, next_cursor, has_more))
+    let items: Vec<_> = rows.iter().map(map_points_history_item).collect();
+    if query
+        .cursor
+        .as_deref()
+        .map(str::trim)
+        .filter(|value| !value.is_empty())
+        .is_some()
+    {
+        let has_more = items.len() > page_size;
+        let page_items: Vec<_> = items.into_iter().take(page_size).collect();
+        let next_cursor = has_more
+            .then(|| page_items.last().map(|item| item.id.clone()))
+            .flatten();
+        return Ok(cursor_page(page_items, page_size, next_cursor, has_more));
+    }
+
+    let offset = query.offset() as usize;
+    Ok(bounded_sql_page(items, page_size, offset))
 }
 
 fn map_points_history_item(row: &sqlx::sqlite::SqliteRow) -> AppMembershipPointsHistoryItem {
@@ -2610,6 +2746,7 @@ fn map_points_history_item(row: &sqlx::sqlite::SqliteRow) -> AppMembershipPoints
 
 #[derive(Debug, Clone)]
 struct CurrentMembership {
+    membership_id: String,
     rank: i64,
     plan_name: String,
     status: String,
@@ -2617,6 +2754,17 @@ struct CurrentMembership {
     expires_at: String,
     total_spent: String,
     benefits: Vec<AppMembershipBenefitItem>,
+}
+
+impl CurrentMembership {
+    fn snapshot(&self) -> CurrentMembershipSnapshot {
+        CurrentMembershipSnapshot {
+            membership_id: self.membership_id.clone(),
+            _rank: self.rank,
+            _status: self.status.clone(),
+            expires_at: self.expires_at.clone(),
+        }
+    }
 }
 
 async fn load_current_membership(
@@ -2645,6 +2793,7 @@ fn map_membership(row: &sqlx::sqlite::SqliteRow) -> CurrentMembership {
     let plan_no = string_cell(row, "plan_no");
     let rank = integer_cell(row, "rank").max(plan_rank_from_code(&plan_no));
     CurrentMembership {
+        membership_id: string_cell(row, "membership_id"),
         rank,
         plan_name: string_cell(row, "plan_name"),
         status: membership_status_label(&string_cell(row, "status")).to_owned(),
@@ -2663,148 +2812,193 @@ async fn submit_purchase(
     pool: &SqlitePool,
     command: SubmitMembershipPurchaseCommand,
 ) -> AppMembershipResult<AppMembershipPurchaseOutcome> {
-    if let Some(outcome) = load_purchase_outcome_by_idempotency(pool, &command).await? {
-        return Ok(outcome);
-    }
-
     let mut tx = pool
         .begin()
         .await
         .map_err(|error| store_error("failed to begin membership purchase transaction", error))?;
-    let package = load_package_for_purchase(&mut tx, command.package_id).await?;
-    let method = load_payment_method(&mut tx, &command).await?;
-    let plan = load_plan_for_package(&mut tx, &package).await?;
-    let membership_expires_at =
-        add_days_to_timestamp(&command.requested_at, package.item.duration_days);
 
-    insert_order(&mut tx, &command, &package).await?;
-    insert_order_item(&mut tx, &command, &package).await?;
-    insert_order_amount_breakdown(&mut tx, &command, &package).await?;
-    insert_payment(&mut tx, &command, &package, &method).await?;
-    insert_membership(&mut tx, &command, &package, &plan, &membership_expires_at).await?;
-    insert_entitlements(&mut tx, &command, &plan, &membership_expires_at).await?;
+    if let Some(outcome) = load_purchase_outcome_by_idempotency(&mut tx, &command).await? {
+        tx.rollback().await.map_err(|error| {
+            store_error("failed to rollback membership purchase transaction", error)
+        })?;
+        return Ok(outcome);
+    }
+
+    let tenant_id = command.subject.tenant_id;
+    let organization_id = command.subject.organization_id;
+    let package =
+        load_package_for_purchase(&mut tx, tenant_id, organization_id, command.package_id).await?;
+    let plan = load_plan_for_package(&mut tx, tenant_id, organization_id, &package).await?;
+    let current = load_current_membership_for_validation(&mut *tx, command.subject).await?;
+    let membership_active = current
+        .as_ref()
+        .map(|item| item.rank > 0 && item.status != "expired")
+        .unwrap_or(false);
+    let current_rank = current.as_ref().map(|item| item.rank).unwrap_or(0);
+    validate_membership_purchase_action(
+        &command.action,
+        membership_active,
+        current_rank,
+        plan.rank,
+    )?;
+    let binding = resolve_membership_purchase_binding(
+        &command,
+        current.as_ref().map(|item| item.snapshot()),
+        membership_active,
+    );
+    let membership_expires_at =
+        add_days_to_timestamp(&binding.period_starts_at, package.item.duration_days);
+
+    persist_membership_subscription(
+        &mut tx,
+        &command,
+        &package,
+        &plan,
+        &binding,
+        &membership_expires_at,
+    )
+    .await?;
+    if binding.persistence_mode != MembershipPurchasePersistenceMode::Renew {
+        insert_entitlements(&mut tx, &command, &plan, &binding, &membership_expires_at).await?;
+    }
     tx.commit()
         .await
         .map_err(|error| store_error("failed to commit membership purchase transaction", error))?;
 
-    Ok(AppMembershipPurchaseOutcome {
-        success: true,
+    Ok(build_purchase_outcome(&command, &package, &plan, "pending"))
+}
+
+fn build_purchase_outcome(
+    command: &SubmitMembershipPurchaseCommand,
+    package: &ParsedMembershipPackage,
+    plan: &StoredMembershipPlan,
+    status: &str,
+) -> AppMembershipPurchaseOutcome {
+    AppMembershipPurchaseOutcome {
+        success: status != "failed",
         request_no: command.order_no.clone(),
-        order_id: command.order_no.clone(),
-        provider_code: method.provider_code.clone(),
-        payment_method: method.method_key.clone(),
-        payment_product: method.payment_product.clone(),
-        next_action: "scan_qr".to_owned(),
-        payment_id: command.payment_uuid.clone(),
-        cashier_url: membership_payment_qr_code_payload(&command.payment_uuid, &command.order_no),
-        qr_code_payload: membership_payment_qr_code_payload(
-            &command.payment_uuid,
-            &command.order_no,
-        ),
+        order_id: command.order_uuid.clone(),
+        provider_code: String::new(),
+        payment_method: String::new(),
+        payment_product: String::new(),
+        next_action: String::new(),
+        payment_id: String::new(),
+        cashier_url: String::new(),
+        qr_code_payload: String::new(),
         qr_code_image_url: None,
         request_payment_payload: None,
         package_id: package.item.id,
-        package_name: package.item.name,
-        amount: package.item.price,
+        package_name: package.item.name.clone(),
+        amount: package.item.price.clone(),
         duration_days: package.item.duration_days,
         target_plan_rank: plan.rank,
-        target_plan_name: plan.item.name,
-        status: "pending".to_owned(),
-    })
+        target_plan_name: plan.item.name.clone(),
+        status: status.to_owned(),
+    }
 }
 
-fn membership_payment_qr_code_payload(payment_id: &str, order_id: &str) -> String {
-    format!(
-        "https://im.sdkwork.com/cashier?scene=membership&orderId={order_id}&paymentId={payment_id}"
-    )
+fn purchase_status_from_subscription_status(subscription_status: &str) -> String {
+    match subscription_status {
+        "active" => "completed".to_owned(),
+        "pending_activation" | "pending" => "pending".to_owned(),
+        "cancelled" | "expired" | "failed" => "failed".to_owned(),
+        other => other.to_owned(),
+    }
+}
+
+async fn load_current_membership_for_validation<'e, E>(
+    executor: E,
+    subject: AppMembershipSubject,
+) -> AppMembershipResult<Option<CurrentMembership>>
+where
+    E: sqlx::Executor<'e, Database = Sqlite>,
+{
+    let row = sqlx::query(LOAD_MEMBERSHIP)
+        .bind(subject.tenant_id)
+        .bind(subject.organization_id)
+        .bind(subject.user_id)
+        .fetch_optional(executor)
+        .await
+        .or_else(none_when_read_model_is_missing)?;
+    Ok(row.as_ref().map(map_membership))
 }
 
 async fn load_purchase_outcome_by_idempotency(
-    pool: &SqlitePool,
+    tx: &mut Transaction<'_, Sqlite>,
     command: &SubmitMembershipPurchaseCommand,
 ) -> AppMembershipResult<Option<AppMembershipPurchaseOutcome>> {
     let row = sqlx::query(
         r#"
         SELECT
-            o.order_no,
-            o.id AS order_uuid,
-            o.payment_status,
-            pi.id AS payment_uuid,
-            pi.provider_code,
-            pi.payment_method,
-            pi.amount,
-            pi.status AS payment_status_detail
-        FROM commerce_order o
-        LEFT JOIN commerce_payment_intent pi
-            ON pi.order_id = o.id
-           AND pi.tenant_id = o.tenant_id
-        WHERE o.tenant_id = CAST(?1 AS TEXT)
-          AND o.owner_user_id = CAST(?2 AS TEXT)
-          AND o.idempotency_key = ?3
-        ORDER BY o.created_at DESC
+            ms.request_no,
+            ms.source_order_id AS order_uuid,
+            ms.status AS subscription_status
+        FROM membership_subscription ms
+        WHERE ms.tenant_id = CAST(?1 AS TEXT)
+          AND (ms.organization_id IS NULL OR ms.organization_id = CAST(?2 AS TEXT))
+          AND ms.owner_user_id = CAST(?3 AS TEXT)
+          AND ms.idempotency_key = ?4
+        ORDER BY ms.created_at DESC
         LIMIT 1
         "#,
     )
     .bind(command.subject.tenant_id)
+    .bind(command.subject.organization_id)
     .bind(command.subject.user_id)
     .bind(&command.idempotency_key)
-    .fetch_optional(pool)
+    .fetch_optional(&mut **tx)
     .await
-    .map_err(|error| store_error("failed to load membership purchase idempotency record", error))?;
+    .map_err(|error| {
+        store_error(
+            "failed to load membership purchase idempotency record",
+            error,
+        )
+    })?;
 
     let Some(row) = row else {
         return Ok(None);
     };
 
-    let package = load_package_for_purchase_by_pool(pool, command.package_id).await?;
-    let plan = load_plan_for_package_by_pool(pool, &package).await?;
-    let order_no = string_cell(&row, "order_no");
-    let payment_uuid = optional_string_cell(&row, "payment_uuid")
-        .unwrap_or_else(|| command.payment_uuid.clone());
-    let provider_code = optional_string_cell(&row, "provider_code")
-        .unwrap_or_else(|| "membership".to_owned());
-    let payment_method = optional_string_cell(&row, "payment_method")
-        .map(|value| normalize_payment_method(&value))
-        .unwrap_or_else(|| MEMBERSHIP_PAYMENT_METHOD.to_owned());
-    let payment_status = string_cell(&row, "payment_status").to_ascii_lowercase();
-    let status = if payment_status == "paid" || payment_status == "completed" {
-        "completed".to_owned()
-    } else if payment_status == "failed" || payment_status == "cancelled" {
-        "failed".to_owned()
-    } else {
-        "pending".to_owned()
-    };
+    let tenant_id = command.subject.tenant_id;
+    let organization_id = command.subject.organization_id;
+    let package = load_package_for_purchase_executor(
+        &mut **tx,
+        tenant_id,
+        organization_id,
+        command.package_id,
+    )
+    .await?;
+    let plan =
+        load_plan_for_package_executor(&mut **tx, tenant_id, organization_id, &package).await?;
+    let subscription_status = string_cell(&row, "subscription_status");
+    let status = purchase_status_from_subscription_status(&subscription_status);
 
-    Ok(Some(AppMembershipPurchaseOutcome {
-        success: status != "failed",
-        request_no: order_no.clone(),
-        order_id: order_no.clone(),
-        provider_code,
-        payment_method: payment_method.clone(),
-        payment_product: payment_product_for_scan_qr(&payment_method)?.to_owned(),
-        next_action: "scan_qr".to_owned(),
-        payment_id: payment_uuid.clone(),
-        cashier_url: membership_payment_qr_code_payload(&payment_uuid, &order_no),
-        qr_code_payload: membership_payment_qr_code_payload(&payment_uuid, &order_no),
-        qr_code_image_url: None,
-        request_payment_payload: None,
-        package_id: package.item.id,
-        package_name: package.item.name,
-        amount: package.item.price,
-        duration_days: package.item.duration_days,
-        target_plan_rank: plan.rank,
-        target_plan_name: plan.item.name,
-        status,
-    }))
+    Ok(Some(build_purchase_outcome(
+        &SubmitMembershipPurchaseCommand {
+            order_no: string_cell(&row, "request_no"),
+            order_uuid: string_cell(&row, "order_uuid"),
+            ..command.clone()
+        },
+        &package,
+        &plan,
+        &status,
+    )))
 }
 
-async fn load_package_for_purchase_by_pool(
-    pool: &SqlitePool,
+async fn load_package_for_purchase_executor<'e, E>(
+    executor: E,
+    tenant_id: i64,
+    organization_id: i64,
     package_id: i64,
-) -> AppMembershipResult<ParsedMembershipPackage> {
+) -> AppMembershipResult<ParsedMembershipPackage>
+where
+    E: sqlx::Executor<'e, Database = Sqlite>,
+{
     let row = sqlx::query(LOAD_MEMBERSHIP_PACKAGE_BY_ID)
+        .bind(tenant_id)
+        .bind(organization_id)
         .bind(package_id)
-        .fetch_optional(pool)
+        .fetch_optional(executor)
         .await
         .map_err(|error| store_error("failed to load membership packages", error))?;
     row.as_ref()
@@ -2812,13 +3006,20 @@ async fn load_package_for_purchase_by_pool(
         .ok_or_else(|| CommerceServiceError::conflict("membership package is unavailable"))
 }
 
-async fn load_plan_for_package_by_pool(
-    pool: &SqlitePool,
+async fn load_plan_for_package_executor<'e, E>(
+    executor: E,
+    tenant_id: i64,
+    organization_id: i64,
     package: &ParsedMembershipPackage,
-) -> AppMembershipResult<StoredMembershipPlan> {
+) -> AppMembershipResult<StoredMembershipPlan>
+where
+    E: sqlx::Executor<'e, Database = Sqlite>,
+{
     let rows = sqlx::query(LOAD_MEMBERSHIP_PLAN_BY_RANK)
+        .bind(tenant_id)
+        .bind(organization_id)
         .bind(package.rank)
-        .fetch_all(pool)
+        .fetch_all(executor)
         .await
         .map_err(|error| store_error("failed to load membership plans for purchase", error))?;
     stored_plans_from_rows(&rows)
@@ -2829,62 +3030,230 @@ async fn load_plan_for_package_by_pool(
 
 async fn load_package_for_purchase(
     tx: &mut Transaction<'_, Sqlite>,
+    tenant_id: i64,
+    organization_id: i64,
     package_id: i64,
 ) -> AppMembershipResult<ParsedMembershipPackage> {
-    let row = sqlx::query(LOAD_MEMBERSHIP_PACKAGE_BY_ID)
-        .bind(package_id)
-        .fetch_optional(&mut **tx)
-        .await
-        .map_err(|error| store_error("failed to load membership packages", error))?;
-    row.as_ref()
-        .and_then(map_package)
-        .ok_or_else(|| CommerceServiceError::conflict("membership package is unavailable"))
-}
-
-#[derive(Debug, Clone)]
-struct MembershipPaymentMethod {
-    method_key: String,
-    provider_code: String,
-    payment_product: String,
-}
-
-const MEMBERSHIP_PAYMENT_METHOD: &str = "wechat_pay";
-
-async fn load_payment_method(
-    tx: &mut Transaction<'_, Sqlite>,
-    command: &SubmitMembershipPurchaseCommand,
-) -> AppMembershipResult<MembershipPaymentMethod> {
-    let row = sqlx::query(LOAD_PAYMENT_METHOD)
-        .bind(command.subject.tenant_id)
-        .bind(command.subject.organization_id)
-        .bind(MEMBERSHIP_PAYMENT_METHOD)
-        .fetch_optional(&mut **tx)
-        .await
-        .map_err(|error| store_error("failed to load membership payment method", error))?
-        .ok_or_else(|| {
-            CommerceServiceError::conflict("membership payment method is unavailable")
-        })?;
-    let method_key = normalize_payment_method(&string_cell(&row, "method_key"));
-    Ok(MembershipPaymentMethod {
-        provider_code: normalize_payment_method(&string_cell(&row, "provider_code")),
-        payment_product: payment_product_for_scan_qr(&method_key)?.to_owned(),
-        method_key,
-    })
+    load_package_for_purchase_executor(&mut **tx, tenant_id, organization_id, package_id).await
 }
 
 async fn load_plan_for_package(
     tx: &mut Transaction<'_, Sqlite>,
+    tenant_id: i64,
+    organization_id: i64,
     package: &ParsedMembershipPackage,
 ) -> AppMembershipResult<StoredMembershipPlan> {
-    let rows = sqlx::query(LOAD_MEMBERSHIP_PLAN_BY_RANK)
-        .bind(package.rank)
-        .fetch_all(&mut **tx)
-        .await
-        .map_err(|error| store_error("failed to load membership plans for purchase", error))?;
-    stored_plans_from_rows(&rows)
-        .into_iter()
-        .find(|plan| plan.plan_no == package.plan_no || plan.rank == package.rank)
-        .ok_or_else(|| CommerceServiceError::conflict("membership target plan is unavailable"))
+    load_plan_for_package_executor(&mut **tx, tenant_id, organization_id, package).await
+}
+
+async fn fulfill_purchase_by_order(
+    pool: &SqlitePool,
+    command: FulfillMembershipPurchaseCommand,
+) -> AppMembershipResult<FulfillMembershipPurchaseOutcome> {
+    let mut tx = pool.begin().await.map_err(|error| {
+        store_error("failed to begin membership fulfillment transaction", error)
+    })?;
+
+    if let Some(outcome) = load_fulfillment_outcome_by_idempotency(&mut tx, &command).await? {
+        tx.rollback().await.map_err(|error| {
+            store_error(
+                "failed to rollback membership fulfillment transaction",
+                error,
+            )
+        })?;
+        return Ok(outcome);
+    }
+
+    let row = sqlx::query(
+        r#"
+        SELECT id, status
+        FROM membership_subscription
+        WHERE tenant_id = CAST(?1 AS TEXT)
+          AND (organization_id IS NULL OR organization_id = CAST(?2 AS TEXT))
+          AND owner_user_id = CAST(?3 AS TEXT)
+          AND source_order_id = ?4
+        ORDER BY created_at DESC
+        LIMIT 1
+        "#,
+    )
+    .bind(command.subject.tenant_id)
+    .bind(command.subject.organization_id)
+    .bind(command.subject.user_id)
+    .bind(&command.order_id)
+    .fetch_optional(&mut *tx)
+    .await
+    .map_err(|error| {
+        store_error(
+            "failed to load membership subscription for fulfillment",
+            error,
+        )
+    })?;
+
+    let Some(row) = row else {
+        return Err(CommerceServiceError::not_found(
+            "membership subscription pending activation was not found for order",
+        ));
+    };
+
+    let subscription_id = string_cell(&row, "id");
+    let subscription_status = string_cell(&row, "status");
+    if subscription_status == "active" {
+        tx.rollback().await.map_err(|error| {
+            store_error(
+                "failed to rollback membership fulfillment transaction",
+                error,
+            )
+        })?;
+        return Ok(FulfillMembershipPurchaseOutcome {
+            accepted: true,
+            replayed: true,
+            fulfillment_status: "active".to_owned(),
+        });
+    }
+    if subscription_status != "pending_activation" {
+        return Err(CommerceServiceError::conflict(
+            "membership subscription is not eligible for fulfillment",
+        ));
+    }
+
+    let updated_at = format_unix_timestamp(
+        std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .map(|duration| duration.as_secs() as i64)
+            .unwrap_or(0),
+    );
+
+    sqlx::query(
+        r#"
+        UPDATE membership_subscription
+        SET status = 'active',
+            request_no = ?,
+            idempotency_key = ?,
+            updated_at = ?
+        WHERE id = ?
+          AND tenant_id = CAST(? AS TEXT)
+          AND status = 'pending_activation'
+        "#,
+    )
+    .bind(&command.request_no)
+    .bind(&command.idempotency_key)
+    .bind(&updated_at)
+    .bind(&subscription_id)
+    .bind(command.subject.tenant_id)
+    .execute(&mut *tx)
+    .await
+    .map_err(|error| store_error("failed to activate membership subscription", error))?;
+
+    sqlx::query(
+        r#"
+        UPDATE membership_period
+        SET status = 'active',
+            updated_at = ?
+        WHERE subscription_id = ?
+          AND tenant_id = CAST(? AS TEXT)
+          AND status = 'pending_activation'
+        "#,
+    )
+    .bind(&updated_at)
+    .bind(&subscription_id)
+    .bind(command.subject.tenant_id)
+    .execute(&mut *tx)
+    .await
+    .map_err(|error| store_error("failed to activate membership period", error))?;
+
+    sqlx::query(
+        r#"
+        UPDATE entitlement_grant
+        SET status = 'active',
+            updated_at = ?
+        WHERE source_type = 'membership_subscription'
+          AND source_id = ?
+          AND tenant_id = CAST(? AS TEXT)
+          AND status = 'pending'
+        "#,
+    )
+    .bind(&updated_at)
+    .bind(&subscription_id)
+    .bind(command.subject.tenant_id)
+    .execute(&mut *tx)
+    .await
+    .map_err(|error| store_error("failed to activate entitlement grants", error))?;
+
+    sqlx::query(
+        r#"
+        UPDATE entitlement_account
+        SET status = 'active',
+            updated_at = ?
+        WHERE tenant_id = CAST(? AS TEXT)
+          AND subject_type = 'user'
+          AND subject_id = CAST(? AS TEXT)
+          AND status = 'pending'
+          AND benefit_id IN (
+              SELECT benefit_id
+              FROM entitlement_grant
+              WHERE source_type = 'membership_subscription'
+                AND source_id = ?
+                AND tenant_id = CAST(? AS TEXT)
+          )
+        "#,
+    )
+    .bind(&updated_at)
+    .bind(command.subject.tenant_id)
+    .bind(command.subject.user_id)
+    .bind(&subscription_id)
+    .bind(command.subject.tenant_id)
+    .execute(&mut *tx)
+    .await
+    .map_err(|error| store_error("failed to activate entitlement accounts", error))?;
+
+    tx.commit().await.map_err(|error| {
+        store_error("failed to commit membership fulfillment transaction", error)
+    })?;
+
+    Ok(FulfillMembershipPurchaseOutcome {
+        accepted: true,
+        replayed: false,
+        fulfillment_status: "active".to_owned(),
+    })
+}
+
+async fn load_fulfillment_outcome_by_idempotency(
+    tx: &mut Transaction<'_, Sqlite>,
+    command: &FulfillMembershipPurchaseCommand,
+) -> AppMembershipResult<Option<FulfillMembershipPurchaseOutcome>> {
+    let row = sqlx::query(
+        r#"
+        SELECT status
+        FROM membership_subscription
+        WHERE tenant_id = CAST(?1 AS TEXT)
+          AND (organization_id IS NULL OR organization_id = CAST(?2 AS TEXT))
+          AND owner_user_id = CAST(?3 AS TEXT)
+          AND source_order_id = ?4
+          AND idempotency_key = ?5
+          AND status = 'active'
+        ORDER BY updated_at DESC
+        LIMIT 1
+        "#,
+    )
+    .bind(command.subject.tenant_id)
+    .bind(command.subject.organization_id)
+    .bind(command.subject.user_id)
+    .bind(&command.order_id)
+    .bind(&command.idempotency_key)
+    .fetch_optional(&mut **tx)
+    .await
+    .map_err(|error| {
+        store_error(
+            "failed to load membership fulfillment idempotency record",
+            error,
+        )
+    })?;
+
+    Ok(row.map(|_| FulfillMembershipPurchaseOutcome {
+        accepted: true,
+        replayed: true,
+        fulfillment_status: "active".to_owned(),
+    }))
 }
 
 async fn membership_package_id_for_storage(
@@ -2895,14 +3264,16 @@ async fn membership_package_id_for_storage(
         r#"
         SELECT id
         FROM membership_package
-        WHERE external_id = ?
-          AND (tenant_id = '100001' OR tenant_id IS NULL)
-          AND (organization_id = '0' OR organization_id IS NULL)
+        WHERE (tenant_id = CAST(?1 AS TEXT) OR tenant_id IS NULL)
+          AND (organization_id = CAST(?2 AS TEXT) OR organization_id IS NULL)
+          AND external_id = ?3
           AND status = 'active'
         ORDER BY id ASC
         LIMIT 1
         "#,
     )
+    .bind(DEFAULT_CATALOG_TENANT_ID)
+    .bind(DEFAULT_CATALOG_ORGANIZATION_ID)
     .bind(external_id)
     .fetch_optional(&mut **tx)
     .await
@@ -2911,194 +3282,96 @@ async fn membership_package_id_for_storage(
     Ok(string_cell(&row, "id"))
 }
 
-async fn insert_order(
-    tx: &mut Transaction<'_, Sqlite>,
-    command: &SubmitMembershipPurchaseCommand,
-    package: &ParsedMembershipPackage,
-) -> AppMembershipResult<()> {
-    sqlx::query(
-        r#"
-        INSERT INTO commerce_order
-            (id, tenant_id, organization_id, owner_user_id, order_no, status, payment_status, fulfillment_status, refund_status, subject, currency_code, request_no, idempotency_key, created_at, paid_at, cancelled_at, expired_at, updated_at)
-        VALUES
-            (?, CAST(? AS TEXT), CAST(? AS TEXT), CAST(? AS TEXT), ?, 'pending_payment', 'pending', 'unfulfilled', 'none', 'membership', 'CNY', ?, ?, ?, NULL, NULL, ?, ?)
-        "#,
-    )
-    .bind(&command.order_uuid)
-    .bind(command.subject.tenant_id)
-    .bind(command.subject.organization_id)
-    .bind(command.subject.user_id)
-    .bind(&command.order_no)
-    .bind(&command.order_no)
-    .bind(&command.idempotency_key)
-    .bind(&command.requested_at)
-    .bind(&command.expire_at)
-    .bind(&command.requested_at)
-    .execute(&mut **tx)
-    .await
-    .map_err(|error| store_error("failed to insert membership order", error))?;
-    let _ = package;
-    Ok(())
-}
-
-async fn insert_order_item(
-    tx: &mut Transaction<'_, Sqlite>,
-    command: &SubmitMembershipPurchaseCommand,
-    package: &ParsedMembershipPackage,
-) -> AppMembershipResult<()> {
-    sqlx::query(
-        r#"
-        INSERT INTO commerce_order_item
-            (id, tenant_id, order_id, sku_id, sku_snapshot_json, title, quantity, unit_price_amount, total_amount, fulfillment_status, refund_status, created_at)
-        VALUES
-            (?, CAST(? AS TEXT), ?, CAST(? AS TEXT), ?, ?, 1, ?, ?, 'unfulfilled', 'none', ?)
-        "#,
-    )
-    .bind(&command.order_item_uuid)
-    .bind(command.subject.tenant_id)
-    .bind(&command.order_uuid)
-    .bind(package.sku_id.as_deref().unwrap_or(""))
-    .bind(membership_order_item_snapshot_json(package))
-    .bind(&package.item.name)
-    .bind(&package.item.price)
-    .bind(&package.item.price)
-    .bind(&command.requested_at)
-    .execute(&mut **tx)
-    .await
-    .map_err(|error| store_error("failed to insert membership order item", error))?;
-    Ok(())
-}
-
-async fn insert_order_amount_breakdown(
-    tx: &mut Transaction<'_, Sqlite>,
-    command: &SubmitMembershipPurchaseCommand,
-    package: &ParsedMembershipPackage,
-) -> AppMembershipResult<()> {
-    sqlx::query(
-        r#"
-        INSERT INTO commerce_order_amount_breakdown
-            (id, tenant_id, order_id, original_amount, discount_amount, payable_amount, currency_code, created_at)
-        VALUES
-            (?, CAST(? AS TEXT), ?, ?, '0.00', ?, 'CNY', ?)
-        "#,
-    )
-    .bind(format!("{}-amount", command.order_uuid))
-    .bind(command.subject.tenant_id)
-    .bind(&command.order_uuid)
-    .bind(package.item.original_price.as_ref().unwrap_or(&package.item.price))
-    .bind(&package.item.price)
-    .bind(&command.requested_at)
-    .execute(&mut **tx)
-    .await
-    .map_err(|error| store_error("failed to insert membership order amount breakdown", error))?;
-    Ok(())
-}
-
-async fn insert_payment(
-    tx: &mut Transaction<'_, Sqlite>,
-    command: &SubmitMembershipPurchaseCommand,
-    package: &ParsedMembershipPackage,
-    method: &MembershipPaymentMethod,
-) -> AppMembershipResult<()> {
-    sqlx::query(
-        r#"
-        INSERT INTO commerce_payment_intent
-            (id, tenant_id, organization_id, owner_user_id, order_id, payment_intent_no, payment_method, provider_code, amount, currency_code, status, request_no, idempotency_key, created_at, updated_at)
-        VALUES
-            (?, CAST(? AS TEXT), CAST(? AS TEXT), CAST(? AS TEXT), ?, ?, ?, ?, ?, 'CNY', ?, ?, ?, ?, ?)
-        "#,
-    )
-    .bind(&command.payment_uuid)
-    .bind(command.subject.tenant_id)
-    .bind(command.subject.organization_id)
-    .bind(command.subject.user_id)
-    .bind(&command.order_uuid)
-    .bind(format!("PAY-{}", command.order_no))
-    .bind(&method.method_key)
-    .bind(&method.provider_code)
-    .bind(&package.item.price)
-    .bind(CommercePaymentStatus::Pending.as_str())
-    .bind(&command.order_no)
-    .bind(&command.out_trade_no)
-    .bind(&command.requested_at)
-    .bind(&command.requested_at)
-    .execute(&mut **tx)
-    .await
-    .map_err(|error| store_error("failed to insert membership payment intent", error))?;
-    sqlx::query(
-        r#"
-        INSERT INTO commerce_payment_attempt
-            (id, tenant_id, organization_id, owner_user_id, payment_intent_id, order_id, payment_method, provider_code, out_trade_no, amount, currency_code, status, callback_payload, created_at, paid_at, updated_at)
-        VALUES
-            (?, CAST(? AS TEXT), CAST(? AS TEXT), CAST(? AS TEXT), ?, ?, ?, ?, ?, ?, 'CNY', ?, ?, ?, NULL, ?)
-        "#,
-    )
-    .bind(&command.attempt_uuid)
-    .bind(command.subject.tenant_id)
-    .bind(command.subject.organization_id)
-    .bind(command.subject.user_id)
-    .bind(&command.payment_uuid)
-    .bind(&command.order_uuid)
-    .bind(&method.method_key)
-    .bind(&method.provider_code)
-    .bind(&command.out_trade_no)
-    .bind(&package.item.price)
-    .bind(CommercePaymentStatus::Pending.as_str())
-    .bind(format!(
-        r#"{{"subject":"membership","packageId":{},"action":"{}"}}"#,
-        package.item.id, command.action
-    ))
-    .bind(&command.requested_at)
-    .bind(&command.requested_at)
-    .execute(&mut **tx)
-    .await
-    .map_err(|error| store_error("failed to insert membership payment attempt", error))?;
-    Ok(())
-}
-
-async fn insert_membership(
+async fn persist_membership_subscription(
     tx: &mut Transaction<'_, Sqlite>,
     command: &SubmitMembershipPurchaseCommand,
     package: &ParsedMembershipPackage,
     plan: &StoredMembershipPlan,
+    binding: &MembershipPurchaseBinding,
     expires_at: &str,
 ) -> AppMembershipResult<()> {
-    let period_id = membership_period_id(command);
+    let period_id = membership_period_id(&binding.membership_uuid, &command.order_no);
     let package_id = membership_package_id_for_storage(tx, package.item.id).await?;
-    sqlx::query(
-        r#"
-        INSERT INTO membership_subscription
-            (id, tenant_id, organization_id, subscription_no, subject_type, subject_id,
-             owner_user_id, plan_id, plan_version_id, package_id, current_period_id,
-             source_order_id, source_payment_intent_id, status, starts_at, expires_at,
-             grace_until, cancel_at_period_end, request_no, idempotency_key, created_at, updated_at)
-        VALUES
-            (?, CAST(? AS TEXT), CAST(? AS TEXT), ?, 'user', CAST(? AS TEXT),
-             CAST(? AS TEXT), ?, ?, ?, ?, ?, ?, 'pending_activation', ?, ?,
-             NULL, 0, ?, ?, ?, ?)
-        "#,
-    )
-    .bind(&command.membership_uuid)
-    .bind(command.subject.tenant_id)
-    .bind(command.subject.organization_id)
-    .bind(&command.membership_uuid)
-    .bind(command.subject.user_id)
-    .bind(command.subject.user_id)
-    .bind(plan_id_for_storage(plan))
-    .bind(plan_version_id_for_storage(plan))
-    .bind(&package_id)
-    .bind(&period_id)
-    .bind(&command.order_uuid)
-    .bind(&command.payment_uuid)
-    .bind(&command.requested_at)
-    .bind(expires_at)
-    .bind(&command.order_no)
-    .bind(&command.out_trade_no)
-    .bind(&command.requested_at)
-    .bind(&command.requested_at)
-    .execute(&mut **tx)
-    .await
-    .map_err(|error| store_error("failed to insert membership subscription", error))?;
+    let plan_storage_id = plan_id_for_storage(plan);
+    let plan_version_storage_id = plan_version_id_for_storage(plan);
+
+    if binding.persistence_mode == MembershipPurchasePersistenceMode::New {
+        sqlx::query(
+            r#"
+            INSERT INTO membership_subscription
+                (id, tenant_id, organization_id, subscription_no, subject_type, subject_id,
+                 owner_user_id, plan_id, plan_version_id, package_id, current_period_id,
+                 source_order_id, source_payment_intent_id, status, starts_at, expires_at,
+                 grace_until, cancel_at_period_end, request_no, idempotency_key, created_at, updated_at)
+            VALUES
+                (?, CAST(? AS TEXT), CAST(? AS TEXT), ?, 'user', CAST(? AS TEXT),
+                 CAST(? AS TEXT), ?, ?, ?, ?, ?, ?, 'pending_activation', ?, ?,
+                 NULL, 0, ?, ?, ?, ?)
+            "#,
+        )
+        .bind(&binding.membership_uuid)
+        .bind(command.subject.tenant_id)
+        .bind(command.subject.organization_id)
+        .bind(&binding.membership_uuid)
+        .bind(command.subject.user_id)
+        .bind(command.subject.user_id)
+        .bind(&plan_storage_id)
+        .bind(&plan_version_storage_id)
+        .bind(&package_id)
+        .bind(&period_id)
+        .bind(&command.order_uuid)
+        .bind(&command.payment_uuid)
+        .bind(&binding.period_starts_at)
+        .bind(expires_at)
+        .bind(&command.order_no)
+        .bind(&command.idempotency_key)
+        .bind(&command.requested_at)
+        .bind(&command.requested_at)
+        .execute(&mut **tx)
+        .await
+        .map_err(|error| store_error("failed to insert membership subscription", error))?;
+    } else {
+        sqlx::query(
+            r#"
+            UPDATE membership_subscription
+            SET plan_id = ?,
+                plan_version_id = ?,
+                package_id = ?,
+                current_period_id = ?,
+                source_order_id = ?,
+                source_payment_intent_id = ?,
+                status = 'pending_activation',
+                starts_at = ?,
+                expires_at = ?,
+                request_no = ?,
+                idempotency_key = ?,
+                updated_at = ?
+            WHERE id = ?
+              AND tenant_id = CAST(? AS TEXT)
+              AND (organization_id IS NULL OR organization_id = CAST(? AS TEXT))
+              AND subject_type = 'user'
+              AND subject_id = CAST(? AS TEXT)
+            "#,
+        )
+        .bind(&plan_storage_id)
+        .bind(&plan_version_storage_id)
+        .bind(&package_id)
+        .bind(&period_id)
+        .bind(&command.order_uuid)
+        .bind(&command.payment_uuid)
+        .bind(&binding.period_starts_at)
+        .bind(expires_at)
+        .bind(&command.order_no)
+        .bind(&command.idempotency_key)
+        .bind(&command.requested_at)
+        .bind(&binding.membership_uuid)
+        .bind(command.subject.tenant_id)
+        .bind(command.subject.organization_id)
+        .bind(command.subject.user_id)
+        .execute(&mut **tx)
+        .await
+        .map_err(|error| store_error("failed to update membership subscription", error))?;
+    }
 
     sqlx::query(
         r#"
@@ -3117,11 +3390,11 @@ async fn insert_membership(
     .bind(command.subject.tenant_id)
     .bind(command.subject.organization_id)
     .bind(&period_id)
-    .bind(&command.membership_uuid)
+    .bind(&binding.membership_uuid)
     .bind(command.subject.user_id)
-    .bind(plan_id_for_storage(plan))
-    .bind(plan_version_id_for_storage(plan))
-    .bind(&command.requested_at)
+    .bind(&plan_storage_id)
+    .bind(&plan_version_storage_id)
+    .bind(&binding.period_starts_at)
     .bind(expires_at)
     .bind(&command.order_uuid)
     .bind(&command.payment_uuid)
@@ -3139,6 +3412,7 @@ async fn insert_entitlements(
     tx: &mut Transaction<'_, Sqlite>,
     command: &SubmitMembershipPurchaseCommand,
     plan: &StoredMembershipPlan,
+    binding: &MembershipPurchaseBinding,
     expires_at: &str,
 ) -> AppMembershipResult<()> {
     for (index, benefit) in plan.benefits.iter().enumerate() {
@@ -3150,17 +3424,17 @@ async fn insert_entitlements(
         let quantity = benefit.usage_limit.unwrap_or(0).max(0).to_string();
         let account_id = format!(
             "{}-entitlement-account-{}",
-            command.membership_uuid,
+            binding.membership_uuid,
             index + 1
         );
         let grant_id = format!(
             "{}-entitlement-grant-{}",
-            command.membership_uuid,
+            binding.membership_uuid,
             index + 1
         );
         let ledger_id = format!(
             "{}-entitlement-ledger-{}",
-            command.membership_uuid,
+            binding.membership_uuid,
             index + 1
         );
         sqlx::query(
@@ -3171,7 +3445,7 @@ async fn insert_entitlements(
                  expires_at, request_no, idempotency_key, created_at, updated_at)
             VALUES
                 (?, CAST(? AS TEXT), CAST(? AS TEXT), ?, ?, 'user', CAST(? AS TEXT),
-                 'membership_subscription', ?, 'membership_plan', ?, 'active', ?, ?,
+                 'membership_subscription', ?, 'membership_plan', ?, 'pending', ?, ?,
                  ?, ?, ?, ?)
             "#,
         )
@@ -3181,7 +3455,7 @@ async fn insert_entitlements(
         .bind(&grant_id)
         .bind(&benefit_id)
         .bind(command.subject.user_id)
-        .bind(&command.membership_uuid)
+        .bind(&binding.membership_uuid)
         .bind(&quantity)
         .bind(&command.requested_at)
         .bind(expires_at)
@@ -3225,7 +3499,7 @@ async fn insert_entitlements(
         .bind(command.subject.user_id)
         .bind(&quantity)
         .bind(&account.balance_after)
-        .bind(&command.membership_uuid)
+        .bind(&binding.membership_uuid)
         .bind(format!("{}-ledger-{}", command.order_no, index + 1))
         .bind(&command.out_trade_no)
         .bind(&command.requested_at)
@@ -3259,11 +3533,14 @@ async fn upsert_entitlement_account(
              version, created_at, updated_at)
         VALUES
             (?, CAST(? AS TEXT), CAST(? AS TEXT), ?, ?, 'user',
-             CAST(? AS TEXT), ?, '0', ?, 'active', ?, 0, ?, ?)
+             CAST(? AS TEXT), ?, '0', ?, 'pending', ?, 0, ?, ?)
         ON CONFLICT(tenant_id, subject_type, subject_id, benefit_id) DO UPDATE SET
             total_granted = CAST((CAST(entitlement_account.total_granted AS INTEGER) + CAST(excluded.total_granted AS INTEGER)) AS TEXT),
             balance = CAST((CAST(entitlement_account.balance AS INTEGER) + CAST(excluded.balance AS INTEGER)) AS TEXT),
-            status = 'active',
+            status = CASE
+                WHEN entitlement_account.status = 'active' THEN 'active'
+                ELSE 'pending'
+            END,
             expires_at = CASE
                 WHEN entitlement_account.expires_at IS NULL OR excluded.expires_at > entitlement_account.expires_at THEN excluded.expires_at
                 ELSE entitlement_account.expires_at
@@ -3314,7 +3591,7 @@ async fn consume_speed_up(
     pool: &SqlitePool,
     subject: AppMembershipSubject,
     requested_at: String,
-) -> AppMembershipResult<()> {
+) -> AppMembershipResult<SdkWorkCommandData> {
     let mut tx = pool
         .begin()
         .await
@@ -3438,7 +3715,7 @@ async fn consume_speed_up(
     tx.commit()
         .await
         .map_err(|error| store_error("failed to commit membership speed up transaction", error))?;
-    Ok(())
+    Ok(SdkWorkCommandData::accepted())
 }
 
 fn plan_id_for_storage(plan: &StoredMembershipPlan) -> String {
@@ -3461,19 +3738,8 @@ fn plan_version_id_for_storage(plan: &StoredMembershipPlan) -> String {
     }
 }
 
-fn membership_period_id(command: &SubmitMembershipPurchaseCommand) -> String {
-    format!("{}-period-1", command.membership_uuid)
-}
-
-fn membership_order_item_snapshot_json(package: &ParsedMembershipPackage) -> String {
-    serde_json::json!({
-        "skuId": package.sku_id.as_deref().unwrap_or(""),
-        "packageId": package.item.id,
-        "packageName": &package.item.name,
-        "durationDays": package.item.duration_days,
-        "planName": package.item.plan_name.as_deref(),
-    })
-    .to_string()
+fn membership_period_id(membership_uuid: &str, order_no: &str) -> String {
+    format!("{membership_uuid}-period-{order_no}")
 }
 
 fn admin_plan_version_id(plan_id: &str) -> String {
@@ -3529,8 +3795,17 @@ fn membership_status_label(status: &str) -> &'static str {
     }
 }
 
-fn remaining_days(_expires_at: &str) -> Option<i64> {
-    None
+fn remaining_days(expires_at: &str) -> Option<i64> {
+    let expires_seconds = parse_timestamp(expires_at)?;
+    let now_seconds = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map(|d| d.as_secs() as i64)
+        .ok()?;
+    if expires_seconds <= now_seconds {
+        return Some(0);
+    }
+    let diff = expires_seconds - now_seconds;
+    Some((diff + 86_399) / 86_400)
 }
 
 fn add_days_to_timestamp(timestamp: &str, days: i64) -> String {
@@ -3607,24 +3882,36 @@ fn integer_cell(row: &sqlx::sqlite::SqliteRow, column: &str) -> i64 {
 }
 
 fn sql_error(error: sqlx::Error) -> CommerceServiceError {
-    CommerceServiceError::storage(error.to_string())
+    eprintln!("membership storage error: {error}");
+    CommerceServiceError::storage("database operation failed")
 }
 
 fn store_error(context: &str, error: sqlx::Error) -> CommerceServiceError {
-    CommerceServiceError::storage(format!("{context}: {error}"))
+    eprintln!("membership storage error ({context}): {error}");
+    CommerceServiceError::storage(context)
 }
 
 fn empty_rows_when_read_model_is_missing(
     error: sqlx::Error,
 ) -> Result<Vec<sqlx::sqlite::SqliteRow>, CommerceServiceError> {
-    Err(sql_error(error))
+    if is_missing_sqlite_read_model(&error) {
+        eprintln!("membership read model error: {error}");
+        Err(CommerceServiceError::storage(
+            "membership read model not initialized; run database migrations",
+        ))
+    } else {
+        Err(sql_error(error))
+    }
 }
 
 fn none_when_read_model_is_missing(
     error: sqlx::Error,
 ) -> Result<Option<sqlx::sqlite::SqliteRow>, CommerceServiceError> {
     if is_missing_sqlite_read_model(&error) {
-        Ok(None)
+        eprintln!("membership read model error: {error}");
+        Err(CommerceServiceError::storage(
+            "membership read model not initialized; run database migrations",
+        ))
     } else {
         Err(sql_error(error))
     }
@@ -3704,6 +3991,14 @@ async fn claim_daily_reward_sqlite(
     subject: AppMembershipSubject,
     requested_at: String,
 ) -> AppMembershipResult<AppMembershipDailyRewardResponse> {
+    let today = current_date_sqlite(pool).await;
+    let yesterday = yesterday_date_sqlite(pool).await;
+
+    let mut tx = pool
+        .begin()
+        .await
+        .map_err(|error| store_error("failed to begin daily reward transaction", error))?;
+
     let last_row = sqlx::query(
         r#"
         SELECT
@@ -3723,11 +4018,10 @@ async fn claim_daily_reward_sqlite(
     .bind(subject.tenant_id)
     .bind(subject.organization_id)
     .bind(subject.user_id)
-    .fetch_optional(pool)
+    .fetch_optional(&mut *tx)
     .await
     .or_else(none_when_read_model_is_missing)?;
 
-    let today = current_date_sqlite(pool).await;
     let (prev_consecutive, prev_total, prev_date) = last_row
         .as_ref()
         .map(|row| {
@@ -3745,7 +4039,6 @@ async fn claim_daily_reward_sqlite(
         ));
     }
 
-    let yesterday = yesterday_date_sqlite(pool).await;
     let new_consecutive = if prev_date == yesterday {
         prev_consecutive + 1
     } else {
@@ -3763,7 +4056,7 @@ async fn claim_daily_reward_sqlite(
         subject.tenant_id, subject.user_id, today
     );
 
-    sqlx::query(
+    let result = sqlx::query(
         r#"
         INSERT INTO commerce_membership_daily_reward
             (id, uuid, tenant_id, organization_id, user_id, reward_date,
@@ -3783,7 +4076,7 @@ async fn claim_daily_reward_sqlite(
     .bind(new_total)
     .bind(&idempotency_key)
     .bind(&requested_at)
-    .execute(pool)
+    .execute(&mut *tx)
     .await
     .map_err(|error| {
         if is_missing_sqlite_read_model(&error) {
@@ -3794,6 +4087,16 @@ async fn claim_daily_reward_sqlite(
             store_error("failed to insert daily reward", error)
         }
     })?;
+
+    if result.rows_affected() == 0 {
+        return Err(CommerceServiceError::conflict(
+            "membership daily reward has already been claimed today",
+        ));
+    }
+
+    tx.commit()
+        .await
+        .map_err(|error| store_error("failed to commit daily reward transaction", error))?;
 
     Ok(AppMembershipDailyRewardResponse {
         reward_points,
@@ -3870,6 +4173,47 @@ fn is_leap_year(year: i64) -> bool {
 
 // ── Privilege usage helpers ──
 
+async fn load_entitlement_account_usage_sqlite(
+    pool: &SqlitePool,
+    subject: AppMembershipSubject,
+) -> AppMembershipResult<AppMembershipPrivilegeUsageResponse> {
+    let rows = sqlx::query(
+        r#"
+        SELECT
+            d.benefit_code,
+            CAST(COALESCE(a.total_used, '0') AS INTEGER) AS used_count
+        FROM entitlement_account a
+        JOIN benefit_definition d
+          ON d.id = a.benefit_id
+        WHERE a.tenant_id = CAST(?1 AS TEXT)
+          AND (a.organization_id IS NULL OR a.organization_id = CAST(?2 AS TEXT))
+          AND a.subject_type = 'user'
+          AND a.subject_id = CAST(?3 AS TEXT)
+          AND a.status = 'active'
+          AND d.benefit_code IN ('priority_speed_up', 'priority_queue', 'ai_quota', 'exclusive_model')
+        "#,
+    )
+    .bind(subject.tenant_id)
+    .bind(subject.organization_id)
+    .bind(subject.user_id)
+    .fetch_all(pool)
+    .await
+    .map_err(sql_error)?;
+
+    let mut response = AppMembershipPrivilegeUsageResponse::default();
+    for row in &rows {
+        let benefit_code = string_cell(row, "benefit_code");
+        let used = integer_cell(row, "used_count");
+        match benefit_code.as_str() {
+            "priority_speed_up" => response.speed_up_used = used,
+            "priority_queue" => response.priority_queue_used = used,
+            "ai_quota" | "exclusive_model" => response.exclusive_model_used = used,
+            _ => {}
+        }
+    }
+    Ok(response)
+}
+
 async fn load_privilege_usage_sqlite(
     pool: &SqlitePool,
     subject: AppMembershipSubject,
@@ -3885,6 +4229,7 @@ async fn load_privilege_usage_sqlite(
           AND (organization_id = 0 OR organization_id = ?2)
           AND user_id = ?3
           AND period_end >= date('now')
+        LIMIT 100
         "#,
     )
     .bind(subject.tenant_id)

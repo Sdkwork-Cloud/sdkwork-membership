@@ -48,5 +48,6 @@ sdkwork_membership_service = { path = "crates/sdkwork-membership-service", packa
 sdkwork_membership_repository_sqlx = { path = "crates/sdkwork-membership-repository-sqlx", package = "sdkwork-membership-repository-sqlx" }
 sdkwork_routes_membership_app_api = { path = "crates/sdkwork-routes-membership-app-api", package = "sdkwork-routes-membership-app-api" }
 sdkwork_routes_membership_backend_api = { path = "crates/sdkwork-routes-membership-backend-api", package = "sdkwork-routes-membership-backend-api" }
+sdkwork_membership_gateway_assembly = { path = "crates/sdkwork-membership-gateway-assembly", package = "sdkwork-membership-gateway-assembly" }
 sdkwork_membership_database_host = { path = "crates/sdkwork-membership-database-host", package = "sdkwork-membership-database-host" }
 sdkwork_membership_service_host = { path = "crates/sdkwork-membership-service-host", package = "sdkwork-membership-service-host" }

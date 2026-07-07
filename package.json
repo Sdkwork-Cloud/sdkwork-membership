@@ -10,7 +10,7 @@
     "start": "cargo run -p sdkwork-membership-standalone-gateway --bin sdkwork-membership-standalone-gateway",
     "test": "pnpm test:node && pnpm test:vitest && cargo test --workspace",
     "test:node": "node --test --test-reporter=spec --experimental-strip-types tests/static/membership-page-envelope.test.mjs",
-    "test:vitest": "vitest run --config vitest.config.ts --configLoader native --pool vmThreads",
+    "test:vitest": "vitest run --config vitest.config.ts --configLoader native --pool vmThreads --maxWorkers=1",
     "typecheck": "tsc --noEmit",
     "verify": "pnpm typecheck && pnpm test:vitest && cargo test --workspace && pnpm run check:app-composition",
     "format": "cargo fmt --all",

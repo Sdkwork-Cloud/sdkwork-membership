@@ -16,6 +16,7 @@
       "@sdkwork/membership-service": ["apps/sdkwork-membership-common/packages/sdkwork-membership-service/src/index.ts"],
       "@sdkwork/membership-sdk-ports": ["apps/sdkwork-membership-common/packages/sdkwork-membership-sdk-ports/src/index.ts"],
       "@sdkwork/membership-app-sdk": ["sdks/sdkwork-membership-app-sdk/sdkwork-membership-app-sdk-typescript/src/index.ts"],
+      "@sdkwork/order-app-sdk": ["../sdkwork-order/sdks/sdkwork-order-app-sdk/sdkwork-order-app-sdk-typescript/src/index.ts"],
       "@sdkwork/sdk-common": ["../sdkwork-sdk-commons/sdkwork-sdk-common-typescript/src/index.ts"],
       "@sdkwork/membership-pc-core": ["apps/sdkwork-membership-pc/packages/sdkwork-membership-pc-core/src/index.ts"],
       "@sdkwork/membership-pc-shell": ["apps/sdkwork-membership-pc/packages/sdkwork-membership-pc-shell/src/index.tsx"],

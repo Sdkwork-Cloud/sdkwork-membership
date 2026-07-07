@@ -2,9 +2,12 @@ use axum::Router;
 use sdkwork_membership_service_host::MembershipServiceHost;
 use std::sync::Arc;
 
+mod admin_router;
 pub mod manifest;
 pub mod paths;
+mod response;
 pub mod routes;
+mod subject;
 pub mod web_bootstrap;
 
 pub use manifest::BACKEND_API_ROUTE_MANIFEST;

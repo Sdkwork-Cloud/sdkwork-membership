@@ -1,21 +1,24 @@
 //! Backend API path constants for the membership capability.
 //!
-//! All backend-api routes are mounted under `/backend/v3/api/membership`.
+//! All backend-api routes are mounted under `/backend/v3/api/memberships`.
 
 /// Base prefix for backend-api membership routes.
-pub const BACKEND_API_PREFIX: &str = "/backend/v3/api/membership";
+pub const BACKEND_API_PREFIX: &str = "/backend/v3/api/memberships";
 
-/// Plans management: `/backend/v3/api/membership/plans`
+/// Plans management: `/backend/v3/api/memberships/plans`
 pub const PLANS: &str = "/plans";
 
-/// Package groups management: `/backend/v3/api/membership/packageGroups`
-pub const PACKAGE_GROUPS: &str = "/packageGroups";
+/// Package groups management: `/backend/v3/api/memberships/package_groups`
+pub const PACKAGE_GROUPS: &str = "/package_groups";
 
-/// Packages management: `/backend/v3/api/membership/packages`
+/// Packages management: `/backend/v3/api/memberships/packages`
 pub const PACKAGES: &str = "/packages";
 
-/// Members listing: `/backend/v3/api/membership/members`
+/// Members listing: `/backend/v3/api/memberships/members`
 pub const MEMBERS: &str = "/members";
 
-/// Entitlements listing: `/backend/v3/api/membership/entitlements`
+/// Entitlements listing: `/backend/v3/api/memberships/entitlements`
 pub const ENTITLEMENTS: &str = "/entitlements";
+
+/// Purchase fulfillment: `/backend/v3/api/memberships/purchases/fulfillments`
+pub const PURCHASE_FULFILLMENTS: &str = "/purchases/fulfillments";

@@ -9,6 +9,11 @@
       "types": "./src/index.ts",
       "import": "./src/index.ts",
       "default": "./src/index.ts"
+    },
+    "./catalog": {
+      "types": "./src/catalog.ts",
+      "import": "./src/catalog.ts",
+      "default": "./src/catalog.ts"
     }
   },
   "files": [
@@ -25,7 +30,9 @@
     "@sdkwork/payment-pc-payment": "workspace:*",
     "@sdkwork/payment-service": "workspace:*",
     "@sdkwork/promotion-pc-coupon": "workspace:*",
-    "@sdkwork/promotion-service": "workspace:*"
+    "@sdkwork/promotion-service": "workspace:*",
+    "lucide-react": "catalog:",
+    "react-i18next": "catalog:"
   },
   "devDependencies": {
     "@sdkwork/ui-pc-react": "workspace:*",

@@ -10,33 +10,36 @@ const membershipAppSdkEntry = path.resolve(
   "sdks/sdkwork-membership-app-sdk/sdkwork-membership-app-sdk-typescript/src/index.ts",
 );
 const DEFAULT_GATEWAY_TARGET = "http://127.0.0.1:18096";
+const DEFAULT_ORDER_GATEWAY_TARGET = "http://127.0.0.1:18093";
 
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, appRoot, "");
   const proxyTarget = env.VITE_SDKWORK_MEMBERSHIP_PC_APP_API_BASE_URL?.trim()
     || env.VITE_SDKWORK_MEMBERSHIP_PC_SDK_BASE_URL?.trim()
     || DEFAULT_GATEWAY_TARGET;
+  const orderProxyTarget = env.VITE_SDKWORK_ORDER_APP_API_BASE_URL?.trim()
+    || DEFAULT_ORDER_GATEWAY_TARGET;
 
   return {
     define: {
       "process.env.SDKWORK_ACCESS_TOKEN": JSON.stringify(env.SDKWORK_ACCESS_TOKEN ?? ""),
-      "process.env.SDKWORK_AUTH_TOKEN": JSON.stringify(env.SDKWORK_AUTH_TOKEN ?? ""),
     },
     plugins: [react()],
     root: appRoot,
     resolve: {
       alias: {
         "@sdkwork/membership-app-sdk": membershipAppSdkEntry,
+        "@sdkwork/order-app-sdk": path.resolve(workspaceRoot, "../sdkwork-order/sdks/sdkwork-order-app-sdk/sdkwork-order-app-sdk-typescript/src/index.ts"),
         "@sdkwork/membership-pc-core": path.resolve(appRoot, "packages/sdkwork-membership-pc-core/src/index.ts"),
         "@sdkwork/membership-pc-shell": path.resolve(appRoot, "packages/sdkwork-membership-pc-shell/src/index.tsx"),
         "@sdkwork/membership-pc-membership": path.resolve(appRoot, "packages/sdkwork-membership-pc-membership/src/index.ts"),
         "@sdkwork/membership-pc-subscription": path.resolve(appRoot, "packages/sdkwork-membership-pc-subscription/src/index.ts"),
         "@sdkwork/membership-service": path.resolve(workspaceRoot, "apps/sdkwork-membership-common/packages/sdkwork-membership-service/src/index.ts"),
         "@sdkwork/membership-sdk-ports": path.resolve(workspaceRoot, "apps/sdkwork-membership-common/packages/sdkwork-membership-sdk-ports/src/index.ts"),
-        "@sdkwork/ui-pc-react": path.resolve(workspaceRoot, "../sdkwork-ui/sdkwork-ui-pc-react/src/index.ts"),
         "@sdkwork/ui-pc-react/theme": path.resolve(workspaceRoot, "../sdkwork-ui/sdkwork-ui-pc-react/src/theme/index.ts"),
         "@sdkwork/ui-pc-react/components/ui/button": path.resolve(workspaceRoot, "../sdkwork-ui/sdkwork-ui-pc-react/src/components/ui/button.tsx"),
         "@sdkwork/ui-pc-react/components/ui/feedback/states": path.resolve(workspaceRoot, "../sdkwork-ui/sdkwork-ui-pc-react/src/components/ui/feedback/states.tsx"),
+        "@sdkwork/ui-pc-react": path.resolve(workspaceRoot, "../sdkwork-ui/sdkwork-ui-pc-react/src/index.ts"),
         "@sdkwork/utils": path.resolve(workspaceRoot, "../sdkwork-utils/packages/sdkwork-utils-typescript/src/index.ts"),
         "@sdkwork/promotion-pc-coupon": path.resolve(workspaceRoot, "../sdkwork-promotion/apps/sdkwork-promotion-pc/packages/sdkwork-promotion-pc-coupon/src/index.ts"),
         "@sdkwork/promotion-service": path.resolve(workspaceRoot, "../sdkwork-promotion/apps/sdkwork-promotion-common/packages/sdkwork-promotion-service/src/index.ts"),
@@ -53,7 +56,15 @@ export default defineConfig(({ mode }) => {
       host: "127.0.0.1",
       port: 5186,
       proxy: {
-        "/app/v3/api": {
+        "/app/v3/api/memberships/orders": {
+          changeOrigin: true,
+          target: orderProxyTarget,
+        },
+        "/app/v3/api/orders": {
+          changeOrigin: true,
+          target: orderProxyTarget,
+        },
+        "/app/v3/api/memberships": {
           changeOrigin: true,
           target: proxyTarget,
         },

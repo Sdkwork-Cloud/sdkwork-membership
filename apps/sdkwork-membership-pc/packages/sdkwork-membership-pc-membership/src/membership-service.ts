@@ -1,6 +1,7 @@
 import {
   createSdkworkMembershipListQuery,
   getSdkworkMembershipService,
+  getSdkworkOrderAppService,
   hasSdkworkMembershipSession,
   requireSdkworkMembershipSession,
   toNullableSdkworkMembershipNumber,
@@ -173,6 +174,7 @@ interface RemoteMembershipPurchaseResult {
   packageId?: number | string;
   packageName?: string;
   qrCode?: string;
+  qrCodePayload?: string;
   qr_code_payload?: string;
   requestNo?: string;
   status?: string;
@@ -286,10 +288,33 @@ function mapPurchaseResult(result: RemoteMembershipPurchaseResult | null | undef
     orderId: toSdkworkMembershipOptionalString(result?.orderId ?? result?.requestNo),
     packageId: toNullableSdkworkMembershipNumber(result?.packageId),
     packageName: toSdkworkMembershipOptionalString(result?.packageName),
-    qrCode: toSdkworkMembershipOptionalString(result?.qrCode ?? result?.qr_code_payload),
+    qrCode: toSdkworkMembershipOptionalString(result?.qrCode ?? result?.qrCodePayload ?? result?.qr_code_payload),
     status: result?.success === false ? "failed" : toSdkworkMembershipMutationStatus(statusStr),
     targetLevelName: toSdkworkMembershipOptionalString(result?.targetLevelName ?? result?.targetPlanName),
   };
+}
+
+function toSdkworkMembershipWirePaymentMethod(method: string | null | undefined): string {
+  const normalized = String(method ?? "").trim().toLowerCase().replace(/-/g, "_");
+  switch (normalized) {
+    case "wechat":
+    case "wechat_pay":
+      return "wechat_pay";
+    case "alipay":
+      return "alipay";
+    case "paypal":
+      return "paypal";
+    case "card":
+      return "card";
+    case "apple_pay":
+      return "apple_pay";
+    case "google_pay":
+      return "google_pay";
+    case "wallet_balance":
+      return "wallet_balance";
+    default:
+      return normalized || "wechat_pay";
+  }
 }
 
 async function runPurchaseMutation(
@@ -300,18 +325,44 @@ async function runPurchaseMutation(
 ): Promise<SdkworkMembershipPurchaseResult> {
   requireSdkworkMembershipSession(copy.signInRequired);
   const membershipAppService = getCommerceService();
-  const body = {
+  const orderAppService = getSdkworkOrderAppService();
+  const paymentMethod = toSdkworkMembershipWirePaymentMethod(input.paymentMethod);
+  const packageId = String(input.packageId);
+
+  const idempotencyKey = `membership-checkout:${packageId}:${action}`;
+  const orderPayload = unwrapSdkworkMembershipResponse<Record<string, unknown>>(
+    await orderAppService.memberships.orders.create(
+      {
+        packageId,
+        paymentMethod,
+      },
+      {
+        idempotencyKey,
+        sdkworkRequestHash: idempotencyKey,
+      },
+    ),
+    copy.purchaseFailed,
+  );
+  const orderId = toSdkworkMembershipOptionalString(orderPayload.orderId);
+  const requestNo = toSdkworkMembershipOptionalString(orderPayload.orderNo ?? orderPayload.requestNo);
+  if (!orderId || !requestNo) {
+    throw new Error(copy.purchaseFailed);
+  }
+
+  const reserveBody = {
     couponId: toSdkworkMembershipOptionalString(input.couponId),
+    orderId,
     packageId: input.packageId,
-    paymentMethod: toSdkworkMembershipOptionalString(input.paymentMethod),
+    paymentMethod,
+    requestNo,
   };
-  const result = unwrapSdkworkMembershipResponse<RemoteMembershipPurchaseResult>(
+  const reserve = unwrapSdkworkMembershipResponse<RemoteMembershipPurchaseResult>(
     await (
       action === "purchase"
-        ? membershipAppService.memberships.purchases.create(body)
+        ? membershipAppService.memberships.purchases.create(reserveBody)
         : action === "renew"
-          ? membershipAppService.memberships.purchases.renew(body)
-          : membershipAppService.memberships.purchases.upgrade(body)
+          ? membershipAppService.memberships.purchases.renew(reserveBody)
+          : membershipAppService.memberships.purchases.upgrade(reserveBody)
     ),
     action === "purchase"
       ? copy.purchaseFailed
@@ -320,7 +371,29 @@ async function runPurchaseMutation(
         : copy.upgradeFailed,
   );
 
-  return mapPurchaseResult(result);
+  const payPayload = unwrapSdkworkMembershipResponse<Record<string, unknown>>(
+    await orderAppService.orders.pay(
+      orderId,
+      { paymentMethod },
+      {
+        idempotencyKey: `membership-pay:${orderId}`,
+        sdkworkRequestHash: `membership-pay:${orderId}`,
+      },
+    ),
+    copy.purchaseFailed,
+  );
+  const paymentParams = (payPayload.paymentParams ?? {}) as Record<string, unknown>;
+  const cashierUrl = toSdkworkMembershipOptionalString(paymentParams.cashierUrl);
+
+  return mapPurchaseResult({
+    ...reserve,
+    cashierUrl: cashierUrl ?? reserve.cashierUrl,
+    orderId,
+    qr_code_payload: cashierUrl ?? reserve.qrCodePayload ?? reserve.qr_code_payload,
+    requestNo,
+    status: reserve.status ?? "pending",
+    success: reserve.success !== false,
+  });
 }
 
 function createEmptyDashboard(): SdkworkMembershipDashboardData {

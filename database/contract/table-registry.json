@@ -201,7 +201,7 @@
       "referenceOnly": true
     },
     {
-      "name": "commerce_account_ledger_entry",
+      "name": "commerce_account_ledger",
       "owner": "sdkwork-commerce-platform",
       "profile": "ledger_entry",
       "complianceLevel": "L3",

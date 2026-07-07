@@ -8,9 +8,9 @@ import {
   useNavigate,
 } from "react-router-dom";
 import { SdkworkThemeProvider } from "@sdkwork/ui-pc-react/theme";
-import { bootstrapSdkworkMembershipAppService } from "@sdkwork/membership-service";
+import { bootstrapSdkworkMembershipAppService, bootstrapSdkworkOrderAppService } from "@sdkwork/membership-service";
 import { SdkworkMembershipPage } from "@sdkwork/membership-pc-membership";
-import { SdkworkSubscriptionPage } from "@sdkwork/membership-pc-subscription";
+import { SdkworkSubscriptionCatalogScreen, SdkworkSubscriptionPage } from "@sdkwork/membership-pc-subscription";
 import { sdkworkMembershipPcRuntimeIdentity } from "@sdkwork/membership-pc-core";
 
 const env = (import.meta as ImportMeta & { env?: Record<string, string | undefined> }).env;
@@ -44,6 +44,10 @@ function MembershipRoutes() {
         )}
       />
       <Route
+        path="/subscription/catalog"
+        element={<SdkworkSubscriptionCatalogScreen />}
+      />
+      <Route
         path="/subscription/checkout"
         element={<SdkworkSubscriptionPage />}
       />
@@ -62,6 +66,11 @@ export function MembershipAppShell() {
 
   useEffect(() => {
     bootstrapSdkworkMembershipAppService({
+      accessToken: env?.SDKWORK_ACCESS_TOKEN || env?.VITE_SDKWORK_ACCESS_TOKEN,
+      authToken: env?.SDKWORK_AUTH_TOKEN || env?.VITE_SDKWORK_AUTH_TOKEN,
+      baseUrl: apiBaseUrl,
+    });
+    bootstrapSdkworkOrderAppService({
       accessToken: env?.SDKWORK_ACCESS_TOKEN || env?.VITE_SDKWORK_ACCESS_TOKEN,
       authToken: env?.SDKWORK_AUTH_TOKEN || env?.VITE_SDKWORK_AUTH_TOKEN,
       baseUrl: apiBaseUrl,
@@ -85,6 +94,9 @@ export function MembershipAppShell() {
               <nav className="flex items-center gap-3 text-sm">
                 <Link className="text-[var(--sdk-color-text-secondary)] hover:text-[var(--sdk-color-text-primary)]" to="/membership">
                   Membership
+                </Link>
+                <Link className="text-[var(--sdk-color-text-secondary)] hover:text-[var(--sdk-color-text-primary)]" to="/subscription/catalog">
+                  Catalog
                 </Link>
                 <Link className="text-[var(--sdk-color-text-secondary)] hover:text-[var(--sdk-color-text-primary)]" to="/subscription/checkout">
                   Checkout

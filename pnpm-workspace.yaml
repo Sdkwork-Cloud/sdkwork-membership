@@ -5,6 +5,8 @@ packages:
   - "apps/sdkwork-membership-pc/packages/*"
   - "sdks/sdkwork-membership-app-sdk/sdkwork-membership-app-sdk-typescript"
   - "sdks/sdkwork-membership-app-sdk/sdkwork-membership-app-sdk-typescript/generated/server-openapi"
+  - "sdks/sdkwork-membership-backend-sdk/sdkwork-membership-backend-sdk-typescript"
+  - "sdks/sdkwork-membership-backend-sdk/sdkwork-membership-backend-sdk-typescript/generated/server-openapi"
   - "../sdkwork-iam/apps/sdkwork-iam-common/packages/sdkwork-iam-contracts"
   - "../sdkwork-iam/apps/sdkwork-iam-common/packages/sdkwork-iam-runtime"
   - "../sdkwork-iam/apps/sdkwork-iam-common/packages/sdkwork-iam-sdk-ports"
