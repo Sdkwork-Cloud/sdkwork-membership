@@ -1,0 +1,211 @@
+{
+  "schemaVersion": 1,
+  "kind": "sdkwork.component.spec",
+  "component": {
+    "name": "@sdkwork/membership-service",
+    "displayName": "SDKWork Membership Service Facade",
+    "version": "0.1.0",
+    "type": "node-package",
+    "root": "apps/sdkwork-membership-common/packages/sdkwork-membership-service",
+    "domain": "commerce",
+    "capability": "membership-service",
+    "surface": "app",
+    "status": "ready",
+    "languages": [
+      "typescript"
+    ],
+    "generated": false,
+    "private": true,
+    "manifests": [
+      "package.json"
+    ]
+  },
+  "canonicalSpecs": [
+    {
+      "file": "COMPONENT_SPEC.md",
+      "path": "../../../../../../sdkwork-specs/COMPONENT_SPEC.md",
+      "purpose": "Local component specs directory and manifest rules."
+    },
+    {
+      "file": "MODULE_SPEC.md",
+      "path": "../../../../../../sdkwork-specs/MODULE_SPEC.md",
+      "purpose": "Reusable package contract and dependency direction."
+    },
+    {
+      "file": "APP_SDK_INTEGRATION_SPEC.md",
+      "path": "../../../../../../sdkwork-specs/APP_SDK_INTEGRATION_SPEC.md",
+      "purpose": "App SDK client construction, injection, and dependency SDK composition rules."
+    },
+    {
+      "file": "SDK_SPEC.md",
+      "path": "../../../../../../sdkwork-specs/SDK_SPEC.md",
+      "purpose": "SDK generation and SDK integration rules."
+    },
+    {
+      "file": "FRONTEND_SPEC.md",
+      "path": "../../../../../../sdkwork-specs/FRONTEND_SPEC.md",
+      "purpose": "Frontend service to SDK layering rules."
+    },
+    {
+      "file": "APPLICATION_LAYERED_ARCHITECTURE_SPEC.md",
+      "path": "../../../../../../sdkwork-specs/APPLICATION_LAYERED_ARCHITECTURE_SPEC.md",
+      "purpose": "UI-service-SDK dependency direction and layer ownership rules."
+    },
+    {
+      "file": "CODE_STYLE_SPEC.md",
+      "path": "../../../../../../sdkwork-specs/CODE_STYLE_SPEC.md",
+      "purpose": "Authored source structure and generated code boundaries."
+    },
+    {
+      "file": "NAMING_SPEC.md",
+      "path": "../../../../../../sdkwork-specs/NAMING_SPEC.md",
+      "purpose": "Canonical SDKWork naming rules."
+    },
+    {
+      "file": "TYPESCRIPT_CODE_SPEC.md",
+      "path": "../../../../../../sdkwork-specs/TYPESCRIPT_CODE_SPEC.md",
+      "purpose": "TypeScript package and public export rules."
+    },
+    {
+      "file": "TEST_SPEC.md",
+      "path": "../../../../../../sdkwork-specs/TEST_SPEC.md",
+      "purpose": "SDK boundary, service facade, and package verification rules."
+    }
+  ],
+  "contracts": {
+    "layerRole": "sdk-facade",
+    "publicExports": [
+      "."
+    ],
+    "providedPorts": [
+      {
+        "name": "membershipAppService",
+        "export": "."
+      },
+      {
+        "name": "orderAppServiceProvider",
+        "export": "."
+      }
+    ],
+    "requiredPorts": [
+      {
+        "name": "membershipAppSdkClient",
+        "export": ".",
+        "sdkDependency": "sdkwork-membership-app-sdk"
+      },
+      {
+        "name": "orderAppSdkClient",
+        "export": ".",
+        "sdkDependency": "sdkwork-order-app-sdk"
+      }
+    ],
+    "runtimeEntrypoints": [
+      "createSdkworkMembershipAppService",
+      "bootstrapSdkworkMembershipAppService",
+      "bootstrapSdkworkOrderAppService",
+      "configureSdkworkOrderAppServiceProvider"
+    ],
+    "routeManifest": null,
+    "sdkClients": [],
+    "sdkDependencies": [
+      {
+        "workspace": "sdkwork-membership-app-sdk",
+        "sdkFamily": "sdkwork-membership-app-sdk",
+        "apiAuthority": "sdkwork-membership-app-api",
+        "surface": "app-api",
+        "apiPrefix": "/app/v3/api",
+        "required": true,
+        "dependencyMode": "consumer-sdk",
+        "generatedTransportImportPolicy": "forbidden",
+        "packageByLanguage": {
+          "typescript": "@sdkwork/membership-app-sdk"
+        }
+      },
+      {
+        "workspace": "sdkwork-order-app-sdk",
+        "sdkFamily": "sdkwork-order-app-sdk",
+        "apiAuthority": "sdkwork-order-app-api",
+        "surface": "app-api",
+        "apiPrefix": "/app/v3/api",
+        "required": true,
+        "dependencyMode": "consumer-sdk",
+        "generatedTransportImportPolicy": "forbidden",
+        "packageByLanguage": {
+          "typescript": "@sdkwork/order-app-sdk"
+        }
+      }
+    ],
+    "dependencyApiExports": [
+      {
+        "workspace": "sdkwork-membership-app-sdk",
+        "sdkFamily": "sdkwork-membership-app-sdk",
+        "apiAuthority": "sdkwork-membership-app-api",
+        "surface": "app-api",
+        "apiPrefix": "/app/v3/api",
+        "exportMode": "service-port",
+        "visibility": "app",
+        "methodSelector": "APP_MEMBERSHIP_METHOD_TREE",
+        "packageExport": ".",
+        "servicePort": "SdkworkMembershipAppService",
+        "runtimeRequired": true
+      },
+      {
+        "workspace": "sdkwork-order-app-sdk",
+        "sdkFamily": "sdkwork-order-app-sdk",
+        "apiAuthority": "sdkwork-order-app-api",
+        "surface": "app-api",
+        "apiPrefix": "/app/v3/api",
+        "exportMode": "dependency-sdk",
+        "visibility": "app",
+        "methods": [
+          "memberships.orders.create",
+          "orders.payments.create"
+        ],
+        "packageExport": ".",
+        "runtimeRequired": true
+      }
+    ],
+    "dependencyApiSurfaces": [
+      {
+        "workspace": "sdkwork-membership-app-sdk",
+        "sdkFamily": "sdkwork-membership-app-sdk",
+        "apiAuthority": "sdkwork-membership-app-api",
+        "surface": "app-api",
+        "apiPrefix": "/app/v3/api",
+        "runtimeMode": "external-service",
+        "sameOriginAllowed": false,
+        "requiredBaseUrlKey": "BootstrapSdkworkMembershipAppServiceInput.baseUrl",
+        "coverage": "verified"
+      },
+      {
+        "workspace": "sdkwork-order-app-sdk",
+        "sdkFamily": "sdkwork-order-app-sdk",
+        "apiAuthority": "sdkwork-order-app-api",
+        "surface": "app-api",
+        "apiPrefix": "/app/v3/api",
+        "runtimeMode": "external-service",
+        "sameOriginAllowed": false,
+        "requiredBaseUrlKey": "BootstrapSdkworkOrderAppServiceInput.baseUrl",
+        "coverage": "verified"
+      }
+    ],
+    "events": [],
+    "configKeys": [
+      "package.json",
+      "BootstrapSdkworkMembershipAppServiceInput.baseUrl",
+      "BootstrapSdkworkOrderAppServiceInput.baseUrl"
+    ]
+  },
+  "verification": {
+    "commands": [
+      "pnpm typecheck",
+      "pnpm test:node",
+      "pnpm test:vitest -- apps/sdkwork-membership-pc/packages/sdkwork-membership-pc-membership/tests/membership.service.test.ts"
+    ]
+  },
+  "metadata": {
+    "managedBy": "sdkwork-membership",
+    "standardVersion": "2026-07-08",
+    "boundary": "Order creation and payment settlement remain owned by sdkwork-order. This package consumes @sdkwork/order-app-sdk through service composition only."
+  }
+}

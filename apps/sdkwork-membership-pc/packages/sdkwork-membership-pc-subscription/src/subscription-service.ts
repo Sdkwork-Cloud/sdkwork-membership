@@ -6,15 +6,8 @@ import {
   toSdkworkMembershipNumber,
   toSdkworkMembershipOptionalString,
   unwrapSdkworkMembershipPageItems,
-  unwrapSdkworkMembershipResponse,
   type SdkworkMembershipAppService,
 } from "@sdkwork/membership-service";
-import {
-  createSdkworkPaymentService,
-  type SdkworkPaymentMethod,
-  type SdkworkPaymentService,
-} from "@sdkwork/payment-pc-payment";
-import type { SdkworkPaymentAppService } from "@sdkwork/payment-service";
 import {
   createSdkworkCouponService,
   normalizeSdkworkRemoteUserCoupon,
@@ -45,6 +38,8 @@ import {
   type SdkworkSubscriptionPaymentMethod,
   type SdkworkSubscriptionPaymentMethodKind,
   type SdkworkSubscriptionPaymentMethodOption,
+  type SdkworkSubscriptionPaymentProductType,
+  type SdkworkSubscriptionPaymentProductTypeOption,
 } from "./subscription";
 import {
   createSdkworkSubscriptionMessages,
@@ -117,14 +112,36 @@ export interface SdkworkSubscriptionMutationInput {
 
 export type SdkworkSubscriptionPurchaseResult = SdkworkMembershipPurchaseResult;
 
+export interface SdkworkSubscriptionPaymentMethodSource {
+  available?: boolean;
+  code: string;
+  description?: string;
+  id: string;
+  kind?: SdkworkSubscriptionPaymentMethodKind;
+  label: string;
+  paymentMethod?: SdkworkSubscriptionPaymentMethod;
+  productTypes: SdkworkSubscriptionPaymentProductTypeOption[];
+  recommended?: boolean;
+  recommendedProductType: SdkworkSubscriptionPaymentProductType;
+  sort?: number;
+}
+
+export interface SdkworkSubscriptionPaymentMethodDashboard {
+  methods: readonly SdkworkSubscriptionPaymentMethodSource[];
+}
+
+export interface SdkworkSubscriptionPaymentMethodService {
+  getDashboard(): Promise<SdkworkSubscriptionPaymentMethodDashboard>;
+  getEmptyDashboard(): SdkworkSubscriptionPaymentMethodDashboard;
+}
+
 export interface CreateSdkworkSubscriptionServiceOptions {
   promotionAppService?: SdkworkPromotionAppService;
-  paymentAppService?: SdkworkPaymentAppService;
   membershipAppService?: SdkworkMembershipAppService;
   locale?: string | null;
   messages?: SdkworkSubscriptionMessagesOverrides;
   couponService?: Pick<SdkworkCouponService, "getDashboard">;
-  paymentService?: Partial<Pick<SdkworkPaymentService, "getDashboard" | "getEmptyDashboard">>;
+  paymentMethodService?: Partial<SdkworkSubscriptionPaymentMethodService>;
   membershipService?: Partial<SdkworkMembershipService>;
 }
 
@@ -220,7 +237,7 @@ function resolveBestCoupon(
 }
 
 function resolvePaymentMethodKind(
-  method: Pick<SdkworkPaymentMethod, "code" | "productTypes" | "recommendedProductType">,
+  method: Pick<SdkworkSubscriptionPaymentMethodSource, "code" | "productTypes" | "recommendedProductType">,
 ): SdkworkSubscriptionPaymentMethodKind {
   if (method.recommendedProductType === "native" || method.recommendedProductType === "jsapi" || method.recommendedProductType === "miniapp") {
     return "qr";
@@ -250,7 +267,7 @@ function resolvePaymentMethodKind(
 }
 
 function resolvePaymentMethodDescription(
-  method: Pick<SdkworkPaymentMethod, "recommendedProductType">,
+  method: Pick<SdkworkSubscriptionPaymentMethodSource, "recommendedProductType">,
 ): string | undefined {
   if (method.recommendedProductType === "native" || method.recommendedProductType === "jsapi" || method.recommendedProductType === "miniapp") {
     return "Scan to pay";
@@ -268,41 +285,51 @@ function resolvePaymentMethodDescription(
 }
 
 function mapPaymentMethod(
-  method: SdkworkPaymentMethod,
+  method: SdkworkSubscriptionPaymentMethodSource,
   options: {
     recommendedSort: number;
   },
 ): SdkworkSubscriptionPaymentMethodOption | null {
-  const paymentMethod = resolveSdkworkSubscriptionPaymentMethod(method.code);
+  const paymentMethod = method.paymentMethod ?? resolveSdkworkSubscriptionPaymentMethod(method.code);
 
   if (!paymentMethod) {
     return null;
   }
+  const sourceSort = typeof method.sort === "number" && Number.isFinite(method.sort)
+    ? method.sort
+    : 0;
 
   return {
     available: method.available !== false,
     code: method.code,
-    description: resolvePaymentMethodDescription(method),
+    description: method.description ?? resolvePaymentMethodDescription(method),
     id: method.id,
-    kind: resolvePaymentMethodKind(method),
+    kind: method.kind ?? resolvePaymentMethodKind(method),
     label: method.label,
     paymentMethod,
     productTypes: [...method.productTypes],
-    recommended: method.sort >= options.recommendedSort,
+    recommended: method.recommended ?? sourceSort >= options.recommendedSort,
     recommendedProductType: method.recommendedProductType,
   };
 }
 
 function resolvePaymentMethods(
-  methods: readonly SdkworkPaymentMethod[],
+  methods: readonly SdkworkSubscriptionPaymentMethodSource[],
 ): SdkworkSubscriptionPaymentMethodOption[] {
   const supportedMethods = methods.filter((method) => resolveSdkworkSubscriptionPaymentMethod(method.code));
   const recommendedSort = supportedMethods
     .filter((method) => method.available !== false)
-    .reduce((highest, method) => Math.max(highest, method.sort), Number.NEGATIVE_INFINITY);
+    .reduce((highest, method) => Math.max(
+      highest,
+      typeof method.sort === "number" && Number.isFinite(method.sort) ? method.sort : 0,
+    ), Number.NEGATIVE_INFINITY);
   const mappedMethods = supportedMethods
     .map((method) => mapPaymentMethod(method, {
-      recommendedSort: Number.isFinite(recommendedSort) ? recommendedSort : method.sort,
+      recommendedSort: Number.isFinite(recommendedSort)
+        ? recommendedSort
+        : typeof method.sort === "number" && Number.isFinite(method.sort)
+          ? method.sort
+          : 0,
     }))
     .filter((method): method is SdkworkSubscriptionPaymentMethodOption => Boolean(method))
     .sort(
@@ -315,6 +342,21 @@ function resolvePaymentMethods(
   return mappedMethods.length > 0
     ? mappedMethods
     : createDefaultSdkworkSubscriptionPaymentMethodOptions();
+}
+
+export function createSdkworkSubscriptionPaymentMethodService(): SdkworkSubscriptionPaymentMethodService {
+  function getEmptyDashboard(): SdkworkSubscriptionPaymentMethodDashboard {
+    return {
+      methods: createDefaultSdkworkSubscriptionPaymentMethodOptions(),
+    };
+  }
+
+  return {
+    async getDashboard() {
+      return getEmptyDashboard();
+    },
+    getEmptyDashboard,
+  };
 }
 
 function createDashboard(
@@ -404,12 +446,12 @@ export function createSdkworkSubscriptionService(
     promotionAppService: options.promotionAppService,
     locale: options.locale,
   });
-  const paymentService: SdkworkPaymentService = options.paymentService
+  const paymentMethodService: SdkworkSubscriptionPaymentMethodService = options.paymentMethodService
     ? {
-        ...createSdkworkPaymentService({ paymentAppService: options.paymentAppService }),
-        ...options.paymentService,
+        ...createSdkworkSubscriptionPaymentMethodService(),
+        ...options.paymentMethodService,
       }
-    : createSdkworkPaymentService({ paymentAppService: options.paymentAppService });
+    : createSdkworkSubscriptionPaymentMethodService();
 
   async function fetchPackageGroups(): Promise<SdkworkSubscriptionPackageGroup[]> {
     try {
@@ -436,7 +478,7 @@ export function createSdkworkSubscriptionService(
 
       const [couponDashboard, paymentDashboard] = await Promise.all([
         couponService.getDashboard(),
-        paymentService.getDashboard(),
+        paymentMethodService.getDashboard(),
       ]);
       const coupons = sortSdkworkUserCoupons(
         couponDashboard.availableCoupons.map(mapAvailableCoupon),

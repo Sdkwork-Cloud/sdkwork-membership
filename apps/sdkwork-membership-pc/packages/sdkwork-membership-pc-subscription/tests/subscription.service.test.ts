@@ -97,7 +97,7 @@ describe("sdkwork-membership-pc-subscription service", () => {
           },
         }),
       },
-      paymentService: {
+      paymentMethodService: {
         getDashboard: vi.fn().mockResolvedValue({
           clientType: "WEB",
           digest: {
@@ -489,11 +489,13 @@ describe("sdkwork-membership-pc-subscription service", () => {
         },
       },
       orders: {
-        pay: vi.fn().mockResolvedValue(
-          wrapSdkworkMembershipResourceResponse({
-            paymentParams: { cashierUrl: "https://example.test/cashier" },
-          }),
-        ),
+        payments: {
+          create: vi.fn().mockResolvedValue(
+            wrapSdkworkMembershipResourceResponse({
+              paymentParams: { cashierUrl: "https://example.test/cashier" },
+            }),
+          ),
+        },
       },
     }));
     const localizedMutationService = createSdkworkSubscriptionService({

@@ -1,4 +1,4 @@
-import { useEffect, useMemo } from "react";
+import { lazy, Suspense, useEffect, useMemo } from "react";
 import {
   BrowserRouter,
   Link,
@@ -9,18 +9,64 @@ import {
 } from "react-router-dom";
 import { SdkworkThemeProvider } from "@sdkwork/ui-pc-react/theme";
 import { bootstrapSdkworkMembershipAppService, bootstrapSdkworkOrderAppService } from "@sdkwork/membership-service";
-import { SdkworkMembershipPage } from "@sdkwork/membership-pc-membership";
-import { SdkworkSubscriptionCatalogScreen, SdkworkSubscriptionPage } from "@sdkwork/membership-pc-subscription";
 import { sdkworkMembershipPcRuntimeIdentity } from "@sdkwork/membership-pc-core";
 
-const env = (import.meta as ImportMeta & { env?: Record<string, string | undefined> }).env;
+const DEFAULT_MEMBERSHIP_APP_API_BASE_URL = "http://127.0.0.1:18096";
+const DEFAULT_ORDER_APP_API_BASE_URL = "http://127.0.0.1:18093";
+const env = (import.meta as ImportMeta & { env?: Record<string, boolean | string | undefined> }).env;
+const SdkworkMembershipPage = lazy(async () => {
+  const module = await import("@sdkwork/membership-pc-membership");
+  return { default: module.SdkworkMembershipPage };
+});
+const SdkworkSubscriptionCatalogScreen = lazy(async () => {
+  const module = await import("@sdkwork/membership-pc-subscription");
+  return { default: module.SdkworkSubscriptionCatalogScreen };
+});
+const SdkworkSubscriptionPage = lazy(async () => {
+  const module = await import("@sdkwork/membership-pc-subscription");
+  return { default: module.SdkworkSubscriptionPage };
+});
 
-function resolveMembershipApiBaseUrl(): string {
-  const configured = env?.VITE_SDKWORK_MEMBERSHIP_PC_APP_API_BASE_URL?.trim();
+function readBrowserEnvString(key: string): string | undefined {
+  const value = env?.[key];
+  if (typeof value !== "string") {
+    return undefined;
+  }
+  const normalized = value.trim();
+  return normalized || undefined;
+}
+
+function isDevelopmentRuntime(): boolean {
+  const dev = env?.DEV;
+  if (typeof dev === "boolean") {
+    return dev;
+  }
+  return readBrowserEnvString("MODE") !== "production";
+}
+
+function resolveRequiredAppApiBaseUrl(key: string, developmentDefault: string): string {
+  const configured = readBrowserEnvString(key);
   if (configured) {
     return configured;
   }
-  return typeof window !== "undefined" ? window.location.origin : "http://127.0.0.1:5186";
+  if (isDevelopmentRuntime()) {
+    return developmentDefault;
+  }
+  throw new Error(`Missing ${key}; configure the explicit app-api base URL before SDK bootstrap.`);
+}
+
+function resolveMembershipApiBaseUrl(): string {
+  return resolveRequiredAppApiBaseUrl(
+    "VITE_SDKWORK_MEMBERSHIP_PC_APP_API_BASE_URL",
+    DEFAULT_MEMBERSHIP_APP_API_BASE_URL,
+  );
+}
+
+function resolveOrderApiBaseUrl(): string {
+  return resolveRequiredAppApiBaseUrl(
+    "VITE_SDKWORK_ORDER_APP_API_BASE_URL",
+    DEFAULT_ORDER_APP_API_BASE_URL,
+  );
 }
 
 function MembershipRoutes() {
@@ -63,19 +109,16 @@ function MembershipRoutes() {
 
 export function MembershipAppShell() {
   const apiBaseUrl = useMemo(() => resolveMembershipApiBaseUrl(), []);
+  const orderApiBaseUrl = useMemo(() => resolveOrderApiBaseUrl(), []);
 
   useEffect(() => {
     bootstrapSdkworkMembershipAppService({
-      accessToken: env?.SDKWORK_ACCESS_TOKEN || env?.VITE_SDKWORK_ACCESS_TOKEN,
-      authToken: env?.SDKWORK_AUTH_TOKEN || env?.VITE_SDKWORK_AUTH_TOKEN,
       baseUrl: apiBaseUrl,
     });
     bootstrapSdkworkOrderAppService({
-      accessToken: env?.SDKWORK_ACCESS_TOKEN || env?.VITE_SDKWORK_ACCESS_TOKEN,
-      authToken: env?.SDKWORK_AUTH_TOKEN || env?.VITE_SDKWORK_AUTH_TOKEN,
-      baseUrl: apiBaseUrl,
+      baseUrl: orderApiBaseUrl,
     });
-  }, [apiBaseUrl]);
+  }, [apiBaseUrl, orderApiBaseUrl]);
 
   return (
     <SdkworkThemeProvider defaultTheme="light">
@@ -105,7 +148,9 @@ export function MembershipAppShell() {
             </div>
           </header>
           <main className="min-h-[calc(100vh-5rem)]">
-            <MembershipRoutes />
+            <Suspense fallback={null}>
+              <MembershipRoutes />
+            </Suspense>
           </main>
         </div>
       </BrowserRouter>

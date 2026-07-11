@@ -33,7 +33,7 @@ Subscription catalog reads and purchases are orchestrated by:
 
 Static fixtures in `subscription-catalog-content.ts` are offline fallbacks only; production paths load data from app-api via SDK.
 
-**Commerce checkout boundary:** Payment execution uses `@sdkwork/payment-app-sdk` (cashier). PSP webhooks and settlement are handled by `@sdkwork/order-app-sdk` / order gateway—not by membership or a payment→membership callback. After order payment success (`subject=membership`), membership fulfills `pending_activation` subscriptions. See `docs/architecture/tech/TECH_ARCHITECTURE.md` §10.3 and `../sdkwork-order/docs/architecture/commerce/COMMERCE_CHECKOUT_ARCHITECTURE.md`.
+**Commerce checkout boundary:** The subscription package requests payment through `@sdkwork/order-app-sdk` `orders.payments.create(orderId, { paymentMethod })`. `sdkwork-order` owns checkout orchestration, PSP webhook ingestion, and settlement, while `sdkwork-payment` executes behind order/payment ports. Membership does not call payment SDKs directly and there is no payment-to-membership callback path. After order payment success (`subject=membership`), order calls the membership fulfillment port so `pending_activation` subscriptions become active. See `docs/architecture/tech/TECH_ARCHITECTURE.md` section 7 and `../sdkwork-order/docs/architecture/commerce/COMMERCE_CHECKOUT_ARCHITECTURE.md`.
 
 ## Verification
 

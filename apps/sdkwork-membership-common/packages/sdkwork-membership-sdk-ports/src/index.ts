@@ -37,7 +37,7 @@ export const APP_MEMBERSHIP_METHOD_TREE = {
 
 export type MembershipRequestParams = Record<string, unknown>;
 export type MembershipSdkResponse<T> = Promise<
-  T | { code?: number | string; data?: T; message?: string; msg?: string }
+  T | { code: 0; data: T; traceId: string } | { code: number; traceId: string; detail?: string; title?: string }
 >;
 export type MembershipSdkMethod = (...args: any[]) => MembershipSdkResponse<any>;
 

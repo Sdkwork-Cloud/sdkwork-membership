@@ -108,7 +108,6 @@ pub struct MembershipActivationDraft {
     pub plan_id: String,
     pub order_id: String,
     pub owner_user_id: String,
-    pub payment_id: String,
     pub tenant_id: String,
 }
 
@@ -126,7 +125,6 @@ pub struct MembershipPurchaseDraft {
     pub organization_id: String,
     pub owner_user_id: String,
     pub package_id: i64,
-    pub payment_method: Option<String>,
     pub coupon_id: Option<String>,
 }
 
@@ -321,14 +319,12 @@ impl MembershipActivationDraft {
     pub fn new(
         tenant_id: &str,
         order_id: &str,
-        payment_id: &str,
         owner_user_id: &str,
         plan_id: &str,
         idempotency_key: &str,
     ) -> Result<Self, CommerceServiceError> {
         crate::validation::require_non_empty("tenant_id", tenant_id)?;
         crate::validation::require_non_empty("order_id", order_id)?;
-        crate::validation::require_non_empty("payment_id", payment_id)?;
         crate::validation::require_non_empty("owner_user_id", owner_user_id)?;
         crate::validation::require_non_empty("plan_id", plan_id)?;
         crate::validation::require_non_empty("idempotency_key", idempotency_key)?;
@@ -338,7 +334,6 @@ impl MembershipActivationDraft {
             plan_id: plan_id.to_string(),
             order_id: order_id.to_string(),
             owner_user_id: owner_user_id.to_string(),
-            payment_id: payment_id.to_string(),
             tenant_id: tenant_id.to_string(),
         })
     }
@@ -350,7 +345,6 @@ impl MembershipPurchaseDraft {
         organization_id: &str,
         owner_user_id: &str,
         package_id: i64,
-        payment_method: Option<&str>,
         coupon_id: Option<&str>,
     ) -> Result<Self, CommerceServiceError> {
         crate::validation::require_non_empty("tenant_id", tenant_id)?;
@@ -367,7 +361,6 @@ impl MembershipPurchaseDraft {
             organization_id: organization_id.to_string(),
             owner_user_id: owner_user_id.to_string(),
             package_id,
-            payment_method: normalize_optional_payment_method(payment_method)?,
             coupon_id: crate::validation::normalize_optional_text(coupon_id),
         })
     }
@@ -377,22 +370,6 @@ fn validate_money_amount(field_name: &str, value: &str) -> Result<(), CommerceSe
     CommerceMoney::new(value)
         .map(|_| ())
         .map_err(|message| CommerceServiceError::validation(format!("{field_name}: {message}")))
-}
-
-fn normalize_optional_payment_method(
-    value: Option<&str>,
-) -> Result<Option<String>, CommerceServiceError> {
-    let Some(method) = crate::validation::normalize_optional_text(value) else {
-        return Ok(None);
-    };
-    let method = method.to_ascii_lowercase();
-    match method.as_str() {
-        "wechat_pay" | "alipay" | "paypal" | "card" | "apple_pay" | "google_pay"
-        | "wallet_balance" => Ok(Some(method)),
-        _ => Err(CommerceServiceError::validation(
-            "payment_method must be a canonical payment method key",
-        )),
-    }
 }
 
 impl EntitlementGrantDraft {

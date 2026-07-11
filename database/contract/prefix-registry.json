@@ -5,8 +5,7 @@
     {
       "prefix": "commerce_",
       "owner": "sdkwork-membership",
-      "complianceLevel": "L2",
-      "lifecycleStatus": "active"
+      "domain": "membership"
     }
   ]
 }

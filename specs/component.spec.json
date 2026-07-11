@@ -6,5 +6,26 @@
     "domain": "commerce",
     "capability": "membership",
     "root": "sdkwork-membership"
+  },
+  "contracts": {
+    "layerRole": "tooling",
+    "publicExports": [],
+    "providedPorts": [],
+    "requiredPorts": [],
+    "runtimeEntrypoints": [
+      "package.json#scripts.verify",
+      "package.json#scripts.check"
+    ],
+    "routeManifest": null,
+    "sdkClients": [],
+    "sdkDependencies": [],
+    "dependencyApiExports": [],
+    "dependencyApiSurfaces": [],
+    "events": [],
+    "configKeys": [
+      "package.json",
+      "pnpm-workspace.yaml",
+      "Cargo.toml"
+    ]
   }
 }

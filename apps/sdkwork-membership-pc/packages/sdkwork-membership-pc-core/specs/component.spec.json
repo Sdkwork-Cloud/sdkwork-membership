@@ -5,8 +5,8 @@
     "name": "@sdkwork/membership-pc-core",
     "type": "typescript-package",
     "root": "apps/sdkwork-membership-pc/packages/sdkwork-membership-pc-core",
-    "domain": "membership",
-    "capability": "core",
+    "domain": "commerce",
+    "capability": "membership-core",
     "surface": "app",
     "languages": [
       "typescript"
@@ -14,6 +14,42 @@
     "generated": false
   },
   "contracts": {
+    "layerRole": "frontend-core",
+    "publicExports": [
+      ".",
+      "./sdk",
+      "./modules",
+      "./host",
+      "./session",
+      "./composition"
+    ],
+    "providedPorts": [
+      {
+        "name": "membershipPcCore",
+        "export": "."
+      },
+      {
+        "name": "membershipSdkInventory",
+        "export": "./sdk"
+      },
+      {
+        "name": "membershipModuleRegistry",
+        "export": "./modules"
+      },
+      {
+        "name": "membershipHostContracts",
+        "export": "./host"
+      },
+      {
+        "name": "membershipSessionContracts",
+        "export": "./session"
+      },
+      {
+        "name": "membershipCompositionContracts",
+        "export": "./composition"
+      }
+    ],
+    "requiredPorts": [],
     "sdkDependencies": [
       {
         "workspace": "sdkwork-iam-app-sdk",
@@ -32,14 +68,14 @@
       "inheritanceMode": "module-catalog-with-overrides",
       "moduleCatalogRefs": [
         {
-          "moduleId": "iam-kernel",
-          "manifestRef": "../../../../../../sdkwork-iam/iam/modules/iam-kernel/iam.module.manifest.json",
+          "moduleId": "commerce",
+          "manifestRef": "../../../../../../sdkwork-iam/iam/modules/commerce/iam.module.manifest.json",
           "inheritPermissions": true,
           "inheritRoles": true
         },
         {
-          "moduleId": "commerce",
-          "manifestRef": "../../../../../../sdkwork-iam/iam/modules/commerce/iam.module.manifest.json",
+          "moduleId": "iam-kernel",
+          "manifestRef": "../../../../../../sdkwork-iam/iam/modules/iam-kernel/iam.module.manifest.json",
           "inheritPermissions": true,
           "inheritRoles": true
         }
@@ -58,6 +94,9 @@
         "forbidLocalPermissionCatalogForDependencyDomains": true,
         "allowExplicitOverridesOnly": true,
         "allowFrontendHintsWithoutServerDuplication": true
+      },
+      "applicationModule": {
+        "manifestRef": "../../../../../../sdkwork-iam/iam/modules/commerce/iam.module.manifest.json"
       }
     },
     "dependencyApiExports": [],

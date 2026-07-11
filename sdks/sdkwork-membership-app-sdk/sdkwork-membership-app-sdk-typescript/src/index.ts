@@ -115,7 +115,6 @@ export interface AppMembershipDailyRewardStatusResponse {
 export interface AppMembershipDailyRewardResponse {
   rewardPoints: number;
   claimedAt?: string;
-  message: string;
   consecutiveDays: number;
 }
 
@@ -129,18 +128,8 @@ export interface AppMembershipPrivilegeUsageResponse {
 }
 
 export interface AppMembershipPurchaseOutcome {
-  success: boolean;
   requestNo: string;
   orderId: string;
-  providerCode: string;
-  paymentMethod: string;
-  paymentProduct: string;
-  nextAction: string;
-  paymentId: string;
-  cashierUrl: string;
-  qrCodePayload: string;
-  qrCodeImageUrl?: string;
-  requestPaymentPayload?: string;
   packageId: number;
   packageName: string;
   amount: string;
@@ -153,8 +142,9 @@ export interface AppMembershipPurchaseOutcome {
 export interface CommerceOperationCommand {
   action: "purchase" | "renew" | "upgrade" | "claim_daily_reward" | "consume_speed_up";
   packageId?: number;
+  orderId?: string;
+  requestNo?: string;
   couponId?: string;
-  paymentMethod?: string;
   idempotencyKey?: string;
 }
 

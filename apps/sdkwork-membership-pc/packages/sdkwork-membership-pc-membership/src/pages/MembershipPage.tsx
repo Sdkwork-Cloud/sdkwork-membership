@@ -1,9 +1,9 @@
 import { useEffect } from "react";
-import { Button } from "@sdkwork/ui-pc-react/components/ui/button";
+import { Button } from "@sdkwork/ui-pc-react/components/ui/actions";
 import {
   LoadingBlock,
   StatusNotice,
-} from "@sdkwork/ui-pc-react/components/ui/feedback/states";
+} from "@sdkwork/ui-pc-react/components/ui/feedback";
 import { formatSdkworkMembershipCurrencyCny as formatSdkworkCurrencyCny } from "@sdkwork/membership-service";
 import type { SdkworkMembershipMessagesOverrides } from "../membership-copy";
 import type { SdkworkMembershipController } from "../membership-controller";

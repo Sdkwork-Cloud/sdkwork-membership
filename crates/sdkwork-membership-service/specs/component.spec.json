@@ -2,11 +2,11 @@
   "schemaVersion": 1,
   "kind": "sdkwork.component.spec",
   "component": {
-    "name": "sdkwork-commerce-membership-service",
+    "name": "sdkwork-membership-service",
     "displayName": "SDKWork Commerce Membership",
     "version": "0.1.0",
     "type": "rust-crate",
-    "root": "crates/sdkwork-commerce-membership-service",
+    "root": "crates/sdkwork-membership-service",
     "domain": "commerce",
     "declaredDomain": "commerce",
     "capability": "membership",
@@ -103,7 +103,10 @@
     }
   ],
   "contracts": {
+    "layerRole": "backend-service",
     "publicExports": [],
+    "providedPorts": [],
+    "requiredPorts": [],
     "runtimeEntrypoints": [
       "Cargo.toml"
     ],
@@ -120,7 +123,7 @@
   },
   "verification": {
     "commands": [
-      "cargo test --manifest-path crates/sdkwork-commerce-membership-service/Cargo.toml"
+      "cargo test --manifest-path crates/sdkwork-membership-service/Cargo.toml"
     ]
   },
   "metadata": {

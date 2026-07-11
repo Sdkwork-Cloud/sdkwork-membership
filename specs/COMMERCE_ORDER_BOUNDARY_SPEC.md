@@ -18,7 +18,7 @@ This spec applies to all deployments (standalone gateway, composed mall, platfor
 
 | Capability | Repository | Owns |
 | --- | --- | --- |
-| **Order** | `sdkwork-order` | `commerce_order*` headers, checkout, `orders.pay`, PSP webhook ingestion, payment settlement orchestration |
+| **Order** | `sdkwork-order` | `commerce_order*` headers, checkout, `orders.payments.create`, PSP webhook ingestion, payment settlement orchestration |
 | **Payment** | `sdkwork-payment` | Payment execution (`commerce_payment_intent`, attempts, providers, refunds); webhook persistence **via port only** |
 | **Membership** | `sdkwork-membership` | Plans, packages, subscriptions, entitlements, points; **fulfillment after order payment success** |
 
@@ -27,20 +27,22 @@ This spec applies to all deployments (standalone gateway, composed mall, platfor
 ```text
 order  →  payment     (in-process ports; payment MUST NOT depend on order)
 order  →  membership  (fulfillment port after settlement; membership MUST NOT write commerce_order in production)
-client →  order-app-sdk, membership-app-sdk, payment-app-sdk (composed consumers)
+client →  order-app-sdk, membership-app-sdk (checkout composition; payment executes behind order/payment ports)
+client →  payment-app-sdk (optional cashier read/redirect consumer only; not payment execution)
 ```
 
 **Answer to the common question:** yes — at **gateway assembly / settlement saga** time, **order depends on membership** through a narrow fulfillment port (same pattern as order → account for `points_recharge`). That is **not** membership depending on order service crates to create orders.
 
 | Direction | Allowed | Notes |
 | --- | --- | --- |
-| Order → Payment | Yes | `orders.pay`, webhook ingest, confirm payment |
+| Order → Payment | Yes | `orders.payments.create`, webhook ingest, confirm payment |
 | Order → Membership | Yes | `MembershipPurchaseFulfillmentPort` or HTTP adapter after `subject=membership` payment success |
 | Order → Account | Yes | `points_recharge` in-process saga (reference implementation) |
 | Payment → Order | **No** | Foundation module |
 | Payment → Membership | **No** | Foundation module |
 | Membership → Order (Rust crate) | **No** | Use `@sdkwork/order-app-sdk` at client/service facade |
-| Membership → Payment (Rust crate) | **No** | Cashier via SDK; no payment orchestration in membership service |
+| Membership → Payment (Rust crate) | **No** | No payment orchestration in membership service |
+| Membership → `@sdkwork/payment-app-sdk` | Yes | Optional cashier read/redirect consumer only; checkout payment requests go through `@sdkwork/order-app-sdk` `orders.payments.create` |
 
 ## 4. Create and pay boundary (normative)
 
@@ -50,12 +52,12 @@ Analogous to `recharges.orders.create` in `RECHARGE_ORDER_SPEC.md` §7:
 | --- | --- | --- |
 | 1. Create order | **Order** | Checkout session or membership-subject order create writes `commerce_order` + items + breakdown only (`subject=membership`) |
 | 2. Reserve subscription | **Membership** | Create or link `membership_subscription` in `pending_activation`, keyed by `order_id` |
-| 3. Pay | **Order** | `orders.pay` → payment port creates intent/attempt; returns `paymentParams.cashierUrl` |
+| 3. Pay | **Order** | `orders.payments.create(orderId, { paymentMethod })` calls the payment port to create intent/attempt and returns payment parameters |
 | 4. PSP notify | **Order** | `POST /app/v3/api/orders/payments/webhooks/{providerCode}` |
 | 5. Settle | **Order** | `settle_owner_order_after_payment_success` confirms payment via payment port |
 | 6. Fulfill | **Order → Membership port** | Activate subscription, grant entitlements; idempotent on `order_id` |
 
-Order create writes **order domain only**. Payment intent/attempt is created by **`orders.pay`**, not at membership purchase API.
+Order create writes **order domain only**. Payment intent/attempt is created by **`orders.payments.create`**, not at membership purchase API.
 
 ## 5. What membership MUST NOT do (production)
 
@@ -70,7 +72,7 @@ Membership standalone gateway does **not** write `commerce_order`. All purchase 
 
 1. `@sdkwork/order-app-sdk` → `memberships.orders.create`
 2. `@sdkwork/membership-app-sdk` → `memberships.purchases.*` (reservation with `orderId` + `requestNo`)
-3. `@sdkwork/order-app-sdk` → `orders.pay`
+3. `@sdkwork/order-app-sdk` → `orders.payments.create(orderId, { paymentMethod })`
 4. Order webhook settlement → `MembershipPurchaseFulfillmentPort` → membership backend fulfillments API
 
 ## 7. Purchase API contract
@@ -82,7 +84,7 @@ Membership standalone gateway does **not** write `commerce_order`. All purchase 
 - Order checkout topology: `../sdkwork-order/specs/commerce-checkout-topology.spec.json`
 - Order recharge reference flow: `../sdkwork-order/specs/RECHARGE_ORDER_SPEC.md`
 - Payment dependency boundary: `../sdkwork-payment/specs/commerce-dependency-boundary.spec.json`
-- Architecture narrative: `docs/architecture/tech/TECH_ARCHITECTURE.md` §10.3
+- Architecture narrative: `docs/architecture/tech/TECH_ARCHITECTURE.md` section 7
 
 ## 9. Verification
 

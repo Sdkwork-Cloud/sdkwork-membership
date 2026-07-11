@@ -4,7 +4,6 @@ pub struct ActivateMembershipCommand {
     pub plan_id: String,
     pub order_id: String,
     pub owner_user_id: String,
-    pub payment_id: String,
     pub tenant_id: String,
 }
 

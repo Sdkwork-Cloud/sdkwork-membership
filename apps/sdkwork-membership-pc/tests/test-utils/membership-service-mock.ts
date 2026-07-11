@@ -44,8 +44,10 @@ export function createOrderAppServiceMock(
       },
     },
     orders: {
-      pay: async () => {
-        throw new Error("Missing order service test method: orders.pay");
+      payments: {
+        create: async () => {
+          throw new Error("Missing order service test method: orders.payments.create");
+        },
       },
     },
   } as unknown as OrderAppTransportClient;

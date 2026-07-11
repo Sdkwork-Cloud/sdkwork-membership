@@ -6,8 +6,8 @@
     "displayName": "SDKWork Subscription PC React",
     "version": "0.1.0",
     "type": "react-package",
-    "root": "sdkwork-membership/apps/sdkwork-membership-pc/packages/sdkwork-membership-pc-subscription",
-    "domain": "membership",
+    "root": "apps/sdkwork-membership-pc/packages/sdkwork-membership-pc-subscription",
+    "domain": "commerce",
     "declaredDomain": "commerce",
     "capability": "subscription",
     "status": "ready",
@@ -144,8 +144,37 @@
     }
   ],
   "contracts": {
+    "layerRole": "frontend-feature",
     "publicExports": [
-      "."
+      ".",
+      "./catalog"
+    ],
+    "providedPorts": [
+      {
+        "name": "subscriptionFeature",
+        "export": "."
+      },
+      {
+        "name": "subscriptionCatalog",
+        "export": "./catalog"
+      }
+    ],
+    "requiredPorts": [
+      {
+        "name": "membershipService",
+        "export": ".",
+        "package": "@sdkwork/membership-service"
+      },
+      {
+        "name": "membershipFeature",
+        "export": ".",
+        "package": "@sdkwork/membership-pc-membership"
+      },
+      {
+        "name": "promotionService",
+        "export": ".",
+        "package": "@sdkwork/promotion-service"
+      }
     ],
     "runtimeEntrypoints": [
       "package.json#scripts.typecheck"

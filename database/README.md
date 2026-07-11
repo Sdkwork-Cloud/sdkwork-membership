@@ -3,105 +3,111 @@
 - Owner: sdkwork-membership platform team
 - Capability: membership (commerce domain)
 - Engines: PostgreSQL, SQLite
-- Table prefix: `commerce_` (shared commerce domain prefix)
+- Table prefix: `commerce_` for commerce-scoped membership extension tables
 - Compliance level: L2
-- Contract version: 1.1.0
+- Contract version: 1.0.0
+- Updated: 2026-07-08
 
 ## Related Specs
 
-- `DATABASE_FRAMEWORK_SPEC.md` — lifecycle, directory, SPI, drift, seed locale
-- `DATABASE_SPEC.md` — table/field/index semantics, pool rules
-- `MIGRATION_SPEC.md` — migration governance
-- `SUBJECT_ID_SPEC.md` — tenant isolation and subject scope rules
+- `DATABASE_FRAMEWORK_SPEC.md` - lifecycle, directory layout, SPI, drift, seed locale
+- `DATABASE_SPEC.md` - table/field/index semantics, pool rules
+- `MIGRATION_SPEC.md` - migration governance
+- `SUBJECT_ID_SPEC.md` - tenant isolation and subject scope rules
+- `specs/commerce-order-membership-boundary.spec.json` - order/payment/membership ownership boundary
 
-## Table Ownership
+## Ownership Boundary
 
-### Membership-owned extension tables
+The membership database lifecycle initializes only membership-owned data needed by membership catalog, subscription reservation, entitlement fulfillment, points balance projection, privileges, rewards, and audit flows.
 
-These tables are created and managed by this repository:
+Order creation, token-plan purchase orders, membership-package purchase orders, payment execution, cashier, PSP webhook ingestion, payment settlement, recharge packages, and exchange rules are owned by `sdkwork-order` and `sdkwork-payment`. Those modules run their own database lifecycle and own their tables.
 
-| Table | Profile | Description |
+Membership is allowed to store the order identifiers required to reserve and fulfill a membership subscription:
+
+- `membership_subscription.source_order_id`
+- `membership_subscription.request_no`
+- `membership_period.source_order_id`
+- `membership_period.request_no`
+
+Membership must not store payment intent, payment attempt, cashier, provider, or payment-method artifacts in membership-owned tables.
+
+## Initialized Tables
+
+The current baseline and contract initialize 18 membership capability tables.
+
+| Table | Owner | Purpose |
 | --- | --- | --- |
-| `commerce_membership_daily_reward` | user_entity+event_log | Daily check-in reward tracking with consecutive-day bonus computation |
-| `commerce_membership_privilege_usage` | user_entity | Per-period privilege consumption tracker for membership benefits |
-| `commerce_membership_change_log` | audit_log | Immutable audit log for membership status transitions and plan changes |
+| `commerce_product_spu` | sdkwork-membership | Membership catalog SPU rows used by package SKU projection |
+| `commerce_product_sku` | sdkwork-membership | Membership package SKU rows and display metadata |
+| `membership_plan` | sdkwork-membership | Membership plan/rank definitions |
+| `membership_plan_version` | sdkwork-membership | Published plan versions |
+| `benefit_definition` | sdkwork-membership | Entitlement/privilege dictionary |
+| `membership_plan_benefit` | sdkwork-membership | Plan-version benefit bindings |
+| `membership_package_group` | sdkwork-membership | Billing-cycle package groups |
+| `membership_package` | sdkwork-membership | Sellable membership packages |
+| `membership_subscription` | sdkwork-membership | User subscription reservation and active-state record |
+| `membership_period` | sdkwork-membership | Subscription period reservation and activation record |
+| `entitlement_account` | sdkwork-membership | Per-user entitlement balances and usage counters |
+| `entitlement_grant` | sdkwork-membership | Pending/active entitlement grants from membership fulfillment |
+| `entitlement_ledger_entry` | sdkwork-membership | Entitlement grant/use audit ledger |
+| `commerce_account` | sdkwork-membership | Membership points account projection |
+| `commerce_account_ledger` | sdkwork-membership | Membership points ledger projection |
+| `commerce_membership_daily_reward` | sdkwork-membership | Daily check-in reward tracking |
+| `commerce_membership_privilege_usage` | sdkwork-membership | Per-period privilege consumption summary |
+| `commerce_membership_change_log` | sdkwork-membership | Immutable membership state-change audit log |
 
-All extension tables follow `DATABASE_SPEC.md` standards:
-- `uuid` unique identifier for external reference
-- `version` optimistic concurrency control
-- `tenant_id` + `organization_id` multi-tenant isolation (BIGINT/INTEGER)
-- Idempotency constraints for safe retries
-- Check constraints for data integrity
+The baseline does not create and seeds do not insert any of these external tables:
 
-### Commerce platform shared tables
+- order-owned: `commerce_order`, `commerce_order_item`, `commerce_order_amount_breakdown`
+- payment-owned: `commerce_payment_intent`, `commerce_payment_attempt`, `commerce_payment_method`, `commerce_payment_provider`, `commerce_payment_provider_account`, `commerce_payment_channel`, `commerce_payment_route_rule`
+- order/payment adjacent commerce tables: `commerce_recharge_package`, `commerce_exchange_rule`
 
-These tables are created by the commerce platform initial migration. The membership repo reads and writes via repository adapters:
+## Checkout And Fulfillment Data Flow
 
-- `membership_plan`, `membership_plan_version`, `membership_plan_benefit`
-- `membership_package_group`, `membership_package`
-- `membership_subscription`, `membership_period`
-- `benefit_definition`
-- `entitlement_account`, `entitlement_grant`, `entitlement_ledger_entry`
+Membership checkout uses an order-first flow:
 
-### Commerce platform reference tables
+```text
+PC service
+  -> @sdkwork/order-app-sdk memberships.orders.create({ packageId, paymentMethod })
+  -> @sdkwork/membership-app-sdk memberships.purchases.create|renew|upgrade({ packageId, orderId, requestNo, couponId? })
+  -> @sdkwork/order-app-sdk orders.payments.create(orderId, { paymentMethod })
+  -> sdkwork-order settlement
+  -> membership fulfillment port activates subscription and entitlements
+```
 
-Cross-capability commerce tables accessed via port interfaces (no direct write ownership):
+The membership database only persists the pending membership reservation and later activation state. It does not initialize order rows, payment rows, cashier configuration, PSP webhook rows, token-plan order rows, recharge packages, or exchange rules.
 
-- `commerce_product_spu`, `commerce_product_sku`
-- `commerce_order`, `commerce_order_item`, `commerce_order_amount_breakdown`
-- `commerce_payment_intent`, `commerce_payment_attempt`
-- `commerce_account`, `commerce_account_ledger`
-- `commerce_payment_method`, `commerce_payment_provider`, `commerce_payment_provider_account`
-- `commerce_payment_channel`, `commerce_payment_route_rule`
-- `commerce_recharge_package`, `commerce_exchange_rule`
+## Baseline And Seeds
 
-## Migrations
+- `database/ddl/baseline/postgres/0001_membership_baseline.sql`
+- `database/ddl/baseline/sqlite/0001_membership_baseline.sql`
+- `database/seeds/common/001_bootstrap.sql`
 
-### 0001_membership_extension_tables
+The baseline is the greenfield initialization snapshot for this pre-launch application. The migration directories are reserved for post-GA incremental changes and are intentionally empty unless a released schema needs expand/contract evolution.
 
-Creates three membership-owned extension tables and adds standard columns to existing commerce platform tables.
+Seed data covers authenticated frontend membership flows for the demo tenant:
 
-**PostgreSQL:**
-- Creates `commerce_membership_daily_reward`, `commerce_membership_privilege_usage`, `commerce_membership_change_log`
-- Adds `uuid`, `version`, `deleted_at`, `tags`, `auto_renew`, `growth_value` columns via idempotent `DO $$ ... $$` blocks
-- Creates performance indexes for high-frequency query patterns
+- tenant `100001`
+- organization `0`
+- user `1`
+- 4 package groups: yearly, monthly, quarterly, one-time monthly
+- 12 sellable packages: external ids `101`-`403`
+- active demo subscription, period, entitlement accounts, grants, usage, daily reward, points account, and points ledger
 
-**SQLite:**
-- Same table creation with SQLite-compatible types (INTEGER, TEXT)
-- Indexes for high-frequency query patterns
-- Column additions are handled by the application layer's read-model error tolerance
+Local checkout tests that need real order/payment rows must start the `sdkwork-order` and `sdkwork-payment` lifecycles separately. This repository must not add order/payment DDL or seed rows for convenience.
 
 ## Contract Registry
 
-- `contract/schema.yaml` — 30 tables registered with profile, compliance level, write-owner
-- `contract/table-registry.json` — machine-readable inventory with migration source and reference flags
-- `contract/prefix-registry.json` — `commerce_` prefix registration
+- `contract/schema.yaml` - 18 table contracts registered with profile, compliance level, and owner
+- `contract/table-registry.json` - machine-readable inventory of the 18 initialized tables
+- `contract/prefix-registry.json` - `commerce_` prefix registration for commerce-scoped membership extension tables
+- `database.manifest.json` - database module manifest used by `sdkwork-database`
 
-## Verification
-
-```bash
-pnpm db:validate
-pnpm db:status
-pnpm db:migrate
-pnpm db:seed
-pnpm db:drift:check
-```
-
-## Bootstrap
+Regenerate the contract from the PostgreSQL baseline after DDL changes:
 
 ```bash
-pnpm db:bootstrap
+pnpm run db:materialize:contract
 ```
-
-This runs `db:migrate` then `db:seed` for local development.
-
-## Initialization state
-
-This module is in **initialization state** for greenfield deployments:
-
-1. **Baseline** — `database/ddl/baseline/{engine}/0001_membership_baseline.sql` contains the full DDL snapshot.
-2. **Migrations** — `database/migrations/{engine}/` is reserved for post-GA incremental schema changes only. It is intentionally empty at initialization.
-3. **Drift** — run `pnpm db:drift:check` before release.
 
 ## Commands
 
@@ -114,4 +120,18 @@ pnpm run db:migrate
 pnpm run db:seed
 pnpm run db:status
 pnpm run db:drift:check
+pnpm run db:bootstrap
+```
+
+`db:validate` delegates to `../sdkwork-specs/tools/check-database-framework-standard.mjs`. Runtime lifecycle commands delegate to `sdkwork-database-cli`.
+
+## Verification
+
+Before completing database or repository boundary changes, run:
+
+```bash
+pnpm run db:materialize:contract
+pnpm run db:validate
+cargo test -p sdkwork-membership-repository-sqlx --test membership_sqlx_standard -- --nocapture
+node --test --test-reporter=spec --experimental-strip-types tests/static/membership-standards-regression.test.mjs
 ```

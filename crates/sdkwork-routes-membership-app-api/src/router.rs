@@ -28,7 +28,7 @@ use sdkwork_membership_repository_sqlx::catalog::{
 };
 use sdkwork_membership_repository_sqlx::pagination::{cursor_page, offset_page};
 use sdkwork_membership_repository_sqlx::shared::{
-    current_timestamp_string, format_unix_timestamp, normalize_optional_text,
+    current_timestamp_string, normalize_optional_text,
 };
 use sdkwork_membership_repository_sqlx::{
     AppMembershipBenefitItem, AppMembershipCommandFuture, AppMembershipDailyRewardResponse,
@@ -45,8 +45,6 @@ use sdkwork_membership_repository_sqlx::{
 };
 use sdkwork_utils_rust::SdkWorkPageData;
 use sdkwork_web_core::WebRequestContext;
-
-const PAYMENT_EXPIRE_SECONDS: i64 = 1_800;
 
 #[derive(Clone)]
 struct AppMembershipState {
@@ -457,18 +455,8 @@ impl AppMembershipStore for CatalogAppMembershipStore {
                 _ => 0,
             };
             Ok(AppMembershipPurchaseOutcome {
-                success: true,
                 request_no: command.order_no,
                 order_id: command.order_uuid,
-                provider_code: "mock".to_string(),
-                payment_method: "alipay".to_string(),
-                payment_product: "web".to_string(),
-                next_action: "cashier".to_string(),
-                payment_id: command.payment_uuid,
-                cashier_url: "https://example.com/cashier".to_string(),
-                qr_code_payload: String::new(),
-                qr_code_image_url: None,
-                request_payment_payload: None,
                 package_id: command.package_id,
                 package_name: package.name,
                 amount: package.price,
@@ -1084,41 +1072,20 @@ fn build_submit_purchase_command(
     action: &str,
     idempotency_key: String,
 ) -> Result<SubmitMembershipPurchaseCommand, ApiProblem> {
-    let order_item_uuid = state
-        .entity_id_generator
-        .generate_entity_uuid()
-        .map_err(|e| ApiProblem::from_service("membership purchase id generation failed", e))?;
-    let attempt_uuid = state
-        .entity_id_generator
-        .generate_entity_uuid()
-        .map_err(|e| ApiProblem::from_service("membership purchase id generation failed", e))?;
     let membership_uuid = state
         .entity_id_generator
         .generate_entity_uuid()
         .map_err(|e| ApiProblem::from_service("membership purchase id generation failed", e))?;
-    let nonce_uuid = state
-        .entity_id_generator
-        .generate_entity_uuid()
-        .map_err(|e| ApiProblem::from_service("membership purchase id generation failed", e))?;
-    let now = current_unix_timestamp();
-    let token = compact_token(&nonce_uuid);
-    let out_trade_no = format!("MEMBERSHIPTRADE{now}{}", take_prefix(&token, 32));
-    let requested_at = format_unix_timestamp(now);
-    let expire_at = format_unix_timestamp(now + PAYMENT_EXPIRE_SECONDS);
+    let requested_at = current_timestamp_string();
 
     Ok(SubmitMembershipPurchaseCommand {
         subject,
         package_id,
         order_uuid: order_id,
-        order_item_uuid,
-        payment_uuid: String::new(),
-        attempt_uuid,
         membership_uuid,
         order_no: request_no,
-        out_trade_no,
         idempotency_key,
         requested_at,
-        expire_at,
         action: action.to_owned(),
     })
 }
@@ -1128,15 +1095,4 @@ fn current_unix_timestamp() -> i64 {
         .duration_since(UNIX_EPOCH)
         .map(|duration| duration.as_secs() as i64)
         .unwrap_or(0)
-}
-
-fn compact_token(value: &str) -> String {
-    value
-        .chars()
-        .filter(|ch| ch.is_ascii_alphanumeric())
-        .collect()
-}
-
-fn take_prefix(value: &str, max_len: usize) -> String {
-    value.chars().take(max_len).collect()
 }

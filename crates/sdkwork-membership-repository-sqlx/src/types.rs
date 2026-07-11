@@ -169,7 +169,6 @@ pub struct AppMembershipDailyRewardStatusResponse {
 pub struct AppMembershipDailyRewardResponse {
     pub reward_points: i64,
     pub claimed_at: Option<String>,
-    pub message: String,
     pub consecutive_days: i64,
 }
 
@@ -189,15 +188,10 @@ pub struct SubmitMembershipPurchaseCommand {
     pub subject: AppMembershipSubject,
     pub package_id: i64,
     pub order_uuid: String,
-    pub order_item_uuid: String,
-    pub payment_uuid: String,
-    pub attempt_uuid: String,
     pub membership_uuid: String,
     pub order_no: String,
-    pub out_trade_no: String,
     pub idempotency_key: String,
     pub requested_at: String,
-    pub expire_at: String,
     pub action: String,
 }
 
@@ -220,18 +214,8 @@ pub struct FulfillMembershipPurchaseOutcome {
 #[derive(Debug, Clone, Default, Serialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub struct AppMembershipPurchaseOutcome {
-    pub success: bool,
     pub request_no: String,
     pub order_id: String,
-    pub provider_code: String,
-    pub payment_method: String,
-    pub payment_product: String,
-    pub next_action: String,
-    pub payment_id: String,
-    pub cashier_url: String,
-    pub qr_code_payload: String,
-    pub qr_code_image_url: Option<String>,
-    pub request_payment_payload: Option<String>,
     pub package_id: i64,
     pub package_name: String,
     pub amount: String,

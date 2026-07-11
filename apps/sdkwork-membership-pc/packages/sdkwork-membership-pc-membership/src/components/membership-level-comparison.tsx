@@ -1,5 +1,5 @@
 import { Check, Crown, Lock, Minus, ShieldCheck } from "lucide-react";
-import { Button } from "@sdkwork/ui-pc-react/components/ui/button";
+import { Button } from "@sdkwork/ui-pc-react/components/ui/actions";
 import {
   createSdkworkMembershipPanelStyle,
   createSdkworkMembershipToneStyle,

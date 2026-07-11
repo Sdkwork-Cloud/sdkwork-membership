@@ -3,274 +3,112 @@
   "kind": "sdkwork.database.table-registry",
   "tables": [
     {
-      "name": "commerce_membership_daily_reward",
+      "table_name": "commerce_product_spu",
       "owner": "sdkwork-membership",
-      "profile": "user_entity+event_log",
-      "complianceLevel": "L2",
-      "engine": ["postgres", "sqlite"],
-      "migration": "0001_membership_extension_tables",
-      "referenceOnly": false
+      "compliance_level": "L2",
+      "lifecycle_status": "active"
     },
     {
-      "name": "commerce_membership_privilege_usage",
+      "table_name": "commerce_product_sku",
       "owner": "sdkwork-membership",
-      "profile": "user_entity",
-      "complianceLevel": "L2",
-      "engine": ["postgres", "sqlite"],
-      "migration": "0001_membership_extension_tables",
-      "referenceOnly": false
+      "compliance_level": "L2",
+      "lifecycle_status": "active"
     },
     {
-      "name": "commerce_membership_change_log",
+      "table_name": "membership_plan",
       "owner": "sdkwork-membership",
-      "profile": "audit_log",
-      "complianceLevel": "L3",
-      "engine": ["postgres", "sqlite"],
-      "migration": "0001_membership_extension_tables",
-      "referenceOnly": false
+      "compliance_level": "L2",
+      "lifecycle_status": "active"
     },
     {
-      "name": "membership_plan",
-      "owner": "sdkwork-commerce-platform",
-      "profile": "tenant_entity+dictionary_entity",
-      "complianceLevel": "L2",
-      "engine": ["postgres", "sqlite"],
-      "migration": "commerce-initial",
-      "referenceOnly": true
+      "table_name": "membership_plan_version",
+      "owner": "sdkwork-membership",
+      "compliance_level": "L2",
+      "lifecycle_status": "active"
     },
     {
-      "name": "membership_plan_version",
-      "owner": "sdkwork-commerce-platform",
-      "profile": "tenant_entity+snapshot",
-      "complianceLevel": "L2",
-      "engine": ["postgres", "sqlite"],
-      "migration": "commerce-initial",
-      "referenceOnly": true
+      "table_name": "benefit_definition",
+      "owner": "sdkwork-membership",
+      "compliance_level": "L2",
+      "lifecycle_status": "active"
     },
     {
-      "name": "membership_plan_benefit",
-      "owner": "sdkwork-commerce-platform",
-      "profile": "relation_entity",
-      "complianceLevel": "L2",
-      "engine": ["postgres", "sqlite"],
-      "migration": "commerce-initial",
-      "referenceOnly": true
+      "table_name": "membership_plan_benefit",
+      "owner": "sdkwork-membership",
+      "compliance_level": "L2",
+      "lifecycle_status": "active"
     },
     {
-      "name": "membership_package_group",
-      "owner": "sdkwork-commerce-platform",
-      "profile": "tenant_entity+dictionary_entity",
-      "complianceLevel": "L2",
-      "engine": ["postgres", "sqlite"],
-      "migration": "commerce-initial",
-      "referenceOnly": true
+      "table_name": "membership_package_group",
+      "owner": "sdkwork-membership",
+      "compliance_level": "L2",
+      "lifecycle_status": "active"
     },
     {
-      "name": "membership_package",
-      "owner": "sdkwork-commerce-platform",
-      "profile": "tenant_entity",
-      "complianceLevel": "L2",
-      "engine": ["postgres", "sqlite"],
-      "migration": "commerce-initial",
-      "referenceOnly": true
+      "table_name": "membership_package",
+      "owner": "sdkwork-membership",
+      "compliance_level": "L2",
+      "lifecycle_status": "active"
     },
     {
-      "name": "membership_subscription",
-      "owner": "sdkwork-commerce-platform",
-      "profile": "user_entity",
-      "complianceLevel": "L3",
-      "engine": ["postgres", "sqlite"],
-      "migration": "commerce-initial",
-      "referenceOnly": true
+      "table_name": "membership_subscription",
+      "owner": "sdkwork-membership",
+      "compliance_level": "L2",
+      "lifecycle_status": "active"
     },
     {
-      "name": "membership_period",
-      "owner": "sdkwork-commerce-platform",
-      "profile": "tenant_entity+event_log",
-      "complianceLevel": "L3",
-      "engine": ["postgres", "sqlite"],
-      "migration": "commerce-initial",
-      "referenceOnly": true
+      "table_name": "membership_period",
+      "owner": "sdkwork-membership",
+      "compliance_level": "L2",
+      "lifecycle_status": "active"
     },
     {
-      "name": "benefit_definition",
-      "owner": "sdkwork-commerce-platform",
-      "profile": "tenant_entity+dictionary_entity",
-      "complianceLevel": "L2",
-      "engine": ["postgres", "sqlite"],
-      "migration": "commerce-initial",
-      "referenceOnly": true
+      "table_name": "entitlement_account",
+      "owner": "sdkwork-membership",
+      "compliance_level": "L2",
+      "lifecycle_status": "active"
     },
     {
-      "name": "entitlement_account",
-      "owner": "sdkwork-commerce-platform",
-      "profile": "user_entity",
-      "complianceLevel": "L3",
-      "engine": ["postgres", "sqlite"],
-      "migration": "commerce-initial",
-      "referenceOnly": true
+      "table_name": "entitlement_grant",
+      "owner": "sdkwork-membership",
+      "compliance_level": "L2",
+      "lifecycle_status": "active"
     },
     {
-      "name": "entitlement_grant",
-      "owner": "sdkwork-commerce-platform",
-      "profile": "user_entity+event_log",
-      "complianceLevel": "L3",
-      "engine": ["postgres", "sqlite"],
-      "migration": "commerce-initial",
-      "referenceOnly": true
+      "table_name": "entitlement_ledger_entry",
+      "owner": "sdkwork-membership",
+      "compliance_level": "L2",
+      "lifecycle_status": "active"
     },
     {
-      "name": "entitlement_ledger_entry",
-      "owner": "sdkwork-commerce-platform",
-      "profile": "ledger_entry",
-      "complianceLevel": "L3",
-      "engine": ["postgres", "sqlite"],
-      "migration": "commerce-initial",
-      "referenceOnly": true
+      "table_name": "commerce_account",
+      "owner": "sdkwork-membership",
+      "compliance_level": "L2",
+      "lifecycle_status": "active"
     },
     {
-      "name": "commerce_product_spu",
-      "owner": "sdkwork-commerce-platform",
-      "profile": "tenant_entity",
-      "complianceLevel": "L2",
-      "engine": ["postgres", "sqlite"],
-      "migration": "commerce-initial",
-      "referenceOnly": true
+      "table_name": "commerce_account_ledger",
+      "owner": "sdkwork-membership",
+      "compliance_level": "L2",
+      "lifecycle_status": "active"
     },
     {
-      "name": "commerce_product_sku",
-      "owner": "sdkwork-commerce-platform",
-      "profile": "tenant_entity",
-      "complianceLevel": "L2",
-      "engine": ["postgres", "sqlite"],
-      "migration": "commerce-initial",
-      "referenceOnly": true
+      "table_name": "commerce_membership_daily_reward",
+      "owner": "sdkwork-membership",
+      "compliance_level": "L2",
+      "lifecycle_status": "active"
     },
     {
-      "name": "commerce_order",
-      "owner": "sdkwork-commerce-platform",
-      "profile": "tenant_entity",
-      "complianceLevel": "L3",
-      "engine": ["postgres", "sqlite"],
-      "migration": "commerce-initial",
-      "referenceOnly": true
+      "table_name": "commerce_membership_privilege_usage",
+      "owner": "sdkwork-membership",
+      "compliance_level": "L2",
+      "lifecycle_status": "active"
     },
     {
-      "name": "commerce_order_item",
-      "owner": "sdkwork-commerce-platform",
-      "profile": "tenant_entity",
-      "complianceLevel": "L3",
-      "engine": ["postgres", "sqlite"],
-      "migration": "commerce-initial",
-      "referenceOnly": true
-    },
-    {
-      "name": "commerce_order_amount_breakdown",
-      "owner": "sdkwork-commerce-platform",
-      "profile": "tenant_entity",
-      "complianceLevel": "L3",
-      "engine": ["postgres", "sqlite"],
-      "migration": "commerce-initial",
-      "referenceOnly": true
-    },
-    {
-      "name": "commerce_payment_intent",
-      "owner": "sdkwork-commerce-platform",
-      "profile": "tenant_entity",
-      "complianceLevel": "L3",
-      "engine": ["postgres", "sqlite"],
-      "migration": "commerce-initial",
-      "referenceOnly": true
-    },
-    {
-      "name": "commerce_payment_attempt",
-      "owner": "sdkwork-commerce-platform",
-      "profile": "tenant_entity+event_log",
-      "complianceLevel": "L3",
-      "engine": ["postgres", "sqlite"],
-      "migration": "commerce-initial",
-      "referenceOnly": true
-    },
-    {
-      "name": "commerce_account",
-      "owner": "sdkwork-commerce-platform",
-      "profile": "user_entity",
-      "complianceLevel": "L3",
-      "engine": ["postgres", "sqlite"],
-      "migration": "commerce-initial",
-      "referenceOnly": true
-    },
-    {
-      "name": "commerce_account_ledger",
-      "owner": "sdkwork-commerce-platform",
-      "profile": "ledger_entry",
-      "complianceLevel": "L3",
-      "engine": ["postgres", "sqlite"],
-      "migration": "commerce-initial",
-      "referenceOnly": true
-    },
-    {
-      "name": "commerce_payment_method",
-      "owner": "sdkwork-commerce-platform",
-      "profile": "tenant_entity+dictionary_entity",
-      "complianceLevel": "L2",
-      "engine": ["postgres", "sqlite"],
-      "migration": "commerce-initial",
-      "referenceOnly": true
-    },
-    {
-      "name": "commerce_payment_provider",
-      "owner": "sdkwork-commerce-platform",
-      "profile": "tenant_entity+dictionary_entity",
-      "complianceLevel": "L2",
-      "engine": ["postgres", "sqlite"],
-      "migration": "commerce-initial",
-      "referenceOnly": true
-    },
-    {
-      "name": "commerce_payment_provider_account",
-      "owner": "sdkwork-commerce-platform",
-      "profile": "tenant_entity",
-      "complianceLevel": "L3",
-      "engine": ["postgres", "sqlite"],
-      "migration": "commerce-initial",
-      "referenceOnly": true
-    },
-    {
-      "name": "commerce_payment_channel",
-      "owner": "sdkwork-commerce-platform",
-      "profile": "tenant_entity",
-      "complianceLevel": "L2",
-      "engine": ["postgres", "sqlite"],
-      "migration": "commerce-initial",
-      "referenceOnly": true
-    },
-    {
-      "name": "commerce_payment_route_rule",
-      "owner": "sdkwork-commerce-platform",
-      "profile": "tenant_entity",
-      "complianceLevel": "L2",
-      "engine": ["postgres", "sqlite"],
-      "migration": "commerce-initial",
-      "referenceOnly": true
-    },
-    {
-      "name": "commerce_recharge_package",
-      "owner": "sdkwork-commerce-platform",
-      "profile": "tenant_entity",
-      "complianceLevel": "L2",
-      "engine": ["postgres", "sqlite"],
-      "migration": "commerce-initial",
-      "referenceOnly": true
-    },
-    {
-      "name": "commerce_exchange_rule",
-      "owner": "sdkwork-commerce-platform",
-      "profile": "tenant_entity+dictionary_entity",
-      "complianceLevel": "L2",
-      "engine": ["postgres", "sqlite"],
-      "migration": "commerce-initial",
-      "referenceOnly": true
+      "table_name": "commerce_membership_change_log",
+      "owner": "sdkwork-membership",
+      "compliance_level": "L2",
+      "lifecycle_status": "active"
     }
   ]
 }

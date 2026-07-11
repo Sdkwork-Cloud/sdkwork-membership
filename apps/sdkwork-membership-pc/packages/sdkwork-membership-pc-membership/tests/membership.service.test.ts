@@ -291,7 +291,7 @@ describe("sdkwork-membership-pc-membership service", () => {
         orderCreateResponses[orderCreateCallIndex++] ?? orderCreateResponses[0],
       ),
     );
-    const orderPay = vi.fn().mockResolvedValue(
+    const orderPaymentCreate = vi.fn().mockResolvedValue(
       wrapSdkworkMembershipResourceResponse({
         paymentParams: {
           cashierUrl: "https://im.sdkwork.com/cashier?scene=virtual&orderId=MEMBERSHIP-ORDER-001",
@@ -305,7 +305,9 @@ describe("sdkwork-membership-pc-membership service", () => {
         },
       },
       orders: {
-        pay: orderPay,
+        payments: {
+          create: orderPaymentCreate,
+        },
       },
     }));
     const membershipAppService = createMembershipAppServiceMock({
@@ -361,21 +363,18 @@ describe("sdkwork-membership-pc-membership service", () => {
       couponId: undefined,
       orderId: "order-uuid-upgrade",
       packageId: 2,
-      paymentMethod: "wechat_pay",
       requestNo: "MEMBERSHIP-ORDER-002",
     });
     expect(purchase).toHaveBeenCalledWith({
       couponId: undefined,
       orderId: "order-uuid-purchase",
       packageId: 2,
-      paymentMethod: "wechat_pay",
       requestNo: "MEMBERSHIP-ORDER-001",
     });
     expect(renew).toHaveBeenCalledWith({
       couponId: undefined,
       orderId: "order-uuid-renew",
       packageId: 3,
-      paymentMethod: "alipay",
       requestNo: "MEMBERSHIP-ORDER-003",
     });
     expect(orderCreate).toHaveBeenNthCalledWith(
@@ -390,19 +389,19 @@ describe("sdkwork-membership-pc-membership service", () => {
         xIdempotencyFingerprint: "memberships.orders.create---packageId---2---paymentMethod---wechat_pay--",
       },
     );
-    expect(orderPay).toHaveBeenNthCalledWith(
+    expect(orderPaymentCreate).toHaveBeenNthCalledWith(
       1,
       "order-uuid-purchase",
       { paymentMethod: "wechat_pay" },
       {
         idempotencyKey: "membership-pay:order-uuid-purchase",
-        sdkworkRequestHash: "orders.pay---paymentMethod---wechat_pay--",
-        xIdempotencyFingerprint: "orders.pay---paymentMethod---wechat_pay--",
+        sdkworkRequestHash: "orders.payments.create---paymentMethod---wechat_pay--",
+        xIdempotencyFingerprint: "orders.payments.create---paymentMethod---wechat_pay--",
       },
     );
   });
 
-  it("preserves SDK qrCodePayload when the order pay response has no cashier URL", async () => {
+  it("uses order payment parameters for cashier and QR payload", async () => {
     configureOrderServiceMock(createOrderAppServiceMock({
       memberships: {
         orders: {
@@ -415,11 +414,15 @@ describe("sdkwork-membership-pc-membership service", () => {
         },
       },
       orders: {
-        pay: vi.fn().mockResolvedValue(
-          wrapSdkworkMembershipResourceResponse({
-            paymentParams: {},
-          }),
-        ),
+        payments: {
+          create: vi.fn().mockResolvedValue(
+            wrapSdkworkMembershipResourceResponse({
+              paymentParams: {
+                qrCodePayload: "weixin://wxpay/bizpayurl?pr=order",
+              },
+            }),
+          ),
+        },
       },
     }));
     const membershipAppService = createMembershipAppServiceMock({
@@ -432,9 +435,7 @@ describe("sdkwork-membership-pc-membership service", () => {
               orderId: "order-uuid-qr",
               packageId: 201,
               packageName: "Monthly Membership",
-              qrCodePayload: "weixin://wxpay/bizpayurl?pr=membership",
               status: "pending",
-              success: true,
               targetPlanName: "Basic",
             }),
           ),
@@ -453,7 +454,7 @@ describe("sdkwork-membership-pc-membership service", () => {
     ).resolves.toMatchObject({
       amountCny: 68,
       orderId: "order-uuid-qr",
-      qrCode: "weixin://wxpay/bizpayurl?pr=membership",
+      qrCode: "weixin://wxpay/bizpayurl?pr=order",
       status: "pending",
     });
   });
@@ -488,11 +489,13 @@ describe("sdkwork-membership-pc-membership service", () => {
         },
       },
       orders: {
-        pay: vi.fn().mockResolvedValue(
-          wrapSdkworkMembershipResourceResponse({
-            paymentParams: { cashierUrl: "https://example.test/cashier" },
-          }),
-        ),
+        payments: {
+          create: vi.fn().mockResolvedValue(
+            wrapSdkworkMembershipResourceResponse({
+              paymentParams: { cashierUrl: "https://example.test/cashier" },
+            }),
+          ),
+        },
       },
     }));
     const localizedMutationService = createSdkworkMembershipService({

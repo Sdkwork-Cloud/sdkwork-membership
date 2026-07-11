@@ -37,23 +37,26 @@ export function unwrapSdkworkMembershipResponse<T>(value: unknown, fallbackMessa
   if (!value || typeof value !== "object") {
     return value as T;
   }
-  if (!("data" in value) && !("code" in value)) {
+  if (!("code" in value)) {
     return value as T;
   }
   const candidate = value as Partial<SdkworkMembershipResponseEnvelope<T>> &
     Partial<SdkworkMembershipProblemDetail>;
+  if (typeof candidate.code !== "number") {
+    throw new Error("Invalid SDKWork membership response envelope.");
+  }
   if (candidate.code === 0) {
+    if (!("data" in value)) {
+      throw new Error("Invalid SDKWork membership response envelope.");
+    }
     return candidate.data as T;
   }
-  if (typeof candidate.code === "number" && candidate.code !== 0) {
-    const detail = typeof candidate.detail === "string" && candidate.detail.trim()
-      ? candidate.detail
-      : typeof candidate.title === "string" && candidate.title.trim()
-        ? candidate.title
-        : fallbackMessage;
-    throw new Error(detail);
-  }
-  return (candidate.data ?? value) as T;
+  const detail = typeof candidate.detail === "string" && candidate.detail.trim()
+    ? candidate.detail
+    : typeof candidate.title === "string" && candidate.title.trim()
+      ? candidate.title
+      : fallbackMessage;
+  throw new Error(detail);
 }
 
 export function unwrapSdkworkMembershipPageItems<T>(

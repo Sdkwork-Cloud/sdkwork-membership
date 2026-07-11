@@ -2,13 +2,13 @@
   "schemaVersion": 1,
   "kind": "sdkwork.component.spec",
   "component": {
-    "name": "sdkwork-commerce-membership-repository-sqlx",
+    "name": "sdkwork-membership-repository-sqlx",
     "displayName": "SDKWork Commerce Membership Sqlx",
     "version": "0.1.0",
     "type": "rust-crate",
-    "root": "crates/sdkwork-commerce-membership-repository-sqlx",
+    "root": "crates/sdkwork-membership-repository-sqlx",
     "domain": "commerce",
-    "declaredDomain": null,
+    "declaredDomain": "commerce",
     "capability": "membership",
     "status": "stable",
     "languages": [
@@ -108,7 +108,10 @@
     }
   ],
   "contracts": {
+    "layerRole": "backend-repository",
     "publicExports": [],
+    "providedPorts": [],
+    "requiredPorts": [],
     "runtimeEntrypoints": [
       "Cargo.toml"
     ],
@@ -125,7 +128,7 @@
   },
   "verification": {
     "commands": [
-      "cargo test --manifest-path crates/sdkwork-commerce-membership-repository-sqlx/Cargo.toml"
+      "cargo test --manifest-path crates/sdkwork-membership-repository-sqlx/Cargo.toml"
     ]
   },
   "metadata": {

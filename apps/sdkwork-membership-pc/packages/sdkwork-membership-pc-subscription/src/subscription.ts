@@ -8,10 +8,6 @@ import {
   type SdkworkCouponDiscountInput,
   type SdkworkCouponStatus,
 } from "@sdkwork/promotion-pc-coupon";
-import type {
-  SdkworkPaymentProductType,
-  SdkworkPaymentProductTypeOption,
-} from "@sdkwork/payment-pc-payment";
 
 export type SdkworkSubscriptionAction = "purchase" | "renew" | "upgrade";
 
@@ -31,6 +27,20 @@ export type SdkworkSubscriptionCouponStatus = SdkworkCouponStatus;
 export type SdkworkSubscriptionPaymentMethod = "ALIPAY" | "WECHAT";
 export type SdkworkSubscriptionStage = "checkout" | "plans";
 export type SdkworkSubscriptionPaymentMethodKind = "card" | "other" | "qr" | "wallet";
+export type SdkworkSubscriptionPaymentProductType =
+  | "app"
+  | "h5"
+  | "jsapi"
+  | "miniapp"
+  | "native"
+  | "online_bank"
+  | "pc";
+
+export interface SdkworkSubscriptionPaymentProductTypeOption {
+  available: boolean;
+  code: SdkworkSubscriptionPaymentProductType | string;
+  label: string;
+}
 
 export interface SdkworkSubscriptionPaymentMethodOption {
   available: boolean;
@@ -40,9 +50,9 @@ export interface SdkworkSubscriptionPaymentMethodOption {
   kind: SdkworkSubscriptionPaymentMethodKind;
   label: string;
   paymentMethod: SdkworkSubscriptionPaymentMethod;
-  productTypes: SdkworkPaymentProductTypeOption[];
+  productTypes: SdkworkSubscriptionPaymentProductTypeOption[];
   recommended: boolean;
-  recommendedProductType: SdkworkPaymentProductType;
+  recommendedProductType: SdkworkSubscriptionPaymentProductType;
 }
 
 export interface SdkworkSubscriptionWorkspaceManifest extends SdkworkAppCapabilityManifest {
@@ -161,7 +171,7 @@ function findPaymentMethodByCode(
 }
 
 function resolvePaymentMethodDescription(
-  recommendedProductType: SdkworkPaymentProductType,
+  recommendedProductType: SdkworkSubscriptionPaymentProductType,
 ): string | undefined {
   if (recommendedProductType === "native" || recommendedProductType === "jsapi" || recommendedProductType === "miniapp") {
     return "Scan to pay";

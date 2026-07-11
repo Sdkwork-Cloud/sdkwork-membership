@@ -161,14 +161,12 @@ SELECT
     l.plan_no AS plan_no,
     l.name AS plan_name,
     CAST(l.rank AS INTEGER) AS rank,
-    CAST(COALESCE(ab.payable_amount, pi.amount, '0') AS TEXT) AS total_spent
+    CAST(COALESCE(pkg.price_amount, '0') AS TEXT) AS total_spent
 FROM membership_subscription m
 LEFT JOIN membership_plan l
     ON l.id = m.plan_id
-LEFT JOIN commerce_order_amount_breakdown ab
-    ON ab.order_id = m.source_order_id
-LEFT JOIN commerce_payment_intent pi
-    ON pi.id = m.source_payment_intent_id
+LEFT JOIN membership_package pkg
+    ON pkg.id = m.package_id
 WHERE m.tenant_id = CAST($1 AS TEXT)
   AND (m.organization_id IS NULL OR m.organization_id = CAST($2 AS TEXT))
   AND m.subject_type = 'user'
@@ -2880,18 +2878,8 @@ fn build_purchase_outcome(
     status: &str,
 ) -> AppMembershipPurchaseOutcome {
     AppMembershipPurchaseOutcome {
-        success: status != "failed",
         request_no: command.order_no.clone(),
         order_id: command.order_uuid.clone(),
-        provider_code: String::new(),
-        payment_method: String::new(),
-        payment_product: String::new(),
-        next_action: String::new(),
-        payment_id: String::new(),
-        cashier_url: String::new(),
-        qr_code_payload: String::new(),
-        qr_code_image_url: None,
-        request_payment_payload: None,
         package_id: package.item.id,
         package_name: package.item.name.clone(),
         amount: package.item.price.clone(),
@@ -3306,12 +3294,12 @@ async fn persist_membership_subscription(
             INSERT INTO membership_subscription
                 (id, tenant_id, organization_id, subscription_no, subject_type, subject_id,
                  owner_user_id, plan_id, plan_version_id, package_id, current_period_id,
-                 source_order_id, source_payment_intent_id, status, starts_at, expires_at,
+                 source_order_id, status, starts_at, expires_at,
                  grace_until, cancel_at_period_end, request_no, idempotency_key, created_at, updated_at)
             VALUES
-                (?, CAST(? AS TEXT), CAST(? AS TEXT), ?, 'user', CAST(? AS TEXT),
-                 CAST(? AS TEXT), ?, ?, ?, ?, ?, ?, 'pending_activation', ?, ?,
-                 NULL, 0, ?, ?, ?, ?)
+                ($1, CAST($2 AS TEXT), CAST($3 AS TEXT), $4, 'user', CAST($5 AS TEXT),
+                 CAST($6 AS TEXT), $7, $8, $9, $10, $11, 'pending_activation', $12, $13,
+                 NULL, 0, $14, $15, $16, $17)
             "#,
         )
         .bind(&binding.membership_uuid)
@@ -3325,7 +3313,6 @@ async fn persist_membership_subscription(
         .bind(&package_id)
         .bind(&period_id)
         .bind(&command.order_uuid)
-        .bind(&command.payment_uuid)
         .bind(&binding.period_starts_at)
         .bind(expires_at)
         .bind(&command.order_no)
@@ -3339,23 +3326,22 @@ async fn persist_membership_subscription(
         sqlx::query(
             r#"
             UPDATE membership_subscription
-            SET plan_id = ?,
-                plan_version_id = ?,
-                package_id = ?,
-                current_period_id = ?,
-                source_order_id = ?,
-                source_payment_intent_id = ?,
+            SET plan_id = $1,
+                plan_version_id = $2,
+                package_id = $3,
+                current_period_id = $4,
+                source_order_id = $5,
                 status = 'pending_activation',
-                starts_at = ?,
-                expires_at = ?,
-                request_no = ?,
-                idempotency_key = ?,
-                updated_at = ?
-            WHERE id = ?
-              AND tenant_id = CAST(? AS TEXT)
-              AND (organization_id IS NULL OR organization_id = CAST(? AS TEXT))
+                starts_at = $6,
+                expires_at = $7,
+                request_no = $8,
+                idempotency_key = $9,
+                updated_at = $10
+            WHERE id = $11
+              AND tenant_id = CAST($12 AS TEXT)
+              AND (organization_id IS NULL OR organization_id = CAST($13 AS TEXT))
               AND subject_type = 'user'
-              AND subject_id = CAST(? AS TEXT)
+              AND subject_id = CAST($14 AS TEXT)
             "#,
         )
         .bind(&plan_storage_id)
@@ -3363,7 +3349,6 @@ async fn persist_membership_subscription(
         .bind(&package_id)
         .bind(&period_id)
         .bind(&command.order_uuid)
-        .bind(&command.payment_uuid)
         .bind(&binding.period_starts_at)
         .bind(expires_at)
         .bind(&command.order_no)
@@ -3383,12 +3368,12 @@ async fn persist_membership_subscription(
         INSERT INTO membership_period
             (id, tenant_id, organization_id, period_no, subscription_id, subject_type,
              subject_id, plan_id, plan_version_id, starts_at, ends_at, status,
-             source_order_id, source_payment_intent_id, request_no, idempotency_key,
+             source_order_id, request_no, idempotency_key,
              created_at, updated_at)
         VALUES
-            (?, CAST(? AS TEXT), CAST(? AS TEXT), ?, ?, 'user',
-             CAST(? AS TEXT), ?, ?, ?, ?, 'pending_activation',
-             ?, ?, ?, ?, ?, ?)
+            ($1, CAST($2 AS TEXT), CAST($3 AS TEXT), $4, $5, 'user',
+             CAST($6 AS TEXT), $7, $8, $9, $10, 'pending_activation',
+             $11, $12, $13, $14, $15)
         "#,
     )
     .bind(&period_id)
@@ -3402,9 +3387,8 @@ async fn persist_membership_subscription(
     .bind(&binding.period_starts_at)
     .bind(expires_at)
     .bind(&command.order_uuid)
-    .bind(&command.payment_uuid)
     .bind(&command.order_no)
-    .bind(&command.out_trade_no)
+    .bind(format!("{}-period", command.idempotency_key))
     .bind(&command.requested_at)
     .bind(&command.requested_at)
     .execute(&mut **tx)
@@ -3449,9 +3433,9 @@ async fn insert_entitlements(
                  source_type, source_id, grant_policy, granted_quantity, status, starts_at,
                  expires_at, request_no, idempotency_key, created_at, updated_at)
             VALUES
-                (?, CAST(? AS TEXT), CAST(? AS TEXT), ?, ?, 'user', CAST(? AS TEXT),
-                 'membership_subscription', ?, 'membership_plan', ?, 'pending', ?, ?,
-                 ?, ?, ?, ?)
+                ($1, CAST($2 AS TEXT), CAST($3 AS TEXT), $4, $5, 'user', CAST($6 AS TEXT),
+                 'membership_subscription', $7, 'membership_plan', $8, 'pending', $9, $10,
+                 $11, $12, $13, $14)
             "#,
         )
         .bind(&grant_id)
@@ -3465,7 +3449,7 @@ async fn insert_entitlements(
         .bind(&command.requested_at)
         .bind(expires_at)
         .bind(format!("{}-grant-{}", command.order_no, index + 1))
-        .bind(&command.out_trade_no)
+        .bind(format!("{}-grant-{}", command.idempotency_key, index + 1))
         .bind(&command.requested_at)
         .bind(&command.requested_at)
         .execute(&mut **tx)
@@ -3489,9 +3473,9 @@ async fn insert_entitlements(
                  subject_type, subject_id, direction, amount, balance_after, business_type,
                  source_type, source_id, request_no, idempotency_key, occurred_at, created_at)
             VALUES
-                (?, CAST(? AS TEXT), CAST(? AS TEXT), ?, ?, ?, ?,
-                 'user', CAST(? AS TEXT), 'credit', ?, ?, 'membership_grant',
-                 'membership_subscription', ?, ?, ?, ?, ?)
+                ($1, CAST($2 AS TEXT), CAST($3 AS TEXT), $4, $5, $6, $7,
+                 'user', CAST($8 AS TEXT), 'credit', $9, $10, 'membership_grant',
+                 'membership_subscription', $11, $12, $13, $14, $15)
             "#,
         )
         .bind(&ledger_id)
@@ -3506,7 +3490,7 @@ async fn insert_entitlements(
         .bind(&account.balance_after)
         .bind(&binding.membership_uuid)
         .bind(format!("{}-ledger-{}", command.order_no, index + 1))
-        .bind(&command.out_trade_no)
+        .bind(format!("{}-ledger-{}", command.idempotency_key, index + 1))
         .bind(&command.requested_at)
         .bind(&command.requested_at)
         .execute(&mut **tx)
@@ -3537,8 +3521,8 @@ async fn upsert_entitlement_account(
              subject_id, total_granted, total_used, balance, status, expires_at,
              version, created_at, updated_at)
         VALUES
-            (?, CAST(? AS TEXT), CAST(? AS TEXT), ?, ?, 'user',
-             CAST(? AS TEXT), ?, '0', ?, 'pending', ?, 0, ?, ?)
+            ($1, CAST($2 AS TEXT), CAST($3 AS TEXT), $4, $5, 'user',
+             CAST($6 AS TEXT), $7, '0', $8, 'pending', $9, 0, $10, $11)
         ON CONFLICT(tenant_id, subject_type, subject_id, benefit_id) DO UPDATE SET
             total_granted = CAST((CAST(entitlement_account.total_granted AS INTEGER) + CAST(excluded.total_granted AS INTEGER)) AS TEXT),
             balance = CAST((CAST(entitlement_account.balance AS INTEGER) + CAST(excluded.balance AS INTEGER)) AS TEXT),
@@ -3573,10 +3557,10 @@ async fn upsert_entitlement_account(
         r#"
         SELECT id, balance
         FROM entitlement_account
-        WHERE tenant_id = CAST(? AS TEXT)
+        WHERE tenant_id = CAST($1 AS TEXT)
           AND subject_type = 'user'
-          AND subject_id = CAST(? AS TEXT)
-          AND benefit_id = ?
+          AND subject_id = CAST($2 AS TEXT)
+          AND benefit_id = $3
         "#,
     )
     .bind(command.subject.tenant_id)
@@ -4106,7 +4090,6 @@ async fn claim_daily_reward_postgres(
     Ok(AppMembershipDailyRewardResponse {
         reward_points,
         claimed_at: Some(requested_at),
-        message: format!("claimed {reward_points} points for day {new_consecutive}"),
         consecutive_days: new_consecutive,
     })
 }

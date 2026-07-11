@@ -4,7 +4,7 @@
   "applicationCode": "membership",
   "packageName": "sdkwork-membership-gateway-assembly",
   "crateDir": "crates/sdkwork-membership-gateway-assembly",
-  "generatedAt": "2026-06-30T17:26:09.652Z",
+  "generatedAt": "2026-07-08T01:34:15.092Z",
   "routeCrates": [
     {
       "packageName": "sdkwork-routes-membership-app-api",

@@ -2597,9 +2597,6 @@
           "couponId": {
             "type": "string"
           },
-          "paymentMethod": {
-            "type": "string"
-          },
           "idempotencyKey": {
             "type": "string",
             "maxLength": 64
@@ -2954,7 +2951,6 @@
         "additionalProperties": false,
         "required": [
           "rewardPoints",
-          "message",
           "consecutiveDays"
         ],
         "description": "Membership daily reward response.",
@@ -2964,9 +2960,6 @@
             "format": "int64"
           },
           "claimedAt": {
-            "type": "string"
-          },
-          "message": {
             "type": "string"
           },
           "consecutiveDays": {
@@ -3018,16 +3011,8 @@
         "type": "object",
         "additionalProperties": false,
         "required": [
-          "success",
           "requestNo",
           "orderId",
-          "providerCode",
-          "paymentMethod",
-          "paymentProduct",
-          "nextAction",
-          "paymentId",
-          "cashierUrl",
-          "qrCodePayload",
           "packageId",
           "packageName",
           "amount",
@@ -3036,11 +3021,8 @@
           "targetPlanName",
           "status"
         ],
-        "description": "Membership purchase outcome.",
+        "description": "Membership reservation outcome. Order and payment modules own cashier and payment execution fields.",
         "properties": {
-          "success": {
-            "type": "boolean"
-          },
           "requestNo": {
             "type": "string",
             "description": "Human-readable order number for cashier display."
@@ -3048,33 +3030,6 @@
           "orderId": {
             "type": "string",
             "description": "Commerce order UUID (canonical resource identifier)."
-          },
-          "providerCode": {
-            "type": "string"
-          },
-          "paymentMethod": {
-            "type": "string"
-          },
-          "paymentProduct": {
-            "type": "string"
-          },
-          "nextAction": {
-            "type": "string"
-          },
-          "paymentId": {
-            "type": "string"
-          },
-          "cashierUrl": {
-            "type": "string"
-          },
-          "qrCodePayload": {
-            "type": "string"
-          },
-          "qrCodeImageUrl": {
-            "type": "string"
-          },
-          "requestPaymentPayload": {
-            "type": "string"
           },
           "packageId": {
             "type": "integer",

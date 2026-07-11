@@ -40,8 +40,7 @@
     "order -> payment (in-process OwnerOrderPaymentStore, webhook ingest, confirm payment ports)",
     "order -> membership (MembershipPurchaseFulfillmentPort or HTTP adapter at gateway assembly, after payment settlement)",
     "membership -> order-app-sdk (client / service facade consumer only)",
-    "membership -> payment-app-sdk (cashier reads consumer only)",
-    "payment -> commerce_order (read-only FK validation SQL in payment-repository-sqlx only)"
+    "membership -> payment-app-sdk (optional cashier read/redirect consumer only; not payment execution)"
   ],
   "forbiddenDependencies": [
     {
@@ -67,7 +66,7 @@
     {
       "from": "sdkwork-membership",
       "to": "sdkwork-payment-service",
-      "reason": "Membership must not orchestrate payment execution; order owns orders.pay"
+      "reason": "Membership must not orchestrate payment execution; order owns orders.payments.create"
     }
   ],
   "forbiddenProductionPatterns": [
@@ -79,7 +78,7 @@
   "canonicalMembershipPurchaseFlow": [
     "order checkout or membership-subject order create (subject=membership) on order app-api",
     "membership reserve pending_activation subscription linked to orderId (membership app-api or order create port)",
-    "orders.pay",
+    "orders.payments.create(orderId, { paymentMethod })",
     "paymentParams.cashierUrl -> cashier UI",
     "PSP webhook -> POST /app/v3/api/orders/payments/webhooks/{providerCode}",
     "order settlement -> payment confirmed",

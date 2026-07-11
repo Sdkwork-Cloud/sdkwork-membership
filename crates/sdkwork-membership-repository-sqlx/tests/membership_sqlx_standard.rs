@@ -1,7 +1,7 @@
 //! Source-inspection guards for the membership SQLx crate.
 //!
 //! These tests verify that legacy naming (VIP, level, group_id, compat query
-//! aliases, payment method aliases) does not regress into the codebase. They do
+//! aliases, payment artifacts) does not regress into the codebase. They do
 //! not require a database and run as part of `cargo test --workspace`.
 
 #[test]
@@ -236,17 +236,21 @@ fn commerce_membership_seed_covers_authenticated_frontend_flows_without_local_or
         seed_source.contains("'100001'") && seed_source.contains("'1'"),
         "database seed must cover the demo tenant 100001 and bootstrap user 1",
     );
-    assert!(
-        seed_source.contains("INSERT OR IGNORE INTO commerce_payment_method")
-            && seed_source.contains("provider_code")
-            && seed_source.contains("'wechat_pay'"),
-        "database seed must initialize standard wechat_pay payment method data for checkout",
-    );
-    assert!(
-        !seed_source.contains("INSERT OR IGNORE INTO commerce_order")
-            && !seed_source.contains("INSERT INTO commerce_order"),
-        "membership seed must not create commerce_order rows; order owns order creation",
-    );
+
+    for table in [
+        "commerce_order",
+        "commerce_order_item",
+        "commerce_order_amount_breakdown",
+        "commerce_payment_method",
+        "commerce_payment_intent",
+        "commerce_payment_attempt",
+    ] {
+        assert!(
+            !seed_source.contains(&format!("INSERT OR IGNORE INTO {table}"))
+                && !seed_source.contains(&format!("INSERT INTO {table}")),
+            "membership seed must not initialize {table}; order/payment own that domain",
+        );
+    }
 }
 
 #[test]
@@ -276,7 +280,6 @@ fn commerce_membership_baselines_create_seeded_frontend_flow_tables() {
         "entitlement_ledger_entry",
         "commerce_membership_privilege_usage",
         "commerce_membership_daily_reward",
-        "commerce_payment_method",
     ] {
         let create_statement = format!("CREATE TABLE IF NOT EXISTS {table}");
         assert!(
@@ -290,15 +293,21 @@ fn commerce_membership_baselines_create_seeded_frontend_flow_tables() {
     }
 
     for baseline in [sqlite_baseline, postgres_baseline] {
-        assert!(
-            !baseline.contains("CREATE TABLE IF NOT EXISTS commerce_order ("),
-            "membership baseline must not create commerce_order; order owns order persistence",
-        );
+        for table in [
+            "commerce_order",
+            "commerce_order_item",
+            "commerce_order_amount_breakdown",
+        ] {
+            assert!(
+                !baseline.contains(&format!("CREATE TABLE IF NOT EXISTS {table}")),
+                "membership baseline must not create {table}; order owns order persistence",
+            );
+        }
     }
 }
 
 #[test]
-fn commerce_membership_baselines_align_payment_checkout_support_tables() {
+fn commerce_membership_baselines_exclude_order_and_payment_owned_tables() {
     let sqlite_baseline =
         include_str!("../../../database/ddl/baseline/sqlite/0001_membership_baseline.sql")
             .replace("\r\n", "\n");
@@ -310,33 +319,17 @@ fn commerce_membership_baselines_align_payment_checkout_support_tables() {
         ("sqlite baseline", sqlite_baseline),
         ("postgres baseline", postgres_baseline),
     ] {
-        for column in [
-            "provider_code",
-            "display_name",
-            "sort_order",
-            "scope",
-            "currency_code",
-            "idempotency_key",
-            "version",
-            "deleted_at",
+        for table in [
+            "commerce_order",
+            "commerce_order_item",
+            "commerce_order_amount_breakdown",
+            "commerce_payment_method",
+            "commerce_payment_intent",
+            "commerce_payment_attempt",
         ] {
             assert!(
-                baseline.contains(column),
-                "{label} must define commerce_payment_method.{column} for order payment checkout",
-            );
-        }
-
-        for column in [
-            "payment_intent_id",
-            "provider_code",
-            "out_trade_no",
-            "request_no",
-            "idempotency_key",
-            "deleted_at",
-        ] {
-            assert!(
-                baseline.contains(column),
-                "{label} must define commerce_payment_attempt.{column} for order payment checkout",
+                !baseline.contains(&format!("CREATE TABLE IF NOT EXISTS {table}")),
+                "{label} must not create {table}; the owning order/payment modules initialize it",
             );
         }
     }

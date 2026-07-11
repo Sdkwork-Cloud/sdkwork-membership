@@ -8,16 +8,6 @@ INSERT OR IGNORE INTO commerce_product_spu (
   'seed-product-membership', '100001', '0', 'membership-catalog', 'Membership Catalog', 'Membership Catalog', 'active', datetime('now'), datetime('now')
 );
 
-INSERT OR IGNORE INTO commerce_payment_method (
-  id, tenant_id, organization_id, method_key, display_name, provider_code,
-  status, sort_order, scope, currency_code, metadata, request_no,
-  idempotency_key, version, created_at, updated_at
-) VALUES (
-  'seed-payment-method-wechat-pay', '100001', '0', 'wechat_pay', 'WeChat Pay', 'wechat_pay',
-  'active', 1, 'tenant', 'CNY', '{}', 'seed-payment-method-wechat-pay',
-  'seed-payment-method-wechat-pay', 0, datetime('now'), datetime('now')
-);
-
 INSERT OR IGNORE INTO membership_plan (
   id, tenant_id, organization_id, plan_no, plan_code, name, rank, description, status, created_at, updated_at
 ) VALUES
@@ -129,24 +119,24 @@ INSERT OR IGNORE INTO membership_plan_benefit (
 INSERT OR IGNORE INTO membership_subscription (
   id, tenant_id, organization_id, subscription_no, subject_type, subject_id,
   owner_user_id, plan_id, plan_version_id, package_id, current_period_id,
-  source_order_id, source_payment_intent_id, status, starts_at, expires_at,
+  source_order_id, status, starts_at, expires_at,
   grace_until, cancel_at_period_end, request_no, idempotency_key, created_at, updated_at
 ) VALUES (
   'seed-membership-subscription-user-1', '100001', '0', 'seed-membership-subscription-user-1', 'user', '1',
   '1', 'plan-standard', 'plan-standard-v1', 'package-standard-annual', 'seed-membership-period-user-1',
-  NULL, NULL, 'active', datetime('now', '-15 days'), datetime('now', '+350 days'),
+  NULL, 'active', datetime('now', '-15 days'), datetime('now', '+350 days'),
   NULL, 0, 'seed-membership-user-1', 'seed-membership-user-1', datetime('now', '-15 days'), datetime('now')
 );
 
 INSERT OR IGNORE INTO membership_period (
   id, tenant_id, organization_id, period_no, subscription_id, subject_type,
   subject_id, plan_id, plan_version_id, starts_at, ends_at, status,
-  source_order_id, source_payment_intent_id, request_no, idempotency_key,
+  source_order_id, request_no, idempotency_key,
   created_at, updated_at
 ) VALUES (
   'seed-membership-period-user-1', '100001', '0', 'seed-membership-period-user-1', 'seed-membership-subscription-user-1', 'user',
   '1', 'plan-standard', 'plan-standard-v1', datetime('now', '-15 days'), datetime('now', '+350 days'), 'active',
-  NULL, NULL, 'seed-membership-period-user-1', 'seed-membership-period-user-1', datetime('now', '-15 days'), datetime('now')
+  NULL, 'seed-membership-period-user-1', 'seed-membership-period-user-1', datetime('now', '-15 days'), datetime('now')
 );
 
 INSERT OR IGNORE INTO commerce_account (

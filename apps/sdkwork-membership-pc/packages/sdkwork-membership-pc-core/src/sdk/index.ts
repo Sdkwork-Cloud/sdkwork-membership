@@ -2,8 +2,8 @@ import { sdkworkMembershipPcRuntimeIdentity } from "../index.js";
 
 /**
  * The SDK family that backs the membership PC application. The composed
- * TypeScript facade is exposed as `@sdkwork/membership-app-sdk` once
- * generated; until then the shell consumes `@sdkwork/membership-service`.
+ * TypeScript facade is exposed as `@sdkwork/membership-app-sdk`; UI packages
+ * consume it through `@sdkwork/membership-service`.
  */
 export const sdkworkMembershipPcSdkFamily = "sdkwork-membership-app-sdk" as const;
 

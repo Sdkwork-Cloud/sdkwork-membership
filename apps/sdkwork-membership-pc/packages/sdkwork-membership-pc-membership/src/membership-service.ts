@@ -169,17 +169,13 @@ interface RemoteMembershipPackage {
 interface RemoteMembershipPurchaseResult {
   amount?: number | string;
   cashierUrl?: string;
-  cashier_url?: string;
   durationDays?: number | string;
   orderId?: string;
   packageId?: number | string;
   packageName?: string;
   qrCode?: string;
-  qrCodePayload?: string;
-  qr_code_payload?: string;
   requestNo?: string;
   status?: string;
-  success?: boolean;
   targetLevelName?: string;
   targetPlanName?: string;
 }
@@ -284,13 +280,13 @@ function mapPurchaseResult(result: RemoteMembershipPurchaseResult | null | undef
   const statusStr = toSdkworkMembershipOptionalString(result?.status);
   return {
     amountCny: toNullableSdkworkMembershipNumber(result?.amount),
-    cashierUrl: toSdkworkMembershipOptionalString(result?.cashierUrl ?? result?.cashier_url),
+    cashierUrl: toSdkworkMembershipOptionalString(result?.cashierUrl),
     durationDays: toNullableSdkworkMembershipNumber(result?.durationDays),
     orderId: toSdkworkMembershipOptionalString(result?.orderId ?? result?.requestNo),
     packageId: toNullableSdkworkMembershipNumber(result?.packageId),
     packageName: toSdkworkMembershipOptionalString(result?.packageName),
-    qrCode: toSdkworkMembershipOptionalString(result?.qrCode ?? result?.qrCodePayload ?? result?.qr_code_payload),
-    status: result?.success === false ? "failed" : toSdkworkMembershipMutationStatus(statusStr),
+    qrCode: toSdkworkMembershipOptionalString(result?.qrCode),
+    status: toSdkworkMembershipMutationStatus(statusStr),
     targetLevelName: toSdkworkMembershipOptionalString(result?.targetLevelName ?? result?.targetPlanName),
   };
 }
@@ -352,7 +348,6 @@ async function runPurchaseMutation(
     couponId: toSdkworkMembershipOptionalString(input.couponId),
     orderId,
     packageId: input.packageId,
-    paymentMethod,
     requestNo,
   };
   const reserve = unwrapSdkworkMembershipResponse<RemoteMembershipPurchaseResult>(
@@ -371,11 +366,11 @@ async function runPurchaseMutation(
   );
 
   const payPayload = unwrapSdkworkMembershipResponse<Record<string, unknown>>(
-    await orderAppService.orders.pay(
+    await orderAppService.orders.payments.create(
       orderId,
       { paymentMethod },
       createSdkworkOrderWriteCommandHeaders(
-        "orders.pay",
+        "orders.payments.create",
         { paymentMethod },
         `membership-pay:${orderId}`,
       ),
@@ -384,15 +379,19 @@ async function runPurchaseMutation(
   );
   const paymentParams = (payPayload.paymentParams ?? {}) as Record<string, unknown>;
   const cashierUrl = toSdkworkMembershipOptionalString(paymentParams.cashierUrl);
+  const qrCode = toSdkworkMembershipOptionalString(
+    paymentParams.qrCode
+      ?? paymentParams.qrCodePayload
+      ?? paymentParams.codeUrl,
+  );
 
   return mapPurchaseResult({
     ...reserve,
-    cashierUrl: cashierUrl ?? reserve.cashierUrl,
+    cashierUrl,
     orderId,
-    qr_code_payload: cashierUrl ?? reserve.qrCodePayload ?? reserve.qr_code_payload,
+    qrCode,
     requestNo,
     status: reserve.status ?? "pending",
-    success: reserve.success !== false,
   });
 }
 

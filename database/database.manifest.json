@@ -5,12 +5,17 @@
   "serviceCode": "MEMBERSHIP",
   "displayName": "Membership Database",
   "owner": "sdkwork-membership",
-  "engines": ["postgres", "sqlite"],
+  "engines": [
+    "postgres",
+    "sqlite"
+  ],
   "defaultEngine": "postgres",
   "tablePrefix": "commerce_",
-  "contractVersion": "1.1.0",
+  "contractVersion": "1.0.0",
   "baselineStrategy": "baseline-plus-migrations",
-  "modules": ["membership_extension"],
+  "modules": [
+    "membership_extension"
+  ],
   "lifecycle": {
     "autoMigrate": true,
     "seedOnBoot": false,
@@ -25,7 +30,9 @@
       "ru-RU",
       "ko-KR"
     ],
-    "activeSeedLocales": ["zh-CN"],
+    "activeSeedLocales": [
+      "zh-CN"
+    ],
     "driftCheckIntervalSec": 300
   },
   "paths": {

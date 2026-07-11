@@ -4,6 +4,7 @@ import test from "node:test";
 import {
   createSdkworkMembershipListQuery,
   unwrapSdkworkMembershipPageItems,
+  unwrapSdkworkMembershipResponse,
 } from "../../apps/sdkwork-membership-common/packages/sdkwork-membership-service/src/list-envelope.ts";
 
 test("unwrapSdkworkMembershipPageItems extracts items from SdkWorkPageData", () => {
@@ -31,4 +32,24 @@ test("createSdkworkMembershipListQuery defaults page size to 20", () => {
     page: 1,
     page_size: 20,
   });
+});
+
+test("unwrapSdkworkMembershipResponse rejects legacy string-code envelopes", () => {
+  assert.throws(
+    () =>
+      unwrapSdkworkMembershipResponse({
+        code: "0",
+        data: { id: "membership-1" },
+        traceId: "trace-legacy",
+      }),
+    /Invalid SDKWork membership response envelope/u,
+  );
+});
+
+test("unwrapSdkworkMembershipResponse does not unwrap objects that only contain data", () => {
+  const payload = {
+    data: { id: "domain-object" },
+  };
+
+  assert.equal(unwrapSdkworkMembershipResponse(payload), payload);
 });

@@ -414,7 +414,6 @@ pub fn builtin_daily_reward_claim() -> AppMembershipDailyRewardResponse {
     AppMembershipDailyRewardResponse {
         reward_points: 50,
         claimed_at: Some("2025-01-01T08:00:00Z".to_string()),
-        message: "每日积分领取成功".to_string(),
         consecutive_days: 1,
     }
 }

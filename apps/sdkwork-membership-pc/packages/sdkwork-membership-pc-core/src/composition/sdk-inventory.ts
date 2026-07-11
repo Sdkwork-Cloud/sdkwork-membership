@@ -7,7 +7,7 @@ export interface SdkworkMembershipPcSdkDescriptor {
   readonly family: string;
   readonly surface: "app-api" | "backend-api" | "open-api";
   readonly credentialMode: "authenticated-app-api" | "authenticated-backend-api" | "anonymous";
-  readonly status: "available" | "pending-generation";
+  readonly status: "available";
 }
 
 const SDKWORK_MEMBERSHIP_PC_SDK_INVENTORY: readonly SdkworkMembershipPcSdkDescriptor[] = [
@@ -16,7 +16,7 @@ const SDKWORK_MEMBERSHIP_PC_SDK_INVENTORY: readonly SdkworkMembershipPcSdkDescri
     family: "sdkwork-membership-app-sdk",
     surface: "app-api",
     credentialMode: "authenticated-app-api",
-    status: "pending-generation",
+    status: "available",
   },
   {
     composedFacade: "@sdkwork/iam-app-sdk",

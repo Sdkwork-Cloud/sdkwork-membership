@@ -17,7 +17,6 @@
     "generated": true,
     "private": false,
     "manifests": [
-      ".sdkwork-assembly.json",
       "sdk-manifest.json"
     ]
   },
@@ -31,6 +30,11 @@
       "file": "SDK_WORKSPACE_GENERATION_SPEC.md",
       "path": "../../../sdkwork-specs/SDK_WORKSPACE_GENERATION_SPEC.md",
       "purpose": "SDK workspace layout, authority OpenAPI, derived input, and generated output rules."
+    },
+    {
+      "file": "SDK_MANIFEST_SPEC.md",
+      "path": "../../../sdkwork-specs/SDK_MANIFEST_SPEC.md",
+      "purpose": "Family-root SDK metadata source of truth for ownership, discovery, naming, and dependencies."
     },
     {
       "file": "API_SPEC.md",
@@ -68,7 +72,6 @@
     },
     "publicExports": [],
     "runtimeEntrypoints": [
-      ".sdkwork-assembly.json",
       "sdk-manifest.json"
     ],
     "routeManifest": null,
@@ -80,7 +83,6 @@
     ],
     "events": [],
     "configKeys": [
-      ".sdkwork-assembly.json",
       "sdk-manifest.json"
     ]
   },

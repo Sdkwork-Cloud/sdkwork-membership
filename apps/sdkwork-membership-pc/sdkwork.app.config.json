@@ -16,6 +16,7 @@
   },
   "backend": {
     "profileKey": "backend-root-admin",
+    "appId": "sdkwork-membership-pc",
     "ownerMode": "tenant",
     "grantMode": "current",
     "platform": "WEB",
@@ -29,6 +30,41 @@
     "deliveryModes": ["WEB_URL"],
     "supportedDeploymentProfiles": ["standalone", "cloud"],
     "defaultDeploymentProfile": "standalone"
+  },
+  "envBindings": {
+    "schemaVersion": 2,
+    "family": "web",
+    "runtime": "vite-react",
+    "preset": "vite-react-standard",
+    "outputStrategy": "dotenv-overlay",
+    "platform": "web",
+    "ownerMode": "tenant",
+    "grantMode": "current",
+    "tokenPlatform": "WEB",
+    "variables": [
+      {
+        "name": "VITE_SDKWORK_MEMBERSHIP_PC_APP_API_BASE_URL",
+        "required": true,
+        "tracked": true,
+        "surface": "app-api",
+        "sdkFamily": "sdkwork-membership-app-sdk"
+      },
+      {
+        "name": "VITE_SDKWORK_ORDER_APP_API_BASE_URL",
+        "required": true,
+        "tracked": true,
+        "surface": "app-api",
+        "sdkFamily": "sdkwork-order-app-sdk"
+      }
+    ],
+    "sdkBaseUrls": {
+      "appApiBaseUrlKey": "VITE_SDKWORK_MEMBERSHIP_PC_APP_API_BASE_URL",
+      "dependencySdkBaseUrlKeys": {
+        "sdkwork-order-app-sdk": {
+          "appApiBaseUrlKey": "VITE_SDKWORK_ORDER_APP_API_BASE_URL"
+        }
+      }
+    }
   },
   "publish": {
     "config": {

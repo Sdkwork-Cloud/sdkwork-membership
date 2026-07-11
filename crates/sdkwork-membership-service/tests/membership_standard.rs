@@ -119,7 +119,6 @@ fn membership_activation_requires_paid_order_and_idempotency() {
     let activation = MembershipActivationDraft::new(
         "100001",
         "order-1",
-        "payment-1",
         "user-1",
         "membership-plan-pro",
         "idem-activate-1",
@@ -127,10 +126,9 @@ fn membership_activation_requires_paid_order_and_idempotency() {
     .unwrap();
 
     assert_eq!(activation.owner_user_id, "user-1");
-    assert_eq!(activation.payment_id, "payment-1");
+    assert_eq!(activation.order_id, "order-1");
     assert!(MembershipActivationDraft::new(
         "100001",
-        "order-1",
         "",
         "user-1",
         "membership-plan-pro",
@@ -313,23 +311,12 @@ fn membership_package_queries_keep_group_and_region_independent() {
 }
 
 #[test]
-fn membership_purchase_uses_package_id_and_payment_method_only() {
-    let purchase =
-        MembershipPurchaseDraft::new("100001", "0", "user-1", 303, Some("wechat_pay"), None)
-            .unwrap();
+fn membership_purchase_reserves_package_without_payment_method() {
+    let purchase = MembershipPurchaseDraft::new("100001", "0", "user-1", 303, None).unwrap();
 
     assert_eq!(purchase.package_id, 303);
-    assert_eq!(purchase.payment_method.as_deref(), Some("wechat_pay"));
-    assert!(
-        MembershipPurchaseDraft::new("100001", "0", "user-1", 0, Some("wechat_pay"), None).is_err()
-    );
-    for legacy_method in ["wechat", "wechatpay", "stripe"] {
-        assert!(
-            MembershipPurchaseDraft::new("100001", "0", "user-1", 303, Some(legacy_method), None)
-                .is_err(),
-            "membership purchase must reject legacy payment method alias {legacy_method}"
-        );
-    }
+    assert!(purchase.coupon_id.is_none());
+    assert!(MembershipPurchaseDraft::new("100001", "0", "user-1", 0, None).is_err());
 }
 
 #[test]

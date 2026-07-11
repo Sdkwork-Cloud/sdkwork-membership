@@ -1,0 +1,194 @@
+{
+  "schemaVersion": 1,
+  "kind": "sdkwork.component.spec",
+  "component": {
+    "name": "@sdkwork/membership-pc-shell",
+    "displayName": "SDKWork Membership PC Shell",
+    "version": "0.1.0",
+    "type": "react-package",
+    "root": "apps/sdkwork-membership-pc/packages/sdkwork-membership-pc-shell",
+    "domain": "commerce",
+    "capability": "membership-shell",
+    "surface": "app",
+    "status": "ready",
+    "languages": [
+      "typescript",
+      "react"
+    ],
+    "generated": false,
+    "private": true,
+    "manifests": [
+      "package.json"
+    ]
+  },
+  "canonicalSpecs": [
+    {
+      "file": "COMPONENT_SPEC.md",
+      "path": "../../../../../../sdkwork-specs/COMPONENT_SPEC.md",
+      "purpose": "Local component specs directory and manifest rules."
+    },
+    {
+      "file": "APP_PC_ARCHITECTURE_SPEC.md",
+      "path": "../../../../../../sdkwork-specs/APP_PC_ARCHITECTURE_SPEC.md",
+      "purpose": "PC application root package taxonomy and shell responsibilities."
+    },
+    {
+      "file": "APP_PC_REACT_UI_SPEC.md",
+      "path": "../../../../../../sdkwork-specs/APP_PC_REACT_UI_SPEC.md",
+      "purpose": "App PC React package split and app SDK boundary rules."
+    },
+    {
+      "file": "UI_ARCHITECTURE_SPEC.md",
+      "path": "../../../../../../sdkwork-specs/UI_ARCHITECTURE_SPEC.md",
+      "purpose": "UI architecture selection and SDK surface boundary rules."
+    },
+    {
+      "file": "FRONTEND_SPEC.md",
+      "path": "../../../../../../sdkwork-specs/FRONTEND_SPEC.md",
+      "purpose": "Frontend shell, service, and SDK composition rules."
+    },
+    {
+      "file": "APP_SDK_INTEGRATION_SPEC.md",
+      "path": "../../../../../../sdkwork-specs/APP_SDK_INTEGRATION_SPEC.md",
+      "purpose": "App SDK runtime construction and TokenManager closure rules."
+    },
+    {
+      "file": "CONFIG_SPEC.md",
+      "path": "../../../../../../sdkwork-specs/CONFIG_SPEC.md",
+      "purpose": "Runtime config and SDK base URL rules."
+    },
+    {
+      "file": "CODE_STYLE_SPEC.md",
+      "path": "../../../../../../sdkwork-specs/CODE_STYLE_SPEC.md",
+      "purpose": "Authored source structure and generated code boundaries."
+    },
+    {
+      "file": "NAMING_SPEC.md",
+      "path": "../../../../../../sdkwork-specs/NAMING_SPEC.md",
+      "purpose": "Canonical SDKWork naming rules."
+    },
+    {
+      "file": "TYPESCRIPT_CODE_SPEC.md",
+      "path": "../../../../../../sdkwork-specs/TYPESCRIPT_CODE_SPEC.md",
+      "purpose": "TypeScript package and public export rules."
+    },
+    {
+      "file": "FRONTEND_CODE_SPEC.md",
+      "path": "../../../../../../sdkwork-specs/FRONTEND_CODE_SPEC.md",
+      "purpose": "Frontend authored source structure."
+    },
+    {
+      "file": "TEST_SPEC.md",
+      "path": "../../../../../../sdkwork-specs/TEST_SPEC.md",
+      "purpose": "Frontend shell and SDK integration verification rules."
+    }
+  ],
+  "contracts": {
+    "layerRole": "frontend-shell",
+    "publicExports": [
+      "."
+    ],
+    "providedPorts": [
+      {
+        "name": "membershipPcShell",
+        "export": "."
+      }
+    ],
+    "requiredPorts": [
+      {
+        "name": "membershipPcCore",
+        "export": ".",
+        "package": "@sdkwork/membership-pc-core"
+      },
+      {
+        "name": "membershipFeature",
+        "export": ".",
+        "package": "@sdkwork/membership-pc-membership"
+      },
+      {
+        "name": "subscriptionFeature",
+        "export": ".",
+        "package": "@sdkwork/membership-pc-subscription"
+      },
+      {
+        "name": "membershipService",
+        "export": ".",
+        "package": "@sdkwork/membership-service"
+      }
+    ],
+    "runtimeEntrypoints": [
+      "MembershipAppShell"
+    ],
+    "routeManifest": null,
+    "sdkClients": [],
+    "sdkDependencies": [
+      {
+        "workspace": "sdkwork-membership-app-sdk",
+        "sdkFamily": "sdkwork-membership-app-sdk",
+        "apiAuthority": "sdkwork-membership-app-api",
+        "surface": "app-api",
+        "apiPrefix": "/app/v3/api",
+        "required": true,
+        "dependencyMode": "service-facade",
+        "packageByLanguage": {
+          "typescript": "@sdkwork/membership-app-sdk"
+        }
+      },
+      {
+        "workspace": "sdkwork-order-app-sdk",
+        "sdkFamily": "sdkwork-order-app-sdk",
+        "apiAuthority": "sdkwork-order-app-api",
+        "surface": "app-api",
+        "apiPrefix": "/app/v3/api",
+        "required": true,
+        "dependencyMode": "service-facade",
+        "packageByLanguage": {
+          "typescript": "@sdkwork/order-app-sdk"
+        }
+      }
+    ],
+    "permissionComposition": {},
+    "dependencyApiExports": [],
+    "dependencyApiSurfaces": [
+      {
+        "workspace": "sdkwork-membership-app-sdk",
+        "sdkFamily": "sdkwork-membership-app-sdk",
+        "apiAuthority": "sdkwork-membership-app-api",
+        "surface": "app-api",
+        "apiPrefix": "/app/v3/api",
+        "runtimeMode": "external-service",
+        "sameOriginAllowed": false,
+        "requiredBaseUrlKey": "VITE_SDKWORK_MEMBERSHIP_PC_APP_API_BASE_URL",
+        "coverage": "verified"
+      },
+      {
+        "workspace": "sdkwork-order-app-sdk",
+        "sdkFamily": "sdkwork-order-app-sdk",
+        "apiAuthority": "sdkwork-order-app-api",
+        "surface": "app-api",
+        "apiPrefix": "/app/v3/api",
+        "runtimeMode": "external-service",
+        "sameOriginAllowed": false,
+        "requiredBaseUrlKey": "VITE_SDKWORK_ORDER_APP_API_BASE_URL",
+        "coverage": "verified"
+      }
+    ],
+    "events": [],
+    "configKeys": [
+      "VITE_SDKWORK_MEMBERSHIP_PC_APP_API_BASE_URL",
+      "VITE_SDKWORK_ORDER_APP_API_BASE_URL"
+    ]
+  },
+  "verification": {
+    "commands": [
+      "pnpm typecheck",
+      "pnpm test:node",
+      "pnpm test:vitest"
+    ]
+  },
+  "metadata": {
+    "managedBy": "sdkwork-membership",
+    "standardVersion": "2026-07-08",
+    "boundary": "The shell composes frontend routes and service bootstrap only. Membership and order API calls stay behind composed SDK-backed services."
+  }
+}

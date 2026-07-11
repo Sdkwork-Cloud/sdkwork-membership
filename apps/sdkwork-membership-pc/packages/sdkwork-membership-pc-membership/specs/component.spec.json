@@ -144,8 +144,27 @@
     }
   ],
   "contracts": {
+    "layerRole": "frontend-feature",
     "publicExports": [
       "."
+    ],
+    "providedPorts": [
+      {
+        "name": "membershipFeature",
+        "export": "."
+      }
+    ],
+    "requiredPorts": [
+      {
+        "name": "membershipService",
+        "export": ".",
+        "package": "@sdkwork/membership-service"
+      },
+      {
+        "name": "appbasePcRuntime",
+        "export": ".",
+        "package": "@sdkwork/appbase-pc-react"
+      }
     ],
     "runtimeEntrypoints": [
       "package.json#scripts.typecheck"

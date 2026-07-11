@@ -40,7 +40,7 @@ This is a **T1 commerce capability repository**. This repository is self-contain
 | Order → Payment | Yes (in-process ports; payment MUST NOT depend on order) |
 | Order → Membership | Yes (`MembershipPurchaseFulfillmentPort` after `subject=membership` settlement) |
 | Membership → `@sdkwork/order-app-sdk` | Yes (client / service facade consumer only) |
-| Membership → `@sdkwork/payment-app-sdk` | Yes (cashier consumer only) |
+| Membership → `@sdkwork/payment-app-sdk` | Yes (optional cashier read/redirect consumer only; checkout payment requests go through `@sdkwork/order-app-sdk` `orders.payments.create`) |
 | Payment → Order / Membership | **No** (foundation module) |
 | Membership → `sdkwork-order-*` Rust crates | **No** |
 | Membership → `INSERT commerce_order` | **No** (order domain only; membership reserves subscription by `orderId`) |
@@ -68,7 +68,7 @@ Authority: `specs/commerce-order-membership-boundary.spec.json`, `specs/COMMERCE
 - `specs/`: repository/application root specs for cross-module machine contracts.
 - `docs/`: Canon documentation at `docs/product/prd/PRD.md` and `docs/architecture/tech/TECH_ARCHITECTURE.md`.
 - `apis/`: OpenAPI authorities for `app-api`.
-- `sdks/`: SDK families, OpenAPI authorities, derived generator inputs, route manifests, SDK assembly, and generated outputs.
+- `sdks/`: SDK families, OpenAPI authorities, derived generator inputs, route manifests, family-root `sdk-manifest.json`, and generated outputs.
 - `crates/`: Rust workspace members (service, repository-sqlx, route crates, database-host, service-host, standalone-gateway, gateway-assembly).
 - `apps/sdkwork-membership-pc/`: PC web application root with its own `sdkwork.app.config.json`.
 - `database/`: DDL baselines, migrations, seeds, and contract registry.
