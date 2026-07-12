@@ -466,7 +466,8 @@ test("membership baseline does not create order-owned order tables", () => {
 test("membership database initialization does not create payment-owned tables or seed payment catalog", () => {
   const sqliteBaseline = readRelative("database/ddl/baseline/sqlite/0001_membership_baseline.sql");
   const postgresBaseline = readRelative("database/ddl/baseline/postgres/0001_membership_baseline.sql");
-  const seedSource = readRelative("database/seeds/common/001_bootstrap.sql");
+  const seedSource = readRelative("database/seeds/common/001_catalog.sql")
+    + "\n" + readRelative("database/seeds/common/002_dev_demo.sql");
   const sqliteRepository = readRelative("crates/sdkwork-membership-repository-sqlx/src/sqlite.rs");
   const postgresRepository = readRelative("crates/sdkwork-membership-repository-sqlx/src/postgres.rs");
 

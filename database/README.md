@@ -81,9 +81,18 @@ The membership database only persists the pending membership reservation and lat
 
 - `database/ddl/baseline/postgres/0001_membership_baseline.sql`
 - `database/ddl/baseline/sqlite/0001_membership_baseline.sql`
-- `database/seeds/common/001_bootstrap.sql`
+- `database/seeds/common/001_catalog.sql` — token plan catalog (plans, benefits, packages, SKUs)
+- `database/seeds/common/002_dev_demo.sql` — dev demo user data (subscription, points, entitlements)
 
 The baseline is the greenfield initialization snapshot for this pre-launch application. The migration directories are reserved for post-GA incremental changes and are intentionally empty unless a released schema needs expand/contract evolution.
+
+Seed profiles:
+
+- `dev` — catalog + demo user data (default for local development)
+- `release` — catalog only (for production/staging without demo user data)
+- `standard` — catalog + demo user data (backward-compatible default profile)
+
+Select a profile via `SDKWORK_MEMBERSHIP_DATABASE_SEED_PROFILE=dev|release|standard`.
 
 Seed data covers authenticated frontend membership flows for the demo tenant:
 

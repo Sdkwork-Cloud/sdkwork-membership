@@ -39,10 +39,20 @@ export interface CreateSdkworkSubscriptionCatalogControllerOptions {
   translate?: (key: string, defaultValue?: string) => string;
 }
 
+/**
+ * Default billing cycle index for the token plan catalog.
+ *
+ * The package groups are sorted by sort_weight: annual(1), monthly(2),
+ * quarterly(3), single(4). Index 3 selects "单月购买" (single month
+ * purchase) as the default active billing cycle tab, matching the
+ * token plan default activation requirement.
+ */
+const DEFAULT_BILLING_CYCLE_INDEX = 3;
+
 function createInitialState(
   service: SdkworkSubscriptionCatalogService,
 ): SdkworkSubscriptionCatalogControllerState {
-  const fallback = service.getFallbackViewModel(0);
+  const fallback = service.getFallbackViewModel(DEFAULT_BILLING_CYCLE_INDEX);
   return {
     ...fallback,
     catalog: null,

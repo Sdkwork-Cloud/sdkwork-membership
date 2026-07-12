@@ -5,9 +5,27 @@
   "supportedLocales": ["zh-CN", "en-US", "ja-JP", "de-DE", "fr-FR", "ru-RU", "ko-KR"],
   "activeLocales": ["zh-CN"],
   "profiles": {
+    "dev": {
+      "common": [
+        "001_catalog.sql",
+        "002_dev_demo.sql"
+      ],
+      "locales": {
+        "zh-CN": []
+      }
+    },
+    "release": {
+      "common": [
+        "001_catalog.sql"
+      ],
+      "locales": {
+        "zh-CN": []
+      }
+    },
     "standard": {
       "common": [
-        "001_bootstrap.sql"
+        "001_catalog.sql",
+        "002_dev_demo.sql"
       ],
       "locales": {
         "zh-CN": []

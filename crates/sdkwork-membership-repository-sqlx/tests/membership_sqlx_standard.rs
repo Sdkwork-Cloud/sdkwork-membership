@@ -206,8 +206,11 @@ fn commerce_membership_routers_use_standard_create_and_delete_http_statuses() {
 
 #[test]
 fn commerce_membership_seed_covers_authenticated_frontend_flows_without_local_order_rows() {
-    let seed_source =
-        include_str!("../../../database/seeds/common/001_bootstrap.sql").replace("\r\n", "\n");
+    let seed_source = format!(
+        "{}\n{}",
+        include_str!("../../../database/seeds/common/001_catalog.sql").replace("\r\n", "\n"),
+        include_str!("../../../database/seeds/common/002_dev_demo.sql").replace("\r\n", "\n"),
+    );
 
     for table in [
         "membership_subscription",
