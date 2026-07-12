@@ -947,6 +947,7 @@ fn normalize_plan_benefits(
             )?,
             claimed: item.claimed.unwrap_or(false),
             usage_limit,
+            display_value: None,
             used_count,
         });
     }

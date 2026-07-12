@@ -25,18 +25,36 @@ INSERT OR IGNORE INTO membership_plan_version (
   ('plan-standard-v1', '100001', '0', 'plan-standard', 'v1', '标准会员', NULL, 'published', datetime('now'), datetime('now'), datetime('now'), datetime('now')),
   ('plan-premium-v1', '100001', '0', 'plan-premium', 'v1', '高级会员', NULL, 'published', datetime('now'), datetime('now'), datetime('now'), datetime('now'));
 
--- Benefit definitions: display benefits (points, queues, watermark, support)
+-- =============================================================================
+-- Benefit definitions: comparison-table display benefits
+-- grant_quantity stores text for non-numeric cells (display_value) and numbers
+-- for numeric/boolean cells (usage_limit).
+-- =============================================================================
 INSERT OR IGNORE INTO benefit_definition (
   id, tenant_id, organization_id, benefit_code, name, benefit_type, value_unit, measurement_type, description, status, created_at, updated_at
 ) VALUES
-  ('benefit-daily-points', '100001', '0', 'daily_points', 'Daily bonus points', 'points', 'count', 'counter', 'Claim daily login rewards.', 'active', datetime('now'), datetime('now')),
-  ('benefit-standard-queue', '100001', '0', 'standard_queue', 'Standard generation lane', 'queue', 'count', 'counter', 'Standard priority queue.', 'active', datetime('now'), datetime('now')),
-  ('benefit-fast-queue', '100001', '0', 'fast_queue', 'Fast generation lane', 'queue', 'count', 'counter', 'High priority fast queue.', 'active', datetime('now'), datetime('now')),
-  ('benefit-vip-queue', '100001', '0', 'vip_queue', 'VIP priority lane', 'queue', 'count', 'counter', 'Dedicated VIP queue.', 'active', datetime('now'), datetime('now')),
+  -- 积分 category
+  ('benefit-platform-free-points', '100001', '0', 'platform_free_points', 'Platform free points', 'points', 'text', 'text', 'Daily login free points.', 'active', datetime('now'), datetime('now')),
+  ('benefit-purchased-points', '100001', '0', 'purchased_points', 'Purchased points', 'points', 'count', 'counter', 'Points purchased via recharge.', 'active', datetime('now'), datetime('now')),
+  ('benefit-daily-points', '100001', '0', 'daily_points', 'Subscription monthly points', 'points', 'count', 'counter', 'Monthly subscription bonus points.', 'active', datetime('now'), datetime('now')),
+  -- 视频生成 category
+  ('benefit-seedance-vip-model', '100001', '0', 'seedance_vip_model', 'Seedance 2.0 VIP model', 'feature', 'count', 'counter', 'Access to Seedance 2.0 VIP model.', 'active', datetime('now'), datetime('now')),
+  ('benefit-seedance-pro-model', '100001', '0', 'seedance_pro_model', 'Seedance 1.5 Pro model', 'feature', 'text', 'text', 'Seedance 1.5 Pro model discount.', 'active', datetime('now'), datetime('now')),
+  ('benefit-standard-queue', '100001', '0', 'standard_queue', 'Standard generation lane', 'queue', 'text', 'text', 'Standard priority generation queue.', 'active', datetime('now'), datetime('now')),
+  ('benefit-fast-queue', '100001', '0', 'fast_queue', 'Fast generation lane', 'queue', 'text', 'text', 'High priority fast generation queue.', 'active', datetime('now'), datetime('now')),
+  ('benefit-vip-queue', '100001', '0', 'vip_queue', 'VIP priority lane', 'queue', 'text', 'text', 'Dedicated VIP queue.', 'active', datetime('now'), datetime('now')),
+  ('benefit-video-lip-sync', '100001', '0', 'video_lip_sync', 'Video lip sync', 'feature', 'count', 'counter', 'Video lip-sync feature access.', 'active', datetime('now'), datetime('now')),
+  ('benefit-video-hd', '100001', '0', 'video_hd', 'Video HD', 'feature', 'count', 'counter', 'Video HD export feature.', 'active', datetime('now'), datetime('now')),
+  ('benefit-video-frame-interp', '100001', '0', 'video_frame_interp', 'Video frame interpolation', 'feature', 'count', 'counter', 'Video frame interpolation feature.', 'active', datetime('now'), datetime('now')),
+  -- 图片生成 category
+  ('benefit-image-4k-free', '100001', '0', 'image_4k_free', 'Image 4.0 limited free', 'feature', 'text', 'text', 'Image 4.0 free tier resolution.', 'active', datetime('now'), datetime('now')),
+  ('benefit-smart-upscale', '100001', '0', 'smart_upscale', 'Smart upscale', 'feature', 'text', 'text', 'Smart upscaling resolution.', 'active', datetime('now'), datetime('now')),
+  -- 全局能力 category
   ('benefit-no-watermark', '100001', '0', 'no_watermark', 'Watermark-free export', 'feature', 'count', 'counter', 'Export without watermark.', 'active', datetime('now'), datetime('now')),
-  ('benefit-vip-support', '100001', '0', 'vip_support', 'Dedicated support', 'service', 'count', 'counter', 'Priority support channel.', 'active', datetime('now'), datetime('now'));
+  ('benefit-generation-acceleration', '100001', '0', 'generation_acceleration', 'Generation acceleration', 'feature', 'count', 'counter', 'Accelerated generation speed.', 'active', datetime('now'), datetime('now')),
+  ('benefit-vip-support', '100001', '0', 'vip_support', 'Worry-free refund', 'service', 'count', 'counter', 'Worry-free refund and priority support.', 'active', datetime('now'), datetime('now'));
 
--- Benefit definitions: privilege benefits (speed_up, priority_queue, ai_quota)
+-- Benefit definitions: privilege benefits (runtime quota, not shown in comparison table)
 INSERT OR IGNORE INTO benefit_definition (
   id, tenant_id, organization_id, benefit_code, name, benefit_type, value_unit, measurement_type, description, status, created_at, updated_at
 ) VALUES
@@ -44,31 +62,104 @@ INSERT OR IGNORE INTO benefit_definition (
   ('benefit-definition-priority_queue', '100001', '0', 'priority_queue', 'Priority queue', 'quota', 'count', 'counter', 'Priority queue capacity for active members.', 'active', datetime('now'), datetime('now')),
   ('seed-benefit-ai-quota', '100001', '0', 'ai_quota', 'AI quota', 'quota', 'count', 'counter', 'Exclusive model and AI quota allowance.', 'active', datetime('now'), datetime('now'));
 
--- Plan benefits: display benefits (daily_points, queues, watermark, support)
+-- =============================================================================
+-- Plan benefits: Free plan (rank 0)
+-- Only common benefits that apply to all users.
+-- =============================================================================
 INSERT OR IGNORE INTO membership_plan_benefit (
   id, tenant_id, organization_id, plan_id, plan_version_id, benefit_id, benefit_code, grant_quantity, grant_period, usage_policy, sort_weight, status, created_at, updated_at
 ) VALUES
-  ('plan-basic-v1-benefit-1', '100001', '0', 'plan-basic', 'plan-basic-v1', 'benefit-daily-points', 'daily_points', '725', 'membership_period', 'included', 1, 'active', datetime('now'), datetime('now')),
-  ('plan-basic-v1-benefit-2', '100001', '0', 'plan-basic', 'plan-basic-v1', 'benefit-standard-queue', 'standard_queue', '1', 'membership_period', 'included', 2, 'active', datetime('now'), datetime('now')),
-  ('plan-standard-v1-benefit-1', '100001', '0', 'plan-standard', 'plan-standard-v1', 'benefit-daily-points', 'daily_points', '2210', 'membership_period', 'included', 1, 'active', datetime('now'), datetime('now')),
-  ('plan-standard-v1-benefit-2', '100001', '0', 'plan-standard', 'plan-standard-v1', 'benefit-fast-queue', 'fast_queue', '1', 'membership_period', 'included', 2, 'active', datetime('now'), datetime('now')),
-  ('plan-standard-v1-benefit-3', '100001', '0', 'plan-standard', 'plan-standard-v1', 'benefit-no-watermark', 'no_watermark', '1', 'membership_period', 'included', 3, 'active', datetime('now'), datetime('now')),
-  ('plan-premium-v1-benefit-1', '100001', '0', 'plan-premium', 'plan-premium-v1', 'benefit-daily-points', 'daily_points', '6160', 'membership_period', 'included', 1, 'active', datetime('now'), datetime('now')),
-  ('plan-premium-v1-benefit-2', '100001', '0', 'plan-premium', 'plan-premium-v1', 'benefit-vip-queue', 'vip_queue', '1', 'membership_period', 'included', 2, 'active', datetime('now'), datetime('now')),
-  ('plan-premium-v1-benefit-3', '100001', '0', 'plan-premium', 'plan-premium-v1', 'benefit-no-watermark', 'no_watermark', '1', 'membership_period', 'included', 3, 'active', datetime('now'), datetime('now')),
-  ('plan-premium-v1-benefit-4', '100001', '0', 'plan-premium', 'plan-premium-v1', 'benefit-vip-support', 'vip_support', '1', 'membership_period', 'included', 4, 'active', datetime('now'), datetime('now'));
+  ('plan-free-v1-benefit-platform-points', '100001', '0', 'plan-free', 'plan-free-v1', 'benefit-platform-free-points', 'platform_free_points', '每日登陆免费积分', 'membership_period', 'included', 1, 'active', datetime('now'), datetime('now')),
+  ('plan-free-v1-benefit-purchased-points', '100001', '0', 'plan-free', 'plan-free-v1', 'benefit-purchased-points', 'purchased_points', '1', 'membership_period', 'included', 2, 'active', datetime('now'), datetime('now'));
 
--- Plan benefits: privilege benefits (priority_queue, speed_up, ai_quota)
+-- =============================================================================
+-- Plan benefits: Basic plan (rank 1)
+-- =============================================================================
 INSERT OR IGNORE INTO membership_plan_benefit (
   id, tenant_id, organization_id, plan_id, plan_version_id, benefit_id, benefit_code, grant_quantity, grant_period, usage_policy, sort_weight, status, created_at, updated_at
 ) VALUES
-  ('plan-basic-v1-benefit-priority-queue', '100001', '0', 'plan-basic', 'plan-basic-v1', 'benefit-definition-priority_queue', 'priority_queue', '20', 'membership_period', 'included', 10, 'active', datetime('now'), datetime('now')),
-  ('plan-standard-v1-benefit-speed-up', '100001', '0', 'plan-standard', 'plan-standard-v1', 'seed-benefit-priority-speed-up', 'priority_speed_up', '20', 'membership_period', 'included', 10, 'active', datetime('now'), datetime('now')),
-  ('plan-standard-v1-benefit-priority-queue', '100001', '0', 'plan-standard', 'plan-standard-v1', 'benefit-definition-priority_queue', 'priority_queue', '100', 'membership_period', 'included', 11, 'active', datetime('now'), datetime('now')),
-  ('plan-standard-v1-benefit-ai-quota', '100001', '0', 'plan-standard', 'plan-standard-v1', 'seed-benefit-ai-quota', 'ai_quota', '50', 'membership_period', 'included', 12, 'active', datetime('now'), datetime('now')),
-  ('plan-premium-v1-benefit-speed-up', '100001', '0', 'plan-premium', 'plan-premium-v1', 'seed-benefit-priority-speed-up', 'priority_speed_up', '80', 'membership_period', 'included', 10, 'active', datetime('now'), datetime('now')),
-  ('plan-premium-v1-benefit-priority-queue', '100001', '0', 'plan-premium', 'plan-premium-v1', 'benefit-definition-priority_queue', 'priority_queue', '300', 'membership_period', 'included', 11, 'active', datetime('now'), datetime('now')),
-  ('plan-premium-v1-benefit-ai-quota', '100001', '0', 'plan-premium', 'plan-premium-v1', 'seed-benefit-ai-quota', 'ai_quota', '200', 'membership_period', 'included', 12, 'active', datetime('now'), datetime('now'));
+  -- 积分
+  ('plan-basic-v1-benefit-platform-points', '100001', '0', 'plan-basic', 'plan-basic-v1', 'benefit-platform-free-points', 'platform_free_points', '每日登录赠送积分', 'membership_period', 'included', 1, 'active', datetime('now'), datetime('now')),
+  ('plan-basic-v1-benefit-purchased-points', '100001', '0', 'plan-basic', 'plan-basic-v1', 'benefit-purchased-points', 'purchased_points', '1', 'membership_period', 'included', 2, 'active', datetime('now'), datetime('now')),
+  ('plan-basic-v1-benefit-daily-points', '100001', '0', 'plan-basic', 'plan-basic-v1', 'benefit-daily-points', 'daily_points', '725', 'membership_period', 'included', 3, 'active', datetime('now'), datetime('now')),
+  -- 视频生成
+  ('plan-basic-v1-benefit-seedance-vip', '100001', '0', 'plan-basic', 'plan-basic-v1', 'benefit-seedance-vip-model', 'seedance_vip_model', '1', 'membership_period', 'included', 4, 'active', datetime('now'), datetime('now')),
+  ('plan-basic-v1-benefit-seedance-pro', '100001', '0', 'plan-basic', 'plan-basic-v1', 'benefit-seedance-pro-model', 'seedance_pro_model', '8折积分', 'membership_period', 'included', 5, 'active', datetime('now'), datetime('now')),
+  ('plan-basic-v1-benefit-standard-queue', '100001', '0', 'plan-basic', 'plan-basic-v1', 'benefit-standard-queue', 'standard_queue', '标准生成通道', 'membership_period', 'included', 6, 'active', datetime('now'), datetime('now')),
+  ('plan-basic-v1-benefit-video-lip-sync', '100001', '0', 'plan-basic', 'plan-basic-v1', 'benefit-video-lip-sync', 'video_lip_sync', '1', 'membership_period', 'included', 7, 'active', datetime('now'), datetime('now')),
+  ('plan-basic-v1-benefit-video-hd', '100001', '0', 'plan-basic', 'plan-basic-v1', 'benefit-video-hd', 'video_hd', '1', 'membership_period', 'included', 8, 'active', datetime('now'), datetime('now')),
+  ('plan-basic-v1-benefit-video-frame-interp', '100001', '0', 'plan-basic', 'plan-basic-v1', 'benefit-video-frame-interp', 'video_frame_interp', '1', 'membership_period', 'included', 9, 'active', datetime('now'), datetime('now')),
+  -- 图片生成
+  ('plan-basic-v1-benefit-image-4k', '100001', '0', 'plan-basic', 'plan-basic-v1', 'benefit-image-4k-free', 'image_4k_free', '2K', 'membership_period', 'included', 10, 'active', datetime('now'), datetime('now')),
+  ('plan-basic-v1-benefit-smart-upscale', '100001', '0', 'plan-basic', 'plan-basic-v1', 'benefit-smart-upscale', 'smart_upscale', '4K', 'membership_period', 'included', 11, 'active', datetime('now'), datetime('now')),
+  -- 全局能力
+  ('plan-basic-v1-benefit-no-watermark', '100001', '0', 'plan-basic', 'plan-basic-v1', 'benefit-no-watermark', 'no_watermark', '1', 'membership_period', 'included', 12, 'active', datetime('now'), datetime('now')),
+  ('plan-basic-v1-benefit-gen-acceleration', '100001', '0', 'plan-basic', 'plan-basic-v1', 'benefit-generation-acceleration', 'generation_acceleration', '1', 'membership_period', 'included', 13, 'active', datetime('now'), datetime('now')),
+  ('plan-basic-v1-benefit-vip-support', '100001', '0', 'plan-basic', 'plan-basic-v1', 'benefit-vip-support', 'vip_support', '1', 'membership_period', 'included', 14, 'active', datetime('now'), datetime('now'));
+
+-- =============================================================================
+-- Plan benefits: Standard plan (rank 2)
+-- =============================================================================
+INSERT OR IGNORE INTO membership_plan_benefit (
+  id, tenant_id, organization_id, plan_id, plan_version_id, benefit_id, benefit_code, grant_quantity, grant_period, usage_policy, sort_weight, status, created_at, updated_at
+) VALUES
+  -- 积分
+  ('plan-standard-v1-benefit-platform-points', '100001', '0', 'plan-standard', 'plan-standard-v1', 'benefit-platform-free-points', 'platform_free_points', '每日登录赠送积分', 'membership_period', 'included', 1, 'active', datetime('now'), datetime('now')),
+  ('plan-standard-v1-benefit-purchased-points', '100001', '0', 'plan-standard', 'plan-standard-v1', 'benefit-purchased-points', 'purchased_points', '1', 'membership_period', 'included', 2, 'active', datetime('now'), datetime('now')),
+  ('plan-standard-v1-benefit-daily-points', '100001', '0', 'plan-standard', 'plan-standard-v1', 'benefit-daily-points', 'daily_points', '2210', 'membership_period', 'included', 3, 'active', datetime('now'), datetime('now')),
+  -- 视频生成
+  ('plan-standard-v1-benefit-seedance-vip', '100001', '0', 'plan-standard', 'plan-standard-v1', 'benefit-seedance-vip-model', 'seedance_vip_model', '1', 'membership_period', 'included', 4, 'active', datetime('now'), datetime('now')),
+  ('plan-standard-v1-benefit-seedance-pro', '100001', '0', 'plan-standard', 'plan-standard-v1', 'benefit-seedance-pro-model', 'seedance_pro_model', '8折积分', 'membership_period', 'included', 5, 'active', datetime('now'), datetime('now')),
+  ('plan-standard-v1-benefit-standard-queue', '100001', '0', 'plan-standard', 'plan-standard-v1', 'benefit-standard-queue', 'standard_queue', '标准生成通道', 'membership_period', 'included', 6, 'active', datetime('now'), datetime('now')),
+  ('plan-standard-v1-benefit-video-lip-sync', '100001', '0', 'plan-standard', 'plan-standard-v1', 'benefit-video-lip-sync', 'video_lip_sync', '1', 'membership_period', 'included', 7, 'active', datetime('now'), datetime('now')),
+  ('plan-standard-v1-benefit-video-hd', '100001', '0', 'plan-standard', 'plan-standard-v1', 'benefit-video-hd', 'video_hd', '1', 'membership_period', 'included', 8, 'active', datetime('now'), datetime('now')),
+  ('plan-standard-v1-benefit-video-frame-interp', '100001', '0', 'plan-standard', 'plan-standard-v1', 'benefit-video-frame-interp', 'video_frame_interp', '1', 'membership_period', 'included', 9, 'active', datetime('now'), datetime('now')),
+  -- 图片生成
+  ('plan-standard-v1-benefit-image-4k', '100001', '0', 'plan-standard', 'plan-standard-v1', 'benefit-image-4k-free', 'image_4k_free', '2K', 'membership_period', 'included', 10, 'active', datetime('now'), datetime('now')),
+  ('plan-standard-v1-benefit-smart-upscale', '100001', '0', 'plan-standard', 'plan-standard-v1', 'benefit-smart-upscale', 'smart_upscale', '4K', 'membership_period', 'included', 11, 'active', datetime('now'), datetime('now')),
+  -- 全局能力
+  ('plan-standard-v1-benefit-no-watermark', '100001', '0', 'plan-standard', 'plan-standard-v1', 'benefit-no-watermark', 'no_watermark', '1', 'membership_period', 'included', 12, 'active', datetime('now'), datetime('now')),
+  ('plan-standard-v1-benefit-gen-acceleration', '100001', '0', 'plan-standard', 'plan-standard-v1', 'benefit-generation-acceleration', 'generation_acceleration', '1', 'membership_period', 'included', 13, 'active', datetime('now'), datetime('now')),
+  ('plan-standard-v1-benefit-vip-support', '100001', '0', 'plan-standard', 'plan-standard-v1', 'benefit-vip-support', 'vip_support', '1', 'membership_period', 'included', 14, 'active', datetime('now'), datetime('now'));
+
+-- =============================================================================
+-- Plan benefits: Premium plan (rank 3)
+-- =============================================================================
+INSERT OR IGNORE INTO membership_plan_benefit (
+  id, tenant_id, organization_id, plan_id, plan_version_id, benefit_id, benefit_code, grant_quantity, grant_period, usage_policy, sort_weight, status, created_at, updated_at
+) VALUES
+  -- 积分
+  ('plan-premium-v1-benefit-platform-points', '100001', '0', 'plan-premium', 'plan-premium-v1', 'benefit-platform-free-points', 'platform_free_points', '每日登录赠送积分', 'membership_period', 'included', 1, 'active', datetime('now'), datetime('now')),
+  ('plan-premium-v1-benefit-purchased-points', '100001', '0', 'plan-premium', 'plan-premium-v1', 'benefit-purchased-points', 'purchased_points', '1', 'membership_period', 'included', 2, 'active', datetime('now'), datetime('now')),
+  ('plan-premium-v1-benefit-daily-points', '100001', '0', 'plan-premium', 'plan-premium-v1', 'benefit-daily-points', 'daily_points', '6160', 'membership_period', 'included', 3, 'active', datetime('now'), datetime('now')),
+  -- 视频生成
+  ('plan-premium-v1-benefit-seedance-vip', '100001', '0', 'plan-premium', 'plan-premium-v1', 'benefit-seedance-vip-model', 'seedance_vip_model', '1', 'membership_period', 'included', 4, 'active', datetime('now'), datetime('now')),
+  ('plan-premium-v1-benefit-seedance-pro', '100001', '0', 'plan-premium', 'plan-premium-v1', 'benefit-seedance-pro-model', 'seedance_pro_model', '8折积分', 'membership_period', 'included', 5, 'active', datetime('now'), datetime('now')),
+  ('plan-premium-v1-benefit-fast-queue', '100001', '0', 'plan-premium', 'plan-premium-v1', 'benefit-fast-queue', 'fast_queue', '快速生成通道', 'membership_period', 'included', 6, 'active', datetime('now'), datetime('now')),
+  ('plan-premium-v1-benefit-video-lip-sync', '100001', '0', 'plan-premium', 'plan-premium-v1', 'benefit-video-lip-sync', 'video_lip_sync', '1', 'membership_period', 'included', 7, 'active', datetime('now'), datetime('now')),
+  ('plan-premium-v1-benefit-video-hd', '100001', '0', 'plan-premium', 'plan-premium-v1', 'benefit-video-hd', 'video_hd', '1', 'membership_period', 'included', 8, 'active', datetime('now'), datetime('now')),
+  ('plan-premium-v1-benefit-video-frame-interp', '100001', '0', 'plan-premium', 'plan-premium-v1', 'benefit-video-frame-interp', 'video_frame_interp', '1', 'membership_period', 'included', 9, 'active', datetime('now'), datetime('now')),
+  -- 图片生成
+  ('plan-premium-v1-benefit-image-4k', '100001', '0', 'plan-premium', 'plan-premium-v1', 'benefit-image-4k-free', 'image_4k_free', '2K/4K', 'membership_period', 'included', 10, 'active', datetime('now'), datetime('now')),
+  ('plan-premium-v1-benefit-smart-upscale', '100001', '0', 'plan-premium', 'plan-premium-v1', 'benefit-smart-upscale', 'smart_upscale', '4K/8K', 'membership_period', 'included', 11, 'active', datetime('now'), datetime('now')),
+  -- 全局能力
+  ('plan-premium-v1-benefit-no-watermark', '100001', '0', 'plan-premium', 'plan-premium-v1', 'benefit-no-watermark', 'no_watermark', '1', 'membership_period', 'included', 12, 'active', datetime('now'), datetime('now')),
+  ('plan-premium-v1-benefit-gen-acceleration', '100001', '0', 'plan-premium', 'plan-premium-v1', 'benefit-generation-acceleration', 'generation_acceleration', '1', 'membership_period', 'included', 13, 'active', datetime('now'), datetime('now')),
+  ('plan-premium-v1-benefit-vip-support', '100001', '0', 'plan-premium', 'plan-premium-v1', 'benefit-vip-support', 'vip_support', '1', 'membership_period', 'included', 14, 'active', datetime('now'), datetime('now'));
+
+-- =============================================================================
+-- Plan benefits: privilege benefits (runtime quota, not shown in comparison table)
+-- =============================================================================
+INSERT OR IGNORE INTO membership_plan_benefit (
+  id, tenant_id, organization_id, plan_id, plan_version_id, benefit_id, benefit_code, grant_quantity, grant_period, usage_policy, sort_weight, status, created_at, updated_at
+) VALUES
+  ('plan-basic-v1-benefit-priority-queue', '100001', '0', 'plan-basic', 'plan-basic-v1', 'benefit-definition-priority_queue', 'priority_queue', '20', 'membership_period', 'included', 20, 'active', datetime('now'), datetime('now')),
+  ('plan-standard-v1-benefit-speed-up', '100001', '0', 'plan-standard', 'plan-standard-v1', 'seed-benefit-priority-speed-up', 'priority_speed_up', '20', 'membership_period', 'included', 20, 'active', datetime('now'), datetime('now')),
+  ('plan-standard-v1-benefit-priority-queue', '100001', '0', 'plan-standard', 'plan-standard-v1', 'benefit-definition-priority_queue', 'priority_queue', '100', 'membership_period', 'included', 21, 'active', datetime('now'), datetime('now')),
+  ('plan-standard-v1-benefit-ai-quota', '100001', '0', 'plan-standard', 'plan-standard-v1', 'seed-benefit-ai-quota', 'ai_quota', '50', 'membership_period', 'included', 22, 'active', datetime('now'), datetime('now')),
+  ('plan-premium-v1-benefit-speed-up', '100001', '0', 'plan-premium', 'plan-premium-v1', 'seed-benefit-priority-speed-up', 'priority_speed_up', '80', 'membership_period', 'included', 20, 'active', datetime('now'), datetime('now')),
+  ('plan-premium-v1-benefit-priority-queue', '100001', '0', 'plan-premium', 'plan-premium-v1', 'benefit-definition-priority_queue', 'priority_queue', '300', 'membership_period', 'included', 21, 'active', datetime('now'), datetime('now')),
+  ('plan-premium-v1-benefit-ai-quota', '100001', '0', 'plan-premium', 'plan-premium-v1', 'seed-benefit-ai-quota', 'ai_quota', '200', 'membership_period', 'included', 22, 'active', datetime('now'), datetime('now'));
 
 -- Package groups: 4 billing cycles with discount labels matching frontend display
 INSERT OR IGNORE INTO membership_package_group (

@@ -84,6 +84,7 @@ pub fn builtin_benefits(_plan_id: Option<i64>) -> Vec<AppMembershipBenefitItem> 
             icon: None,
             claimed: false,
             usage_limit: Some(50),
+            display_value: None,
             used_count: Some(0),
         },
         AppMembershipBenefitItem {
@@ -95,6 +96,7 @@ pub fn builtin_benefits(_plan_id: Option<i64>) -> Vec<AppMembershipBenefitItem> 
             icon: None,
             claimed: true,
             usage_limit: None,
+            display_value: None,
             used_count: None,
         },
         AppMembershipBenefitItem {
@@ -106,6 +108,7 @@ pub fn builtin_benefits(_plan_id: Option<i64>) -> Vec<AppMembershipBenefitItem> 
             icon: None,
             claimed: false,
             usage_limit: None,
+            display_value: None,
             used_count: None,
         },
         AppMembershipBenefitItem {
@@ -117,6 +120,7 @@ pub fn builtin_benefits(_plan_id: Option<i64>) -> Vec<AppMembershipBenefitItem> 
             icon: None,
             claimed: false,
             usage_limit: None,
+            display_value: None,
             used_count: None,
         },
         AppMembershipBenefitItem {
@@ -128,6 +132,7 @@ pub fn builtin_benefits(_plan_id: Option<i64>) -> Vec<AppMembershipBenefitItem> 
             icon: None,
             claimed: false,
             usage_limit: None,
+            display_value: None,
             used_count: None,
         },
         AppMembershipBenefitItem {
@@ -139,6 +144,7 @@ pub fn builtin_benefits(_plan_id: Option<i64>) -> Vec<AppMembershipBenefitItem> 
             icon: None,
             claimed: false,
             usage_limit: None,
+            display_value: None,
             used_count: None,
         },
     ]

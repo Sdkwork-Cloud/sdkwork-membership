@@ -31,6 +31,7 @@ export interface AppMembershipBenefitItem {
   icon?: string;
   claimed: boolean;
   usageLimit?: number;
+  displayValue?: string;
   usedCount?: number;
 }
 

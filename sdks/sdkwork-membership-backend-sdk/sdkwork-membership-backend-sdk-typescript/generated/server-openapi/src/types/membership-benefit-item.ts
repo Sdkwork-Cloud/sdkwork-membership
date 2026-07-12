@@ -7,5 +7,6 @@ export interface MembershipBenefitItem {
   icon?: string | null;
   claimed: boolean;
   usageLimit?: string | null;
+  displayValue?: string | null;
   usedCount?: string | null;
 }

@@ -2341,8 +2341,18 @@ fn plan_benefit_from_row(
     fallback_id: i64,
 ) -> Option<AppMembershipBenefitItem> {
     let benefit_code = optional_string_cell(row, "benefit_code")?;
-    let grant_quantity =
-        optional_string_cell(row, "grant_quantity").map(|value| parse_points_amount(&value));
+    let raw_grant_quantity = optional_string_cell(row, "grant_quantity");
+    let (usage_limit, display_value) = match &raw_grant_quantity {
+        Some(value) => {
+            let parsed = parse_points_amount(value);
+            if parsed > 0 {
+                (Some(parsed), None)
+            } else {
+                (None, Some(value.clone()))
+            }
+        }
+        None => (None, None),
+    };
     Some(AppMembershipBenefitItem {
         id: numeric_suffix(&string_cell(row, "plan_benefit_id")).unwrap_or(fallback_id),
         name: optional_string_cell(row, "benefit_name").unwrap_or_else(|| benefit_code.clone()),
@@ -2352,7 +2362,8 @@ fn plan_benefit_from_row(
         description: optional_string_cell(row, "benefit_description"),
         icon: None,
         claimed: false,
-        usage_limit: grant_quantity,
+        usage_limit,
+        display_value,
         used_count: Some(0),
     })
 }
