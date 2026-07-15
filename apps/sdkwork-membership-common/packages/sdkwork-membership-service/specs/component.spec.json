@@ -159,7 +159,10 @@
         "visibility": "app",
         "methods": [
           "memberships.orders.create",
-          "orders.payments.create"
+          "orders.payments.create",
+          "recharges.packages.list",
+          "recharges.orders.create",
+          "recharges.orders.retrieve"
         ],
         "packageExport": ".",
         "runtimeRequired": true

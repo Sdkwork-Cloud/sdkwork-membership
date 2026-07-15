@@ -4,6 +4,11 @@ import {
   type SdkworkAppClient as OrderAppTransportClient,
   type SdkworkAppConfig,
 } from "@sdkwork/order-app-sdk";
+import {
+  configureSdkworkOrderAppServiceProvider as configureCanonicalOrderServiceProvider,
+  createSdkworkOrderAppService,
+  createOrderAppSdkClientFromTransport,
+} from "@sdkwork/order-service";
 import { resolveMembershipAppApiOrigin } from "./transport.ts";
 
 export type { OrderAppTransportClient };
@@ -82,6 +87,10 @@ export function bootstrapSdkworkOrderAppService(
 ): OrderAppTransportClient {
   const client = createOrderAppTransportClient(input);
   configureSdkworkOrderAppServiceProvider(() => client);
+  const orderService = createSdkworkOrderAppService({
+    appClient: createOrderAppSdkClientFromTransport(client),
+  });
+  configureCanonicalOrderServiceProvider(() => orderService);
   return client;
 }
 

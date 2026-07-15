@@ -33,6 +33,7 @@
     "@sdkwork/membership-pc-membership": "workspace:*",
     "@sdkwork/membership-service": "workspace:*",
     "@sdkwork/order-pc-checkout": "workspace:*",
+    "@sdkwork/order-pc-recharge": "workspace:*",
     "@sdkwork/promotion-pc-coupon": "workspace:*",
     "@sdkwork/promotion-service": "workspace:*",
     "lucide-react": "catalog:",

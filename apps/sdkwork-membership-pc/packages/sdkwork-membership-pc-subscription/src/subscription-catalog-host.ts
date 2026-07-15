@@ -4,6 +4,7 @@ import type { SdkworkSubscriptionPurchaseResult } from "./subscription-service";
 export { SDKWORK_SUBSCRIPTION_CATALOG_UNAVAILABLE_TIER_KEY } from "./subscription-catalog-content";
 
 export interface SdkworkSubscriptionCatalogModalProps {
+  currentPoints?: number | null;
   isOpen: boolean;
   onClose: () => void;
 }
@@ -40,6 +41,7 @@ export interface SdkworkSubscriptionCatalogCheckoutModalProps {
 
 export interface SdkworkSubscriptionMemberSummary {
   membershipTierKey: string;
+  pointBalance?: number | null;
 }
 
 export interface SdkworkSubscriptionCatalogHostComponents {

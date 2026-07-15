@@ -32,6 +32,7 @@ export default defineConfig(({ mode }) => {
         "@sdkwork/membership-pc-subscription": path.resolve(appRoot, "packages/sdkwork-membership-pc-subscription/src/index.ts"),
         "@sdkwork/membership-service": path.resolve(workspaceRoot, "apps/sdkwork-membership-common/packages/sdkwork-membership-service/src/index.ts"),
         "@sdkwork/membership-sdk-ports": path.resolve(workspaceRoot, "apps/sdkwork-membership-common/packages/sdkwork-membership-sdk-ports/src/index.ts"),
+        "@sdkwork/ui-pc-react/styles.css": path.resolve(workspaceRoot, "../sdkwork-ui/sdkwork-ui-pc-react/dist/sdkwork-ui.css"),
         "@sdkwork/ui-pc-react/theme": path.resolve(workspaceRoot, "../sdkwork-ui/sdkwork-ui-pc-react/src/theme/index.ts"),
         "@sdkwork/ui-pc-react/components/ui/actions": path.resolve(workspaceRoot, "../sdkwork-ui/sdkwork-ui-pc-react/src/components/ui/actions/index.ts"),
         "@sdkwork/ui-pc-react/components/ui/button": path.resolve(workspaceRoot, "../sdkwork-ui/sdkwork-ui-pc-react/src/components/ui/button.tsx"),

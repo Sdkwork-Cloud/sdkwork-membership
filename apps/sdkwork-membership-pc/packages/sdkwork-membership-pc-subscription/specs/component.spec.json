@@ -184,6 +184,11 @@
         "name": "orderCheckoutDialog",
         "export": ".",
         "package": "@sdkwork/order-pc-checkout"
+      },
+      {
+        "name": "pointsRechargeDialog",
+        "export": ".",
+        "package": "@sdkwork/order-pc-recharge"
       }
     ],
     "runtimeEntrypoints": [

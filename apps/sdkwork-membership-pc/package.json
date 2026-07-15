@@ -14,6 +14,7 @@
     "@sdkwork/membership-pc-core": "workspace:*",
     "@sdkwork/membership-pc-shell": "workspace:*",
     "@sdkwork/membership-service": "workspace:*",
+    "@sdkwork/ui-pc-react": "workspace:*",
     "react": "catalog:",
     "react-dom": "catalog:",
     "react-router-dom": "catalog:"

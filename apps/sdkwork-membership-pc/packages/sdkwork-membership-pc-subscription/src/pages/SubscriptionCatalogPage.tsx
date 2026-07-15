@@ -153,6 +153,15 @@ export function SdkworkSubscriptionCatalogPage({
     );
   }
 
+  function openPointsPurchase() {
+    if (!hasSdkworkMembershipSession()) {
+      handleLoginRequired();
+      return;
+    }
+
+    setIsPointsModalOpen(true);
+  }
+
   async function handleCheckoutPurchase() {
     const selectedCheckoutPlan = state.selectedCheckoutPlan;
     if (!selectedCheckoutPlan) {
@@ -249,7 +258,7 @@ export function SdkworkSubscriptionCatalogPage({
             billingCycleIndex={state.billingCycleIndex}
             billingCycles={state.billingCycles}
             onOpenPointsDetails={() => setIsPointsDetailsModalOpen(true)}
-            onOpenPointsPurchase={() => setIsPointsModalOpen(true)}
+            onOpenPointsPurchase={openPointsPurchase}
             onOpenRedeem={() => setIsRedeemModalOpen(true)}
             onSelectBillingCycle={(index) => {
               controller.selectBillingCycle(index);
@@ -299,6 +308,7 @@ export function SdkworkSubscriptionCatalogPage({
           />
 
           <PointsPurchaseModal
+            currentPoints={memberSummaryProp?.pointBalance ?? null}
             isOpen={isPointsModalOpen}
             onClose={() => setIsPointsModalOpen(false)}
           />
