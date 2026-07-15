@@ -360,14 +360,12 @@ function isOrderBoundCashierUrl(value: string | undefined): value is string {
 }
 
 async function runPurchaseMutation(
-  getCommerceService: () => SdkworkMembershipAppService,
   copy: SdkworkMembershipMessages["service"],
   action: "purchase" | "renew" | "upgrade",
   input: SdkworkMembershipMutationInput,
   qrPaymentStrategy: SdkworkMembershipQrPaymentStrategy,
 ): Promise<SdkworkMembershipPurchaseResult> {
   requireSdkworkMembershipSession(copy.signInRequired);
-  const membershipAppService = getCommerceService();
   const orderAppService = getSdkworkOrderAppService();
   const paymentMethod = qrPaymentStrategy.paymentMethod
     ?? toSdkworkMembershipWirePaymentMethod(input.paymentMethod);
@@ -392,48 +390,26 @@ async function runPurchaseMutation(
     throw new Error(copy.purchaseFailed);
   }
 
-  const reserveBody = {
-    couponId: toSdkworkMembershipOptionalString(input.couponId),
-    orderId,
-    packageId: input.packageId,
-    requestNo,
-  };
-  const reserve = unwrapSdkworkMembershipResponse<RemoteMembershipPurchaseResult>(
-    await (
-      action === "purchase"
-        ? membershipAppService.memberships.purchases.create(reserveBody)
-        : action === "renew"
-          ? membershipAppService.memberships.purchases.renew(reserveBody)
-          : membershipAppService.memberships.purchases.upgrade(reserveBody)
-    ),
-    action === "purchase"
-      ? copy.purchaseFailed
-      : action === "renew"
-        ? copy.renewFailed
-        : copy.upgradeFailed,
-  );
-
   const orderCashierUrl = toSdkworkMembershipOptionalString(orderPayload.cashierUrl);
   if (qrPaymentStrategy.productType === "h5") {
     if (!isOrderBoundCashierUrl(orderCashierUrl)) {
       throw new Error(copy.purchaseFailed);
     }
     return mapPurchaseResult({
-      ...reserve,
+      ...orderPayload,
       cashierUrl: orderCashierUrl,
       orderId,
       qrCode: orderCashierUrl,
       qrPaymentStrategy: qrPaymentStrategy.id,
       requestNo,
-      status: reserve.status ?? "pending",
+      status: toSdkworkMembershipOptionalString(orderPayload.status) ?? "pending",
     });
   }
   const paymentParams = (orderPayload.paymentParams ?? {}) as Record<string, unknown>;
   const cashierUrl = toSdkworkMembershipOptionalString(
     orderPayload.cashierUrl
       ?? paymentParams.cashierUrl
-      ?? orderCashierUrl
-      ?? reserve.cashierUrl,
+      ?? orderCashierUrl,
   );
   const providerQrCode = toSdkworkMembershipOptionalString(
     paymentParams.qrCodeUrl
@@ -442,8 +418,7 @@ async function runPurchaseMutation(
       ?? paymentParams.codeUrl
       ?? orderPayload.qrCode
       ?? orderPayload.qrCodePayload
-      ?? orderPayload.codeUrl
-      ?? reserve.qrCode,
+      ?? orderPayload.codeUrl,
   );
   if (!providerQrCode) {
     throw new Error(copy.purchaseFailed);
@@ -451,13 +426,13 @@ async function runPurchaseMutation(
   const qrCode = qrPaymentStrategy.resolvePayload({ cashierUrl, providerQrCode });
 
   return mapPurchaseResult({
-    ...reserve,
+    ...orderPayload,
     cashierUrl,
     orderId,
     qrCode,
     qrPaymentStrategy: qrPaymentStrategy.id,
     requestNo,
-    status: reserve.status ?? "pending",
+    status: toSdkworkMembershipOptionalString(orderPayload.status) ?? "pending",
   });
 }
 
@@ -553,15 +528,15 @@ export function createSdkworkMembershipService(
     },
 
     async purchaseMembership(input) {
-      return runPurchaseMutation(getCommerceService, copy.service, "purchase", input, qrPaymentStrategy);
+      return runPurchaseMutation(copy.service, "purchase", input, qrPaymentStrategy);
     },
 
     async renewMembership(input) {
-      return runPurchaseMutation(getCommerceService, copy.service, "renew", input, qrPaymentStrategy);
+      return runPurchaseMutation(copy.service, "renew", input, qrPaymentStrategy);
     },
 
     async upgradeMembership(input) {
-      return runPurchaseMutation(getCommerceService, copy.service, "upgrade", input, qrPaymentStrategy);
+      return runPurchaseMutation(copy.service, "upgrade", input, qrPaymentStrategy);
     },
   };
 }

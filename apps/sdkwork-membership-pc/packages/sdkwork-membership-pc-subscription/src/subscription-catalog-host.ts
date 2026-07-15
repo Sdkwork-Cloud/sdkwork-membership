@@ -53,6 +53,7 @@ export interface SdkworkSubscriptionCatalogPageProps {
   components?: SdkworkSubscriptionCatalogHostComponents;
   memberSummary?: SdkworkSubscriptionMemberSummary | null;
   notifyOutlet?: ComponentType;
+  onLoginRequired?: () => void;
   onMembershipTierUpdated?: (membershipTierKey: string, durationDays: number) => void;
   onNotify?: (message: string, tone: "error" | "info" | "success") => void;
 }

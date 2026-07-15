@@ -39,6 +39,14 @@ function wrapSdkworkMembershipResourceResponse<T>(data: T) {
   };
 }
 
+function wrapSdkworkMembershipItemResponse<T>(item: T) {
+  return {
+    code: 0,
+    data: { item },
+    traceId: "membership-test-trace",
+  };
+}
+
 describe("sdkwork-membership-pc-membership service", () => {
   beforeEach(() => {
     configureMembershipServiceMockSession({ accessToken: "membership-access-token", authToken: "membership-auth-token" });
@@ -282,19 +290,25 @@ describe("sdkwork-membership-pc-membership service", () => {
     );
     const orderCreateResponses = [
       {
+        amount: 199,
         cashierUrl: "https://im.sdkwork.com/cashier?scene=virtual&orderId=MEMBERSHIP-ORDER-001&outTradeNo=MEMBERSHIP-TRADE-001",
         orderId: "order-uuid-purchase",
         orderNo: "MEMBERSHIP-ORDER-001",
+        packageId: 2,
       },
       {
+        amount: 199,
         cashierUrl: "https://im.sdkwork.com/cashier?scene=virtual&orderId=MEMBERSHIP-ORDER-002&outTradeNo=MEMBERSHIP-TRADE-002",
         orderId: "order-uuid-upgrade",
         orderNo: "MEMBERSHIP-ORDER-002",
+        packageId: 2,
       },
       {
+        amount: 399,
         cashierUrl: "https://im.sdkwork.com/cashier?scene=virtual&orderId=MEMBERSHIP-ORDER-003&outTradeNo=MEMBERSHIP-TRADE-003",
         orderId: "order-uuid-renew",
         orderNo: "MEMBERSHIP-ORDER-003",
+        packageId: 3,
       },
     ];
     let orderCreateCallIndex = 0;
@@ -362,24 +376,9 @@ describe("sdkwork-membership-pc-membership service", () => {
       status: "pending",
     });
 
-    expect(upgrade).toHaveBeenCalledWith({
-      couponId: undefined,
-      orderId: "order-uuid-upgrade",
-      packageId: 2,
-      requestNo: "MEMBERSHIP-ORDER-002",
-    });
-    expect(purchase).toHaveBeenCalledWith({
-      couponId: undefined,
-      orderId: "order-uuid-purchase",
-      packageId: 2,
-      requestNo: "MEMBERSHIP-ORDER-001",
-    });
-    expect(renew).toHaveBeenCalledWith({
-      couponId: undefined,
-      orderId: "order-uuid-renew",
-      packageId: 3,
-      requestNo: "MEMBERSHIP-ORDER-003",
-    });
+    expect(purchase).not.toHaveBeenCalled();
+    expect(upgrade).not.toHaveBeenCalled();
+    expect(renew).not.toHaveBeenCalled();
     expect(orderCreate).toHaveBeenNthCalledWith(
       1,
       {
@@ -433,11 +432,93 @@ describe("sdkwork-membership-pc-membership service", () => {
     expect(orderPaymentCreate).not.toHaveBeenCalled();
   });
 
+  it("unwraps the SDKWork single-resource data.item response for H5 checkout", async () => {
+    const orderCreate = vi.fn().mockResolvedValue(
+      wrapSdkworkMembershipItemResponse({
+        amount: "1580000",
+        cashierUrl: "https://im.sdkwork.com/cashier?scene=virtual&orderId=MB64356104e814030d&outTradeNo=MB64356104e814030d",
+        orderId: "301348f1-8685-408b-9732-4ab559dfe28e",
+        orderNo: "MB64356104e814030d",
+        packageId: "402",
+        packageName: "Standard Monthly",
+        paymentMethod: "wechat_pay",
+        paymentProduct: "mobile_cashier_h5",
+        qrCode: "https://im.sdkwork.com/cashier?scene=virtual&orderId=MB64356104e814030d&outTradeNo=MB64356104e814030d",
+        qrCodeType: "cashier_url",
+        status: "pending_payment",
+      }),
+    );
+    configureOrderServiceMock(createOrderAppServiceMock({
+      memberships: {
+        orders: { create: orderCreate },
+      },
+    }));
+    const service = createSdkworkMembershipService({
+      membershipAppService: createMembershipAppServiceMock({
+        memberships: {
+          purchases: {
+            create: vi.fn().mockResolvedValue(
+              wrapSdkworkMembershipItemResponse({
+                amount: "1580000",
+                durationDays: 30,
+                orderId: "301348f1-8685-408b-9732-4ab559dfe28e",
+                packageId: 402,
+                packageName: "Standard Monthly",
+                status: "pending",
+              }),
+            ),
+          },
+        },
+      }),
+    });
+
+    await expect(service.purchaseMembership({ packageId: 402 })).resolves.toMatchObject({
+      cashierUrl: "https://im.sdkwork.com/cashier?scene=virtual&orderId=MB64356104e814030d&outTradeNo=MB64356104e814030d",
+      orderId: "301348f1-8685-408b-9732-4ab559dfe28e",
+      qrCode: "https://im.sdkwork.com/cashier?scene=virtual&orderId=MB64356104e814030d&outTradeNo=MB64356104e814030d",
+      status: "pending",
+    });
+  });
+
+  it("unwraps a generated SDK response that retains data.item without the wire envelope", async () => {
+    const orderCreate = vi.fn().mockResolvedValue({
+      data: {
+        item: {
+          cashierUrl: "https://im.sdkwork.com/cashier?scene=virtual&orderId=ORDER-DATA-ITEM&outTradeNo=TRADE-DATA-ITEM",
+          orderId: "order-data-item",
+          orderNo: "TRADE-DATA-ITEM",
+        },
+      },
+    });
+    configureOrderServiceMock(createOrderAppServiceMock({
+      memberships: { orders: { create: orderCreate } },
+    }));
+    const service = createSdkworkMembershipService({
+      membershipAppService: createMembershipAppServiceMock({
+        memberships: {
+          purchases: {
+            create: vi.fn().mockResolvedValue({
+              data: { item: { amount: "1580000", durationDays: 30, status: "pending" } },
+            }),
+          },
+        },
+      }),
+    });
+
+    await expect(service.purchaseMembership({ packageId: 402 })).resolves.toMatchObject({
+      cashierUrl: "https://im.sdkwork.com/cashier?scene=virtual&orderId=ORDER-DATA-ITEM&outTradeNo=TRADE-DATA-ITEM",
+      orderId: "order-data-item",
+      qrCode: "https://im.sdkwork.com/cashier?scene=virtual&orderId=ORDER-DATA-ITEM&outTradeNo=TRADE-DATA-ITEM",
+    });
+  });
+
   it("uses the configured WeChat native strategy for provider QR payloads", async () => {
     const orderCreate = vi.fn().mockResolvedValue(
       wrapSdkworkMembershipResourceResponse({
+        amount: "68",
         orderId: "order-uuid-qr",
         orderNo: "MEMBERSHIP-ORDER-QR",
+        packageId: 201,
         paymentParams: {
           qrCodeUrl: "weixin://wxpay/bizpayurl?pr=order",
         },

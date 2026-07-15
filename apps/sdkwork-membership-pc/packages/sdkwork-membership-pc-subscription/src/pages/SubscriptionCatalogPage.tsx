@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { LoadingBlock, StatusNotice } from "@sdkwork/ui-pc-react";
+import { hasSdkworkMembershipSession } from "@sdkwork/membership-service";
 import { SubscriptionCatalogHero } from "../components/subscription-catalog-hero";
 import { SubscriptionCatalogPlanGrid } from "../components/subscription-catalog-plan-grid";
 import { SubscriptionCatalogTierCompare } from "../components/subscription-catalog-tier-compare";
@@ -28,11 +29,20 @@ function EmptyNotifyOutlet() {
   return null;
 }
 
+function redirectToDefaultLogin(): void {
+  if (typeof window === "undefined") {
+    return;
+  }
+  const returnPath = `${window.location.pathname}${window.location.search}${window.location.hash}`;
+  window.location.assign(`/auth/login?redirect=${encodeURIComponent(returnPath || "/")}`);
+}
+
 export function SdkworkSubscriptionCatalogPage({
   catalogController: catalogControllerProp,
   components,
   memberSummary: memberSummaryProp,
   notifyOutlet: NotifyOutletProp,
+  onLoginRequired,
   onMembershipTierUpdated,
   onNotify,
 }: SdkworkSubscriptionCatalogPageProps) {
@@ -82,6 +92,7 @@ export function SdkworkSubscriptionCatalogPage({
   const completedPaymentKeyRef = useRef<string | null>(null);
 
   const memberSummary = memberSummaryProp ?? state.memberSummary;
+  const handleLoginRequired = onLoginRequired ?? redirectToDefaultLogin;
 
   useEffect(() => {
     if (!state.isBootstrapped && !state.isLoading) {
@@ -98,6 +109,11 @@ export function SdkworkSubscriptionCatalogPage({
     originalPriceLabel?: string,
     packagePeriodLabel = "年",
   ) {
+    if (!hasSdkworkMembershipSession()) {
+      handleLoginRequired();
+      return;
+    }
+
     if (
       membershipTierKey === SDKWORK_SUBSCRIPTION_CATALOG_UNAVAILABLE_TIER_KEY
       || memberSummary?.membershipTierKey === membershipTierKey

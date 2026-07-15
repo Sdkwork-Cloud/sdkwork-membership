@@ -48,6 +48,10 @@ export function unwrapSdkworkMembershipResponse<T>(value: unknown, fallbackMessa
     return value as T;
   }
   if (!("code" in value)) {
+    const unwrapped = unwrapSdkworkMembershipResourceData<T>(value);
+    if (unwrapped !== value) {
+      return unwrapped;
+    }
     return value as T;
   }
   const candidate = value as Partial<SdkworkMembershipResponseEnvelope<T>> &
@@ -59,7 +63,7 @@ export function unwrapSdkworkMembershipResponse<T>(value: unknown, fallbackMessa
     if (!("data" in value)) {
       throw new Error("Invalid SDKWork membership response envelope.");
     }
-    return candidate.data as T;
+    return unwrapSdkworkMembershipResourceData<T>(candidate.data);
   }
   const detail = typeof candidate.detail === "string" && candidate.detail.trim()
     ? candidate.detail
@@ -67,6 +71,26 @@ export function unwrapSdkworkMembershipResponse<T>(value: unknown, fallbackMessa
       ? candidate.title
       : fallbackMessage;
   throw new Error(detail);
+}
+
+function unwrapSdkworkMembershipResourceData<T>(value: unknown): T {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    return value as T;
+  }
+
+  const record = value as Record<string, unknown>;
+  // Depending on the generated SDK version, the standard resource envelope
+  // may be returned as data.item, item, or already as the item itself.
+  if ("item" in record) {
+    return record.item as T;
+  }
+  if ("data" in record) {
+    const data = record.data;
+    if (data && typeof data === "object" && !Array.isArray(data) && "item" in data) {
+      return (data as { item: T }).item;
+    }
+  }
+  return value as T;
 }
 
 export function unwrapSdkworkMembershipPageItems<T>(
