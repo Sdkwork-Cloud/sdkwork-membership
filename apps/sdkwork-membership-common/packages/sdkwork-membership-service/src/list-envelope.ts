@@ -23,13 +23,23 @@ export interface SdkworkMembershipProblemDetail {
   errors?: Array<{ field: string; code: string; message?: string }>;
 }
 
+/**
+ * Creates a standard list query object for SDK membership list endpoints.
+ *
+ * The generated TypeScript SDK methods (e.g. MembershipsBenefitsApi.list,
+ * MembershipsPackagesApi.list) accept camelCase parameter names
+ * (`pageSize`, `planId`) that the SDK internally serialises to snake_case
+ * query string keys (`page_size`, `plan_id`).  Returning camelCase keys
+ * here ensures the SDK correctly forwards pagination and filter
+ * parameters to the backend.
+ */
 export function createSdkworkMembershipListQuery(
   page = 1,
   pageSize = SDKWORK_MEMBERSHIP_DEFAULT_LIST_PAGE_SIZE,
-): { page: number; page_size: number } {
+): { page: number; pageSize: number } {
   return {
     page,
-    page_size: pageSize,
+    pageSize,
   };
 }
 

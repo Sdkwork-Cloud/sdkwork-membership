@@ -380,7 +380,14 @@ CREATE TABLE IF NOT EXISTS commerce_account (
 );
 
 CREATE INDEX IF NOT EXISTS idx_commerce_account_tenant_owner
-    ON commerce_account (tenant_id, organization_id, owner_type, owner_id, asset_code);
+ON commerce_account (tenant_id, organization_id, owner_type, owner_id, asset_code);
+
+-- Ensure all commerce_account columns exist on tables created by older baseline revisions.
+ALTER TABLE commerce_account ADD COLUMN IF NOT EXISTS uuid TEXT;
+ALTER TABLE commerce_account ADD COLUMN IF NOT EXISTS owner_type TEXT NOT NULL DEFAULT 'USER';
+ALTER TABLE commerce_account ADD COLUMN IF NOT EXISTS account_purpose TEXT NOT NULL DEFAULT 'GENERAL';
+ALTER TABLE commerce_account ADD COLUMN IF NOT EXISTS pending_amount BIGINT NOT NULL DEFAULT 0;
+ALTER TABLE commerce_account ADD COLUMN IF NOT EXISTS closed_at TEXT;
 
 CREATE TABLE IF NOT EXISTS commerce_account_ledger (
     id                     BIGINT NOT NULL,
@@ -422,9 +429,25 @@ CREATE TABLE IF NOT EXISTS commerce_account_ledger (
 );
 
 CREATE INDEX IF NOT EXISTS idx_commerce_account_ledger_account_created
-    ON commerce_account_ledger (tenant_id, account_id, created_at);
+ON commerce_account_ledger (tenant_id, account_id, created_at);
 CREATE INDEX IF NOT EXISTS idx_commerce_account_ledger_owner_created
-    ON commerce_account_ledger (tenant_id, organization_id, owner_type, owner_id, asset_code, created_at);
+ON commerce_account_ledger (tenant_id, organization_id, owner_type, owner_id, asset_code, created_at);
+
+-- Ensure all commerce_account_ledger columns exist on tables created by older baseline revisions.
+-- CREATE TABLE IF NOT EXISTS does not modify an existing table, so columns added in later
+-- revisions must be back-filled with ALTER TABLE ADD COLUMN IF NOT EXISTS.
+-- The database lifecycle framework transparently translates ADD COLUMN IF NOT EXISTS
+-- into a pragma-based existence check on SQLite.
+ALTER TABLE commerce_account_ledger ADD COLUMN IF NOT EXISTS journal_id BIGINT;
+ALTER TABLE commerce_account_ledger ADD COLUMN IF NOT EXISTS ledger_type TEXT NOT NULL DEFAULT 'AVAILABLE';
+ALTER TABLE commerce_account_ledger ADD COLUMN IF NOT EXISTS hold_id BIGINT;
+ALTER TABLE commerce_account_ledger ADD COLUMN IF NOT EXISTS transfer_id BIGINT;
+ALTER TABLE commerce_account_ledger ADD COLUMN IF NOT EXISTS exchange_snapshot_id BIGINT;
+ALTER TABLE commerce_account_ledger ADD COLUMN IF NOT EXISTS settlement_snapshot_id BIGINT;
+ALTER TABLE commerce_account_ledger ADD COLUMN IF NOT EXISTS reversed_ledger_id BIGINT;
+ALTER TABLE commerce_account_ledger ADD COLUMN IF NOT EXISTS reference_no TEXT;
+ALTER TABLE commerce_account_ledger ADD COLUMN IF NOT EXISTS metadata_json TEXT NOT NULL DEFAULT '{}';
+ALTER TABLE commerce_account_ledger ADD COLUMN IF NOT EXISTS trace_id TEXT NOT NULL DEFAULT '';
 
 -- 1. Daily reward tracking table
 CREATE TABLE IF NOT EXISTS commerce_membership_daily_reward (
@@ -455,7 +478,11 @@ CREATE UNIQUE INDEX IF NOT EXISTS uk_commerce_membership_daily_reward_user_date
 CREATE UNIQUE INDEX IF NOT EXISTS uk_commerce_membership_daily_reward_idempotency
     ON commerce_membership_daily_reward (idempotency_key);
 CREATE INDEX IF NOT EXISTS idx_daily_reward_user_recent
-    ON commerce_membership_daily_reward (tenant_id, user_id, reward_date DESC, id DESC);
+ON commerce_membership_daily_reward (tenant_id, user_id, reward_date DESC, id DESC);
+
+-- Ensure daily_reward columns added in later baseline revisions exist on older tables.
+ALTER TABLE commerce_membership_daily_reward ADD COLUMN IF NOT EXISTS version BIGINT NOT NULL DEFAULT 0;
+ALTER TABLE commerce_membership_daily_reward ADD COLUMN IF NOT EXISTS updated_at TEXT NOT NULL DEFAULT (datetime('now'));
 
 -- 2. Privilege usage tracking table
 CREATE TABLE IF NOT EXISTS commerce_membership_privilege_usage (

@@ -147,7 +147,8 @@
     "layerRole": "frontend-feature",
     "publicExports": [
       ".",
-      "./catalog"
+      "./catalog",
+      "./i18n"
     ],
     "providedPorts": [
       {
@@ -157,6 +158,10 @@
       {
         "name": "subscriptionCatalog",
         "export": "./catalog"
+      },
+      {
+        "name": "subscriptionI18n",
+        "export": "./i18n"
       }
     ],
     "requiredPorts": [
@@ -174,6 +179,11 @@
         "name": "promotionService",
         "export": ".",
         "package": "@sdkwork/promotion-service"
+      },
+      {
+        "name": "orderCheckoutDialog",
+        "export": ".",
+        "package": "@sdkwork/order-pc-checkout"
       }
     ],
     "runtimeEntrypoints": [

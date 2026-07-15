@@ -9,6 +9,9 @@ import {
   formatCurrency as formatSdkworkCurrency,
 } from "@sdkwork/utils";
 import {
+  isSdkworkIamSessionAuthenticated,
+} from "@sdkwork/iam-runtime";
+import {
   createMembershipAppSdkClientFromTransport,
   createMembershipAppTransportClient,
   type BootstrapSdkworkMembershipAppServiceInput,
@@ -64,8 +67,6 @@ export type SdkworkMembershipAppService = {
 
 export type SdkworkMembershipAppServiceProvider = () => SdkworkMembershipAppService;
 
-let sdkworkMembershipAppServiceProvider: SdkworkMembershipAppServiceProvider | null = null;
-
 export interface SdkworkMembershipSessionTokens {
   accessToken?: string;
   authToken?: string;
@@ -73,8 +74,6 @@ export interface SdkworkMembershipSessionTokens {
 }
 
 export type SdkworkMembershipSessionTokenProvider = () => SdkworkMembershipSessionTokens;
-
-let sdkworkMembershipSessionTokenProvider: SdkworkMembershipSessionTokenProvider = () => ({});
 
 export interface CreateSdkworkMembershipAppServiceInput {
   appClient: MembershipAppSdkClient;
@@ -104,29 +103,67 @@ export interface SdkworkMediaResource {
   [key: string]: unknown;
 }
 
+// ─── Global provider registry ──────────────────────────────────────────────
+//
+// Providers are stored on `globalThis` instead of module-level variables to
+// survive the "dual-package hazard" where Vite, pnpm, or bundler
+// deduplication may load this module twice.  When that happens, a
+// module-level `let` would be reset to `null` in the duplicate copy, causing
+// the clawrouter's `configureSdkworkMembershipAppServiceProvider()` call to
+// write to one instance while `getSdkworkMembershipService()` reads from
+// another — resulting in "provider is not configured" errors even though
+// the host already called configure.
+//
+// Storing on `globalThis` guarantees a single shared slot regardless of how
+// many times the module is instantiated.
+
+const MEMBERSHIP_REGISTRY_INIT_KEY = Symbol.for("sdkwork.membership.registryInitialized");
+const MEMBERSHIP_PROVIDER_KEY = Symbol.for("sdkwork.membership.appServiceProvider");
+const MEMBERSHIP_TOKEN_PROVIDER_KEY = Symbol.for("sdkwork.membership.sessionTokenProvider");
+
+interface GlobalMembershipRegistry {
+  [MEMBERSHIP_REGISTRY_INIT_KEY]: boolean;
+  [MEMBERSHIP_PROVIDER_KEY]: SdkworkMembershipAppServiceProvider | null;
+  [MEMBERSHIP_TOKEN_PROVIDER_KEY]: SdkworkMembershipSessionTokenProvider;
+}
+
+function getGlobalRegistry(): GlobalMembershipRegistry {
+  const global = globalThis as typeof globalThis & Partial<GlobalMembershipRegistry>;
+  if (!global[MEMBERSHIP_REGISTRY_INIT_KEY]) {
+    const registry: GlobalMembershipRegistry = {
+      [MEMBERSHIP_REGISTRY_INIT_KEY]: true,
+      [MEMBERSHIP_PROVIDER_KEY]: null,
+      [MEMBERSHIP_TOKEN_PROVIDER_KEY]: () => ({}),
+    };
+    Object.assign(global, registry);
+  }
+  return global as unknown as GlobalMembershipRegistry;
+}
+
 export function configureSdkworkMembershipAppServiceProvider(
   provider: SdkworkMembershipAppServiceProvider | null,
 ): void {
-  sdkworkMembershipAppServiceProvider = provider;
+  getGlobalRegistry()[MEMBERSHIP_PROVIDER_KEY] = provider;
 }
 
 export function configureSdkworkMembershipSessionTokenProvider(
   provider: SdkworkMembershipSessionTokenProvider | null,
 ): void {
-  sdkworkMembershipSessionTokenProvider = provider ?? (() => ({}));
+  getGlobalRegistry()[MEMBERSHIP_TOKEN_PROVIDER_KEY] = provider ?? (() => ({}));
 }
 
 export function getSdkworkMembershipService(): SdkworkMembershipAppService {
-  if (!sdkworkMembershipAppServiceProvider) {
+  const provider = getGlobalRegistry()[MEMBERSHIP_PROVIDER_KEY];
+  if (!provider) {
     throw new Error(
       "SDKWork membership service provider is not configured. Call configureSdkworkMembershipAppServiceProvider() from membership PC bootstrap.",
     );
   }
-  return sdkworkMembershipAppServiceProvider();
+  return provider();
 }
 
 export function getSdkworkMembershipSessionTokens(): SdkworkMembershipSessionTokens {
-  const tokens = sdkworkMembershipSessionTokenProvider();
+  const tokens = getGlobalRegistry()[MEMBERSHIP_TOKEN_PROVIDER_KEY]();
   return {
     accessToken: normalizeSessionToken(tokens.accessToken),
     authToken: normalizeSessionToken(tokens.authToken),
@@ -135,8 +172,7 @@ export function getSdkworkMembershipSessionTokens(): SdkworkMembershipSessionTok
 }
 
 export function hasSdkworkMembershipSession(): boolean {
-  const tokens = getSdkworkMembershipSessionTokens();
-  return Boolean(normalizeSessionToken(tokens.authToken) || normalizeSessionToken(tokens.accessToken));
+  return isSdkworkIamSessionAuthenticated(getSdkworkMembershipSessionTokens());
 }
 
 export function requireSdkworkMembershipSession(message = "Authentication required"): void {
@@ -197,7 +233,14 @@ export function toSdkworkMembershipMutationStatus(status: unknown): SdkworkMembe
   if (normalized === "SUCCESS" || normalized === "COMPLETED" || normalized === "PAID") {
     return "completed";
   }
-  if (normalized === "FAILED" || normalized === "REJECTED") {
+  if (
+    normalized === "FAILED"
+    || normalized === "REJECTED"
+    || normalized === "CANCELLED"
+    || normalized === "CANCELED"
+    || normalized === "CLOSED"
+    || normalized === "EXPIRED"
+  ) {
     return "failed";
   }
   return "pending";

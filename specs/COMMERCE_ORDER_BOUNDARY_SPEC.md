@@ -41,6 +41,7 @@ client →  payment-app-sdk (optional cashier read/redirect consumer only; not p
 | Payment → Order | **No** | Foundation module |
 | Payment → Membership | **No** | Foundation module |
 | Membership → Order (Rust crate) | **No** | Use `@sdkwork/order-app-sdk` at client/service facade |
+| Membership PC UI → `@sdkwork/order-pc-checkout` | Yes | Controlled QR checkout UI only; Membership supplies localized copy and an injected payment-status driver |
 | Membership → Payment (Rust crate) | **No** | No payment orchestration in membership service |
 | Membership → `@sdkwork/payment-app-sdk` | Yes | Optional cashier read/redirect consumer only; checkout payment requests go through `@sdkwork/order-app-sdk` `orders.payments.create` |
 
@@ -73,7 +74,8 @@ Membership standalone gateway does **not** write `commerce_order`. All purchase 
 1. `@sdkwork/order-app-sdk` → `memberships.orders.create`
 2. `@sdkwork/membership-app-sdk` → `memberships.purchases.*` (reservation with `orderId` + `requestNo`)
 3. `@sdkwork/order-app-sdk` → `orders.payments.create(orderId, { paymentMethod })`
-4. Order webhook settlement → `MembershipPurchaseFulfillmentPort` → membership backend fulfillments API
+4. `@sdkwork/order-pc-checkout` renders the QR code and polls the injected status driver; it has no Membership, Account, or Payment SDK dependency
+5. Order webhook settlement → `MembershipPurchaseFulfillmentPort` → membership backend fulfillments API
 
 ## 7. Purchase API contract
 
@@ -90,4 +92,5 @@ Membership standalone gateway does **not** write `commerce_order`. All purchase 
 
 - No `sdkwork_order_*` crate dependency in membership `Cargo.toml` workspace members (production).
 - App packages consume `@sdkwork/order-app-sdk` for checkout; no raw order HTTP from membership UI.
+- Membership PC package consumes `@sdkwork/order-pc-checkout` only through its public export and supplies the driver from Membership service methods.
 - `node ../sdkwork-specs/tools/check-app-sdk-consumer-imports.mjs --workspace .`

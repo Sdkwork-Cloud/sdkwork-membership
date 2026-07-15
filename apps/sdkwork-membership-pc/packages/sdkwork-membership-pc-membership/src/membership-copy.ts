@@ -18,20 +18,21 @@ export interface SdkworkMembershipMessages {
     compare: string;
     viewBenefits: string;
   };
-  benefits: {
-    claimed: string;
-    descriptionFallback: string;
-    emptyDescription: string;
-    emptyTitle: string;
-    eyebrow: string;
-    pending: string;
-    title: string;
-    typeFallback: string;
-    usageValue: string;
-    locked: string;
-    unlockAt: string;
-    unlimited: string;
-  };
+benefits: {
+claimed: string;
+descriptionFallback: string;
+emptyDescription: string;
+emptyTitle: string;
+eyebrow: string;
+pending: string;
+title: string;
+typeFallback: string;
+usageValue: string;
+valueLabel: string;
+locked: string;
+unlockAt: string;
+unlimited: string;
+};
   common: {
     flexibleDuration: string;
     noValue: string;
@@ -184,20 +185,21 @@ const EN_US_MESSAGES: SdkworkMembershipMessages = {
     compare: "Compare",
     viewBenefits: "View benefits",
   },
-  benefits: {
-    claimed: "Claimed",
-    descriptionFallback: "Premium membership benefit",
-    emptyDescription: "Benefit unlocks and usage allowances will appear here when they are available.",
-    emptyTitle: "No membership benefits",
-    eyebrow: "Benefits",
-    pending: "Pending",
-    title: "Membership benefits",
-    typeFallback: "benefit",
-    usageValue: "{used}/{limit} used",
-    locked: "Locked",
-    unlockAt: "Unlock at {level}",
-    unlimited: "Unlimited",
-  },
+benefits: {
+claimed: "Claimed",
+descriptionFallback: "Premium membership benefit",
+emptyDescription: "Benefit unlocks and usage allowances will appear here when they are available.",
+emptyTitle: "No membership benefits",
+eyebrow: "Benefits",
+pending: "Pending",
+title: "Membership benefits",
+typeFallback: "benefit",
+usageValue: "{used}/{limit} used",
+valueLabel: "Value",
+locked: "Locked",
+unlockAt: "Unlock at {level}",
+unlimited: "Unlimited",
+},
   common: {
     flexibleDuration: "Flexible duration",
     noValue: "--",
@@ -221,19 +223,19 @@ const EN_US_MESSAGES: SdkworkMembershipMessages = {
     currentLevel: "Current level",
     description: "Manage your plan, track benefits, and grow your membership tier — all in one place.",
     eyebrow: "Membership",
-    includedPoints: "Included points",
-    noPackageDescription: "Pick a package to compare price, included points, and membership duration.",
+    includedPoints: "Included compute credits",
+    noPackageDescription: "Pick a package to compare price, included compute credits, and membership duration.",
     noPackageSelected: "No package selected",
     price: "Price",
     remaining: "Remaining",
     selectedOffer: "Selected offer",
     status: "Status",
     title: "Membership Center",
-    points: "Membership points",
+    points: "Compute credits",
     progressToNext: "Progress to {level}",
     nextLevel: "Next level",
     topLevel: "Top level reached",
-    pointsLabel: "Points",
+    pointsLabel: "Compute credits",
     growthLabel: "Growth",
   },
   levels: {
@@ -276,7 +278,7 @@ const EN_US_MESSAGES: SdkworkMembershipMessages = {
     features: "What's included",
     allFeatures: "All features",
     duration: "Duration",
-    pointsIncluded: "Points included",
+    pointsIncluded: "Compute credits included",
   },
   service: {
     purchaseFailed: "Failed to purchase membership.",
@@ -305,20 +307,21 @@ const ZH_CN_MESSAGES: SdkworkMembershipMessages = {
     compare: "对比",
     viewBenefits: "查看权益",
   },
-  benefits: {
-    claimed: "已领取",
-    descriptionFallback: "高级会员权益",
-    emptyDescription: "当有可用的解锁权益和配额时，会在这里展示。",
-    emptyTitle: "暂无会员权益",
-    eyebrow: "权益",
-    pending: "待使用",
-    title: "会员权益",
-    typeFallback: "权益",
-    usageValue: "已用 {used}/{limit}",
-    locked: "未解锁",
-    unlockAt: "{level} 解锁",
-    unlimited: "不限",
-  },
+benefits: {
+claimed: "已领取",
+descriptionFallback: "高级会员权益",
+emptyDescription: "当有可用的解锁权益和配额时，会在这里展示。",
+emptyTitle: "暂无会员权益",
+eyebrow: "权益",
+pending: "待使用",
+title: "会员权益",
+typeFallback: "权益",
+usageValue: "已用 {used}/{limit}",
+valueLabel: "权益值",
+locked: "未解锁",
+unlockAt: "{level} 解锁",
+unlimited: "不限",
+},
   common: {
     flexibleDuration: "时长灵活",
     noValue: "--",
@@ -342,19 +345,19 @@ const ZH_CN_MESSAGES: SdkworkMembershipMessages = {
     currentLevel: "当前等级",
     description: "在一个中心管理你的方案、权益与等级成长。",
     eyebrow: "会员",
-    includedPoints: "包含积分",
-    noPackageDescription: "选择一个套餐查看价格、积分与会员时长。",
+    includedPoints: "包含算力元",
+    noPackageDescription: "选择一个套餐查看价格、算力元与会员时长。",
     noPackageSelected: "暂未选择套餐",
     price: "价格",
     remaining: "剩余时长",
     selectedOffer: "已选套餐",
     status: "状态",
     title: "会员中心",
-    points: "会员积分",
+    points: "算力元",
     progressToNext: "升级到 {level}",
     nextLevel: "下一等级",
     topLevel: "已达到最高等级",
-    pointsLabel: "积分",
+    pointsLabel: "算力元",
     growthLabel: "成长值",
   },
   levels: {
@@ -397,7 +400,7 @@ const ZH_CN_MESSAGES: SdkworkMembershipMessages = {
     features: "包含内容",
     allFeatures: "全部功能",
     duration: "时长",
-    pointsIncluded: "包含积分",
+    pointsIncluded: "包含算力元",
   },
   service: {
     purchaseFailed: "购买会员失败。",

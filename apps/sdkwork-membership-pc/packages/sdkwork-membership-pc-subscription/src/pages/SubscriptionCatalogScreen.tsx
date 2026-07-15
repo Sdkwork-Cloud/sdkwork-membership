@@ -1,11 +1,6 @@
 import { useCallback, useState } from "react";
 import { StatusNotice } from "@sdkwork/ui-pc-react";
-import { sdkworkSubscriptionCatalogHostComponents } from "../components/subscription-catalog-host-components";
 import { SdkworkSubscriptionCatalogPage } from "./SubscriptionCatalogPage";
-
-function CatalogNotifyOutlet() {
-  return null;
-}
 
 function resolveNoticeTone(tone: "error" | "info" | "success"): "danger" | "default" | "success" {
   if (tone === "error") {
@@ -17,6 +12,18 @@ function resolveNoticeTone(tone: "error" | "info" | "success"): "danger" | "defa
   return "default";
 }
 
+/**
+ * A self-contained subscription catalog screen that can be mounted with zero
+ * props.  It wires default host components, notification UI, and no-op
+ * callbacks internally, so external hosts (e.g. ClawRouter) can embed it
+ * with a single `<SdkworkSubscriptionCatalogScreen />`.
+ *
+ * The component automatically:
+ * - Bootstraps the catalog from the configured SDK service provider
+ * - Shows loading and error states with retry
+ * - Displays plan cards, tier comparison, and billing cycle tabs
+ * - Handles checkout via a built-in confirmation modal
+ */
 export function SdkworkSubscriptionCatalogScreen() {
   const [notice, setNotice] = useState<{ message: string; tone: "error" | "info" | "success" } | null>(null);
 
@@ -34,9 +41,6 @@ export function SdkworkSubscriptionCatalogScreen() {
         </div>
       ) : null}
       <SdkworkSubscriptionCatalogPage
-        components={sdkworkSubscriptionCatalogHostComponents}
-        notifyOutlet={CatalogNotifyOutlet}
-        onMembershipTierUpdated={() => undefined}
         onNotify={handleNotify}
       />
     </>

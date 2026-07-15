@@ -324,19 +324,15 @@
             }
           }
         },
-        "security": [
-          {
-            "AuthToken": [],
-            "AccessToken": []
-          }
-        ],
+        "security": [],
         "x-sdkwork-owner": "sdkwork-membership",
         "x-sdkwork-api-authority": "sdkwork-membership-app-api",
         "x-sdkwork-domain": "commerce",
         "x-sdkwork-resource": "memberships.benefits",
         "x-sdkwork-request-context": "WebRequestContext",
         "x-sdkwork-api-surface": "app-api",
-        "x-sdkwork-server-request-id": true
+        "x-sdkwork-server-request-id": true,
+        "x-sdkwork-auth-mode": "anonymous"
       }
     },
     "/app/v3/api/memberships/plans": {
@@ -458,19 +454,15 @@
             }
           }
         },
-        "security": [
-          {
-            "AuthToken": [],
-            "AccessToken": []
-          }
-        ],
+        "security": [],
         "x-sdkwork-owner": "sdkwork-membership",
         "x-sdkwork-api-authority": "sdkwork-membership-app-api",
         "x-sdkwork-domain": "commerce",
         "x-sdkwork-resource": "memberships.plans",
         "x-sdkwork-request-context": "WebRequestContext",
         "x-sdkwork-api-surface": "app-api",
-        "x-sdkwork-server-request-id": true
+        "x-sdkwork-server-request-id": true,
+        "x-sdkwork-auth-mode": "anonymous"
       }
     },
     "/app/v3/api/memberships/package_groups": {
@@ -612,19 +604,15 @@
             }
           }
         },
-        "security": [
-          {
-            "AuthToken": [],
-            "AccessToken": []
-          }
-        ],
+        "security": [],
         "x-sdkwork-owner": "sdkwork-membership",
         "x-sdkwork-api-authority": "sdkwork-membership-app-api",
         "x-sdkwork-domain": "commerce",
         "x-sdkwork-resource": "memberships.packageGroups",
         "x-sdkwork-request-context": "WebRequestContext",
         "x-sdkwork-api-surface": "app-api",
-        "x-sdkwork-server-request-id": true
+        "x-sdkwork-server-request-id": true,
+        "x-sdkwork-auth-mode": "anonymous"
       }
     },
     "/app/v3/api/memberships/package_groups/{packageGroupId}": {
@@ -716,19 +704,15 @@
             }
           }
         },
-        "security": [
-          {
-            "AuthToken": [],
-            "AccessToken": []
-          }
-        ],
+        "security": [],
         "x-sdkwork-owner": "sdkwork-membership",
         "x-sdkwork-api-authority": "sdkwork-membership-app-api",
         "x-sdkwork-domain": "commerce",
         "x-sdkwork-resource": "memberships.packageGroups",
         "x-sdkwork-request-context": "WebRequestContext",
         "x-sdkwork-api-surface": "app-api",
-        "x-sdkwork-server-request-id": true
+        "x-sdkwork-server-request-id": true,
+        "x-sdkwork-auth-mode": "anonymous"
       }
     },
     "/app/v3/api/memberships/package_groups/{packageGroupId}/packages": {
@@ -878,19 +862,15 @@
             }
           }
         },
-        "security": [
-          {
-            "AuthToken": [],
-            "AccessToken": []
-          }
-        ],
+        "security": [],
         "x-sdkwork-owner": "sdkwork-membership",
         "x-sdkwork-api-authority": "sdkwork-membership-app-api",
         "x-sdkwork-domain": "commerce",
         "x-sdkwork-resource": "memberships.packageGroups.packages",
         "x-sdkwork-request-context": "WebRequestContext",
         "x-sdkwork-api-surface": "app-api",
-        "x-sdkwork-server-request-id": true
+        "x-sdkwork-server-request-id": true,
+        "x-sdkwork-auth-mode": "anonymous"
       }
     },
     "/app/v3/api/memberships/packages": {
@@ -1032,19 +1012,15 @@
             }
           }
         },
-        "security": [
-          {
-            "AuthToken": [],
-            "AccessToken": []
-          }
-        ],
+        "security": [],
         "x-sdkwork-owner": "sdkwork-membership",
         "x-sdkwork-api-authority": "sdkwork-membership-app-api",
         "x-sdkwork-domain": "commerce",
         "x-sdkwork-resource": "memberships.packages",
         "x-sdkwork-request-context": "WebRequestContext",
         "x-sdkwork-api-surface": "app-api",
-        "x-sdkwork-server-request-id": true
+        "x-sdkwork-server-request-id": true,
+        "x-sdkwork-auth-mode": "anonymous"
       }
     },
     "/app/v3/api/memberships/packages/{packageId}": {
@@ -1136,19 +1112,15 @@
             }
           }
         },
-        "security": [
-          {
-            "AuthToken": [],
-            "AccessToken": []
-          }
-        ],
+        "security": [],
         "x-sdkwork-owner": "sdkwork-membership",
         "x-sdkwork-api-authority": "sdkwork-membership-app-api",
         "x-sdkwork-domain": "commerce",
         "x-sdkwork-resource": "memberships.packages",
         "x-sdkwork-request-context": "WebRequestContext",
         "x-sdkwork-api-surface": "app-api",
-        "x-sdkwork-server-request-id": true
+        "x-sdkwork-server-request-id": true,
+        "x-sdkwork-auth-mode": "anonymous"
       }
     },
     "/app/v3/api/memberships/purchases": {

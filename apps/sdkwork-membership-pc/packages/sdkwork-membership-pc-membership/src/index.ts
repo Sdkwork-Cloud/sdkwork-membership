@@ -4,6 +4,7 @@ export * from "./membership-controller.ts";
 export * from "./membership-copy.ts";
 export * from "./membership-intl.tsx";
 export * from "./membership-service.ts";
+export * from "./payment-qr-strategy.ts";
 export * from "./components/membership-benefits-grid.tsx";
 export * from "./components/membership-level-comparison.tsx";
 export * from "./components/membership-hero.tsx";

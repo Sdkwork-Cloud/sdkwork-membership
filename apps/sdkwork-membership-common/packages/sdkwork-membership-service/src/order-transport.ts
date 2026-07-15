@@ -8,7 +8,27 @@ import { resolveMembershipAppApiOrigin } from "./transport.ts";
 
 export type { OrderAppTransportClient };
 
-let orderAppServiceProvider: (() => OrderAppTransportClient) | null = null;
+// ─── Global provider registry ──────────────────────────────────────────────
+//
+// Same dual-package hazard fix as index.ts — see comment there.
+const ORDER_REGISTRY_INIT_KEY = Symbol.for("sdkwork.membership.orderRegistryInitialized");
+const ORDER_PROVIDER_KEY = Symbol.for("sdkwork.membership.orderAppServiceProvider");
+
+interface GlobalOrderRegistry {
+  [ORDER_REGISTRY_INIT_KEY]: boolean;
+  [ORDER_PROVIDER_KEY]: (() => OrderAppTransportClient) | null;
+}
+
+function getGlobalOrderRegistry(): GlobalOrderRegistry {
+  const global = globalThis as typeof globalThis & Partial<GlobalOrderRegistry>;
+  if (!global[ORDER_REGISTRY_INIT_KEY]) {
+    Object.assign(global, {
+      [ORDER_REGISTRY_INIT_KEY]: true,
+      [ORDER_PROVIDER_KEY]: null,
+    } satisfies GlobalOrderRegistry);
+  }
+  return global as unknown as GlobalOrderRegistry;
+}
 
 export interface SdkworkOrderWriteCommandHeaders {
   idempotencyKey: string;
@@ -29,16 +49,17 @@ export interface BootstrapSdkworkOrderAppServiceInput {
 export function configureSdkworkOrderAppServiceProvider(
   provider: (() => OrderAppTransportClient) | null,
 ): void {
-  orderAppServiceProvider = provider;
+  getGlobalOrderRegistry()[ORDER_PROVIDER_KEY] = provider;
 }
 
 export function getSdkworkOrderAppService(): OrderAppTransportClient {
-  if (!orderAppServiceProvider) {
+  const provider = getGlobalOrderRegistry()[ORDER_PROVIDER_KEY];
+  if (!provider) {
     throw new Error(
-      "SDKWork order service provider is not configured. Call bootstrapSdkworkOrderAppService() from membership PC bootstrap.",
+      "SDKWork order service provider is not configured. Call bootstrapSdkworkOrderAppService() or configureSdkworkOrderAppServiceProvider() from membership PC bootstrap.",
     );
   }
-  return orderAppServiceProvider();
+  return provider();
 }
 
 export function createOrderAppTransportClient(

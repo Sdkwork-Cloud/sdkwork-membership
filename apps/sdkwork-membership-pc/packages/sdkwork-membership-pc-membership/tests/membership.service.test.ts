@@ -41,7 +41,7 @@ function wrapSdkworkMembershipResourceResponse<T>(data: T) {
 
 describe("sdkwork-membership-pc-membership service", () => {
   beforeEach(() => {
-    configureMembershipServiceMockSession({ authToken: "membership-auth-token" });
+    configureMembershipServiceMockSession({ accessToken: "membership-access-token", authToken: "membership-auth-token" });
   });
 
   afterEach(() => {
@@ -281,9 +281,21 @@ describe("sdkwork-membership-pc-membership service", () => {
       }),
     );
     const orderCreateResponses = [
-      { orderId: "order-uuid-purchase", orderNo: "MEMBERSHIP-ORDER-001" },
-      { orderId: "order-uuid-upgrade", orderNo: "MEMBERSHIP-ORDER-002" },
-      { orderId: "order-uuid-renew", orderNo: "MEMBERSHIP-ORDER-003" },
+      {
+        cashierUrl: "https://im.sdkwork.com/cashier?scene=virtual&orderId=MEMBERSHIP-ORDER-001&outTradeNo=MEMBERSHIP-TRADE-001",
+        orderId: "order-uuid-purchase",
+        orderNo: "MEMBERSHIP-ORDER-001",
+      },
+      {
+        cashierUrl: "https://im.sdkwork.com/cashier?scene=virtual&orderId=MEMBERSHIP-ORDER-002&outTradeNo=MEMBERSHIP-TRADE-002",
+        orderId: "order-uuid-upgrade",
+        orderNo: "MEMBERSHIP-ORDER-002",
+      },
+      {
+        cashierUrl: "https://im.sdkwork.com/cashier?scene=virtual&orderId=MEMBERSHIP-ORDER-003&outTradeNo=MEMBERSHIP-TRADE-003",
+        orderId: "order-uuid-renew",
+        orderNo: "MEMBERSHIP-ORDER-003",
+      },
     ];
     let orderCreateCallIndex = 0;
     const orderCreate = vi.fn().mockImplementation(async () =>
@@ -291,22 +303,10 @@ describe("sdkwork-membership-pc-membership service", () => {
         orderCreateResponses[orderCreateCallIndex++] ?? orderCreateResponses[0],
       ),
     );
-    const orderPaymentCreate = vi.fn().mockResolvedValue(
-      wrapSdkworkMembershipResourceResponse({
-        paymentParams: {
-          cashierUrl: "https://im.sdkwork.com/cashier?scene=virtual&orderId=MEMBERSHIP-ORDER-001",
-        },
-      }),
-    );
     configureOrderServiceMock(createOrderAppServiceMock({
       memberships: {
         orders: {
           create: orderCreate,
-        },
-      },
-      orders: {
-        payments: {
-          create: orderPaymentCreate,
         },
       },
     }));
@@ -332,6 +332,9 @@ describe("sdkwork-membership-pc-membership service", () => {
       amountCny: 199,
       orderId: "order-uuid-purchase",
       packageId: 2,
+      cashierUrl: "https://im.sdkwork.com/cashier?scene=virtual&orderId=MEMBERSHIP-ORDER-001&outTradeNo=MEMBERSHIP-TRADE-001",
+      qrCode: "https://im.sdkwork.com/cashier?scene=virtual&orderId=MEMBERSHIP-ORDER-001&outTradeNo=MEMBERSHIP-TRADE-001",
+      qrPaymentStrategy: "mobile_cashier_h5",
       status: "pending",
     });
 
@@ -382,46 +385,68 @@ describe("sdkwork-membership-pc-membership service", () => {
       {
         packageId: "2",
         paymentMethod: "wechat_pay",
+        paymentProduct: "mobile_cashier_h5",
       },
       {
         idempotencyKey: "membership-checkout:2:purchase",
-        sdkworkRequestHash: "memberships.orders.create---packageId---2---paymentMethod---wechat_pay--",
-        xIdempotencyFingerprint: "memberships.orders.create---packageId---2---paymentMethod---wechat_pay--",
+        sdkworkRequestHash: "memberships.orders.create---packageId---2---paymentMethod---wechat_pay---paymentProduct---mobile_cashier_h5--",
+        xIdempotencyFingerprint: "memberships.orders.create---packageId---2---paymentMethod---wechat_pay---paymentProduct---mobile_cashier_h5--",
       },
     );
-    expect(orderPaymentCreate).toHaveBeenNthCalledWith(
-      1,
-      "order-uuid-purchase",
-      { paymentMethod: "wechat_pay" },
-      {
-        idempotencyKey: "membership-pay:order-uuid-purchase",
-        sdkworkRequestHash: "orders.payments.create---paymentMethod---wechat_pay--",
-        xIdempotencyFingerprint: "orders.payments.create---paymentMethod---wechat_pay--",
-      },
-    );
+    expect(orderCreate).toHaveBeenCalledTimes(3);
   });
 
-  it("uses order payment parameters for cashier and QR payload", async () => {
+  it("requires the order-created cashier URL for the default H5 QR strategy", async () => {
+    const orderPaymentCreate = vi.fn();
     configureOrderServiceMock(createOrderAppServiceMock({
       memberships: {
         orders: {
           create: vi.fn().mockResolvedValue(
             wrapSdkworkMembershipResourceResponse({
-              orderId: "order-uuid-qr",
-              orderNo: "MEMBERSHIP-ORDER-QR",
+              orderId: "order-uuid-without-cashier",
+              orderNo: "MEMBERSHIP-ORDER-WITHOUT-CASHIER",
             }),
           ),
         },
       },
       orders: {
         payments: {
-          create: vi.fn().mockResolvedValue(
-            wrapSdkworkMembershipResourceResponse({
-              paymentParams: {
-                qrCodePayload: "weixin://wxpay/bizpayurl?pr=order",
-              },
-            }),
-          ),
+          create: orderPaymentCreate,
+        },
+      },
+    }));
+    const service = createSdkworkMembershipService({
+      membershipAppService: createMembershipAppServiceMock({
+        memberships: {
+          purchases: {
+            create: vi.fn().mockResolvedValue(
+              wrapSdkworkMembershipResourceResponse({ status: "pending" }),
+            ),
+          },
+        },
+      }),
+    });
+
+    await expect(service.purchaseMembership({ packageId: 2 })).rejects.toThrow(
+      "Failed to purchase membership.",
+    );
+    expect(orderPaymentCreate).not.toHaveBeenCalled();
+  });
+
+  it("uses the configured WeChat native strategy for provider QR payloads", async () => {
+    const orderCreate = vi.fn().mockResolvedValue(
+      wrapSdkworkMembershipResourceResponse({
+        orderId: "order-uuid-qr",
+        orderNo: "MEMBERSHIP-ORDER-QR",
+        paymentParams: {
+          qrCodeUrl: "weixin://wxpay/bizpayurl?pr=order",
+        },
+      }),
+    );
+    configureOrderServiceMock(createOrderAppServiceMock({
+      memberships: {
+        orders: {
+          create: orderCreate,
         },
       },
     }));
@@ -444,6 +469,7 @@ describe("sdkwork-membership-pc-membership service", () => {
     });
     const service = createSdkworkMembershipService({
       membershipAppService,
+      qrPaymentStrategy: "wechat_native",
     });
 
     await expect(
@@ -455,8 +481,41 @@ describe("sdkwork-membership-pc-membership service", () => {
       amountCny: 68,
       orderId: "order-uuid-qr",
       qrCode: "weixin://wxpay/bizpayurl?pr=order",
+      qrPaymentStrategy: "wechat_native",
       status: "pending",
     });
+    expect(orderCreate).toHaveBeenCalledOnce();
+    expect(orderCreate.mock.calls[0]?.[0]).toEqual({
+      packageId: "201",
+      paymentMethod: "wechat_pay",
+      paymentProduct: "wechat_native",
+    });
+  });
+
+  it("reads QR checkout completion through the generated order app SDK", async () => {
+    const retrievePaymentSuccess = vi.fn().mockResolvedValue(
+      wrapSdkworkMembershipResourceResponse({
+        paid: true,
+        status: "paid",
+      }),
+    );
+    configureOrderServiceMock(createOrderAppServiceMock({
+      orders: {
+        paymentSuccess: {
+          retrieve: retrievePaymentSuccess,
+        },
+      },
+    }));
+    const service = createSdkworkMembershipService();
+
+    await expect(service.getPurchaseStatus("order-uuid-paid")).resolves.toEqual({
+      amountCny: null,
+      durationDays: null,
+      orderId: "order-uuid-paid",
+      packageId: null,
+      status: "completed",
+    });
+    expect(retrievePaymentSuccess).toHaveBeenCalledWith("order-uuid-paid");
   });
 
   it("localizes membership auth and mutation fallback errors at the membership boundary", async () => {
@@ -476,7 +535,7 @@ describe("sdkwork-membership-pc-membership service", () => {
       }),
     ).rejects.toThrow("Please sign in before managing memberships.");
 
-    configureMembershipServiceMockSession({ authToken: "membership-auth-token" });
+    configureMembershipServiceMockSession({ accessToken: "membership-access-token", authToken: "membership-auth-token" });
     configureOrderServiceMock(createOrderAppServiceMock({
       memberships: {
         orders: {

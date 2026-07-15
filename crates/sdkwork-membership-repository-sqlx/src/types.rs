@@ -69,7 +69,7 @@ pub struct AppMembershipBenefitItem {
     pub usage_limit: Option<i64>,
     pub used_count: Option<i64>,
     /// Raw text value of the benefit grant quantity. Used for non-numeric
-    /// comparison table cells like "2K", "4K/8K", "8折积分", "标准生成通道".
+    /// comparison table cells like "2K", "4K/8K", "8折算力元", "标准生成通道".
     /// When the grant_quantity is a pure number, display_value is None and
     /// usage_limit holds the parsed integer. When it is a text value,
     /// usage_limit is None and display_value holds the raw text.

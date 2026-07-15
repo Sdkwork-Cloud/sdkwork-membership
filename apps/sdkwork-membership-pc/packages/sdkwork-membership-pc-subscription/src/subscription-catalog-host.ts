@@ -1,4 +1,5 @@
 import type { ComponentType } from "react";
+import type { SdkworkSubscriptionPurchaseResult } from "./subscription-service";
 
 export { SDKWORK_SUBSCRIPTION_CATALOG_UNAVAILABLE_TIER_KEY } from "./subscription-catalog-content";
 
@@ -17,10 +18,23 @@ export interface SdkworkSubscriptionCatalogCheckoutPlan {
   priceLabel: string;
 }
 
+export interface SdkworkSubscriptionCatalogCheckoutPayment {
+  amountCny?: number | null;
+  orderId?: string;
+  qrCode?: string;
+  status: "completed" | "failed" | "pending";
+}
+
 export interface SdkworkSubscriptionCatalogCheckoutModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSuccess: () => void;
+  onPaymentCompleted?: (
+    payment: SdkworkSubscriptionCatalogCheckoutPayment,
+  ) => Promise<void> | void;
+  onPaymentStatus?: (
+    orderId: string,
+  ) => Promise<SdkworkSubscriptionCatalogCheckoutPayment>;
+  onPurchase: () => Promise<SdkworkSubscriptionPurchaseResult>;
   plan: SdkworkSubscriptionCatalogCheckoutPlan | null;
 }
 
@@ -36,11 +50,11 @@ export interface SdkworkSubscriptionCatalogHostComponents {
 }
 
 export interface SdkworkSubscriptionCatalogPageProps {
-  components: SdkworkSubscriptionCatalogHostComponents;
+  components?: SdkworkSubscriptionCatalogHostComponents;
   memberSummary?: SdkworkSubscriptionMemberSummary | null;
-  notifyOutlet: ComponentType;
-  onMembershipTierUpdated: (membershipTierKey: string, durationDays: number) => void;
-  onNotify: (message: string, tone: "error" | "info" | "success") => void;
+  notifyOutlet?: ComponentType;
+  onMembershipTierUpdated?: (membershipTierKey: string, durationDays: number) => void;
+  onNotify?: (message: string, tone: "error" | "info" | "success") => void;
 }
 
 export type SdkworkSubscriptionCatalogTranslate = (

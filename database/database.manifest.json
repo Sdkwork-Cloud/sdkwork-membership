@@ -18,7 +18,7 @@
   ],
   "lifecycle": {
     "autoMigrate": true,
-    "seedOnBoot": false,
+    "seedOnBoot": true,
     "defaultSeedLocale": "zh-CN",
     "defaultSeedProfile": "standard",
     "supportedSeedLocales": [
@@ -31,7 +31,8 @@
       "ko-KR"
     ],
     "activeSeedLocales": [
-      "zh-CN"
+      "zh-CN",
+      "en-US"
     ],
     "driftCheckIntervalSec": 300
   },

@@ -40,6 +40,7 @@
     "order -> payment (in-process OwnerOrderPaymentStore, webhook ingest, confirm payment ports)",
     "order -> membership (MembershipPurchaseFulfillmentPort or HTTP adapter at gateway assembly, after payment settlement)",
     "membership -> order-app-sdk (client / service facade consumer only)",
+    "membership PC UI -> order-pc-checkout (controlled QR checkout component via injected driver only)",
     "membership -> payment-app-sdk (optional cashier read/redirect consumer only; not payment execution)"
   ],
   "forbiddenDependencies": [

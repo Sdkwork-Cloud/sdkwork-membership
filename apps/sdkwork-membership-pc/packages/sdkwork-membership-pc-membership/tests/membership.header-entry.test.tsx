@@ -75,7 +75,7 @@ describe("sdkwork-membership-pc-membership token plan header entry", () => {
   });
 
   it("opens the token plan menu and routes selected packages to checkout", async () => {
-    configureMembershipServiceMockSession({ authToken: "membership-header-auth-token" });
+    configureMembershipServiceMockSession({ accessToken: "membership-header-access-token", authToken: "membership-header-auth-token" });
     configureSdkworkMembershipAppServiceProvider(() => createMembershipAppServiceMock());
     const controller = createSdkworkMembershipController({
       service: {
@@ -108,7 +108,7 @@ describe("sdkwork-membership-pc-membership token plan header entry", () => {
   });
 
   it("routes to the membership center when requested", async () => {
-    configureMembershipServiceMockSession({ authToken: "membership-header-auth-token" });
+    configureMembershipServiceMockSession({ accessToken: "membership-header-access-token", authToken: "membership-header-auth-token" });
     configureSdkworkMembershipAppServiceProvider(() => createMembershipAppServiceMock());
     const controller = createSdkworkMembershipController({
       service: {

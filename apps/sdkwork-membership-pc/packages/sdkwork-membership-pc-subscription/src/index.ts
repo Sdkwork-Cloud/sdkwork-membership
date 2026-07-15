@@ -6,6 +6,7 @@ export * from "./subscription-intl.tsx";
 export * from "./subscription-service.ts";
 export * from "./subscription-catalog-controller.ts";
 export * from "./subscription-catalog-service.ts";
+export * from "./i18n/index.ts";
 export * from "./components/subscription-checkout-panel.tsx";
 export * from "./components/subscription-coupon-list.tsx";
 export * from "./components/subscription-hero.tsx";

@@ -110,7 +110,18 @@ export function SdkworkMembershipBenefitsGrid({
                 </div>
               </div>
 
-              {benefit.usageLimit !== null ? (
+              {benefit.displayValue ? (
+                <div className="mt-5">
+                  <div className="flex items-center justify-between gap-4 text-xs">
+                    <span className="font-medium text-[var(--sdk-color-text-muted)]">
+                      {copy.benefits.valueLabel || "Value"}
+                    </span>
+                    <span className="font-semibold tabular-nums text-[var(--sdk-color-text-primary)]">
+                      {benefit.displayValue}
+                    </span>
+                  </div>
+                </div>
+              ) : benefit.usageLimit !== null ? (
                 <div className="mt-5">
                   <div className="flex items-center justify-between gap-4 text-xs">
                     <span className="font-medium text-[var(--sdk-color-text-muted)]">

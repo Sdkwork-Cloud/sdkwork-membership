@@ -1,4 +1,4 @@
-import { lazy, Suspense, useEffect, useMemo } from "react";
+import { lazy, Suspense, useMemo } from "react";
 import {
   BrowserRouter,
   Link,
@@ -108,17 +108,20 @@ function MembershipRoutes() {
 }
 
 export function MembershipAppShell() {
-  const apiBaseUrl = useMemo(() => resolveMembershipApiBaseUrl(), []);
-  const orderApiBaseUrl = useMemo(() => resolveOrderApiBaseUrl(), []);
-
-  useEffect(() => {
-    bootstrapSdkworkMembershipAppService({
-      baseUrl: apiBaseUrl,
-    });
-    bootstrapSdkworkOrderAppService({
-      baseUrl: orderApiBaseUrl,
-    });
-  }, [apiBaseUrl, orderApiBaseUrl]);
+  /**
+   * Bootstrap SDK service providers synchronously during the first render,
+   * BEFORE any child route components mount.  React fires effects
+   * bottom-up (children first), so a useEffect-based bootstrap would let
+   * child pages call getSdkworkMembershipService() before the provider is
+   * configured.  Using useMemo with an empty dependency array guarantees
+   * the SDK is ready before children render.
+   */
+  useMemo(() => {
+    const membershipBaseUrl = resolveMembershipApiBaseUrl();
+    const orderBaseUrl = resolveOrderApiBaseUrl();
+    bootstrapSdkworkMembershipAppService({ baseUrl: membershipBaseUrl });
+    bootstrapSdkworkOrderAppService({ baseUrl: orderBaseUrl });
+  }, []);
 
   return (
     <SdkworkThemeProvider defaultTheme="light">

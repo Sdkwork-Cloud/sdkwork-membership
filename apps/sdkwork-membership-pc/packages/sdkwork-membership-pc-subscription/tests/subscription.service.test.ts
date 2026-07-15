@@ -22,7 +22,7 @@ describe("sdkwork-membership-pc-subscription service", () => {
   const RETIRED_TIER_ROOT = "v" + "ip";
 
   beforeEach(() => {
-    configureMembershipServiceMockSession({ authToken: "subscription-auth-token" });
+    configureMembershipServiceMockSession({ accessToken: "subscription-access-token", authToken: "subscription-auth-token" });
   });
 
   afterEach(() => {
@@ -476,7 +476,7 @@ describe("sdkwork-membership-pc-subscription service", () => {
       }),
     ).rejects.toThrow("请先登录后再管理订阅。");
 
-    configureMembershipServiceMockSession({ authToken: "subscription-auth-token" });
+    configureMembershipServiceMockSession({ accessToken: "subscription-access-token", authToken: "subscription-auth-token" });
     configureOrderServiceMock(createOrderAppServiceMock({
       memberships: {
         orders: {

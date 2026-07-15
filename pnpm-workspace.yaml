@@ -5,7 +5,6 @@ packages:
   - "apps/sdkwork-membership-pc/packages/*"
   - "sdks/sdkwork-membership-app-sdk/sdkwork-membership-app-sdk-typescript"
   - "sdks/sdkwork-membership-backend-sdk/sdkwork-membership-backend-sdk-typescript"
-  - "../sdkwork-order/sdks/sdkwork-order-app-sdk/sdkwork-order-app-sdk-typescript"
   - "../sdkwork-iam/apps/sdkwork-iam-common/packages/sdkwork-iam-contracts"
   - "../sdkwork-iam/apps/sdkwork-iam-common/packages/sdkwork-iam-runtime"
   - "../sdkwork-iam/apps/sdkwork-iam-common/packages/sdkwork-iam-sdk-ports"
@@ -29,6 +28,8 @@ packages:
   - "../sdkwork-promotion/apps/sdkwork-promotion-common/packages/*"
   - "../sdkwork-promotion/apps/sdkwork-promotion-pc/packages/sdkwork-promotion-pc-core"
   - "../sdkwork-promotion/apps/sdkwork-promotion-pc/packages/sdkwork-promotion-pc-coupon"
+  - "../sdkwork-order/sdks/sdkwork-order-app-sdk/sdkwork-order-app-sdk-typescript"
+  - "../sdkwork-order/apps/sdkwork-order-pc/packages/sdkwork-order-pc-checkout"
 
 catalog:
   react: ^19.2.4

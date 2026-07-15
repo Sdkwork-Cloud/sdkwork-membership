@@ -8,7 +8,7 @@ import { createSdkworkSubscriptionCatalogService } from "../src/subscription-cat
 
 describe("sdkwork-membership-pc-subscription catalog service", () => {
   beforeEach(() => {
-    configureMembershipServiceMockSession({ authToken: "catalog-auth-token" });
+    configureMembershipServiceMockSession({ accessToken: "catalog-access-token", authToken: "catalog-auth-token" });
   });
 
   afterEach(() => {

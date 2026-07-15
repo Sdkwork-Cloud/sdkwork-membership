@@ -624,7 +624,7 @@ async fn fetch_plans(
     finish_api_json(
         &ctx,
         async {
-            let catalog_subject = resolve_membership_subject(&state, &ctx)?;
+            let catalog_subject = resolve_optional_membership_subject(&ctx);
             let data = state
                 .store
                 .load_plans(
@@ -649,7 +649,7 @@ async fn fetch_benefits(
     finish_api_json(
         &ctx,
         async {
-            let subject = resolve_membership_subject(&state, &ctx)?;
+            let subject = resolve_optional_membership_subject(&ctx);
             let data = state
                 .store
                 .load_benefits(
@@ -675,7 +675,7 @@ async fn fetch_package_groups(
     finish_api_json(
         &ctx,
         async {
-            let catalog_subject = resolve_membership_subject(&state, &ctx)?;
+            let catalog_subject = resolve_optional_membership_subject(&ctx);
             let data = state
                 .store
                 .load_package_groups(
@@ -705,7 +705,7 @@ async fn fetch_package_group(
     finish_api_json(
         &ctx,
         async {
-            let catalog_subject = resolve_membership_subject(&state, &ctx)?;
+            let catalog_subject = resolve_optional_membership_subject(&ctx);
             let item = state
                 .store
                 .load_package_group(catalog_subject, package_group_id)
@@ -732,7 +732,7 @@ async fn fetch_package_group_packages(
     finish_api_json(
         &ctx,
         async {
-            let catalog_subject = resolve_membership_subject(&state, &ctx)?;
+            let catalog_subject = resolve_optional_membership_subject(&ctx);
             let data = state
                 .store
                 .load_packages(
@@ -759,7 +759,7 @@ async fn fetch_packages(
     finish_api_json(
         &ctx,
         async {
-            let catalog_subject = resolve_membership_subject(&state, &ctx)?;
+            let catalog_subject = resolve_optional_membership_subject(&ctx);
             let data = state
                 .store
                 .load_packages(
@@ -786,7 +786,7 @@ async fn fetch_package(
     finish_api_json(
         &ctx,
         async {
-            let catalog_subject = resolve_membership_subject(&state, &ctx)?;
+            let catalog_subject = resolve_optional_membership_subject(&ctx);
             let item = state
                 .store
                 .load_package(catalog_subject, package_id)
@@ -1011,6 +1011,15 @@ fn resolve_membership_subject(
         Err(error) if state.require_subject => Err(error),
         Err(_) => Ok(None),
     }
+}
+
+/// Resolve the subject for **catalog read** endpoints (plans, benefits,
+/// packages, package_groups).  These endpoints serve public catalog data
+/// that must be visible to anonymous visitors browsing the token-plan
+/// page.  When no session is present, they return `None` instead of a 401
+/// so the store can serve public rows.
+fn resolve_optional_membership_subject(ctx: &WebRequestContext) -> Option<AppMembershipSubject> {
+    app_membership_subject_from_context(ctx).ok()
 }
 
 fn resolve_required_membership_subject(

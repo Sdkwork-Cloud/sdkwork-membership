@@ -1,5 +1,7 @@
 import {
+  useCallback,
   useMemo,
+  useRef,
   useSyncExternalStore,
 } from "react";
 import {
@@ -24,8 +26,10 @@ export interface SdkworkSubscriptionCatalogController {
   bootstrap(): Promise<SdkworkSubscriptionCatalogControllerState>;
   clearCheckoutPlan(): void;
   getState(): SdkworkSubscriptionCatalogControllerState;
+  getPurchaseStatus(orderId: string): Promise<SdkworkSubscriptionPurchaseResult>;
   purchaseSelectedPlan(): Promise<SdkworkSubscriptionPurchaseResult>;
   refresh(): Promise<SdkworkSubscriptionCatalogControllerState>;
+  retry(): Promise<SdkworkSubscriptionCatalogControllerState>;
   selectBillingCycle(index: number): SdkworkSubscriptionCatalogControllerState;
   selectCheckoutPlan(plan: SdkworkSubscriptionCatalogCheckoutPlan | null): void;
   service: SdkworkSubscriptionCatalogService;
@@ -117,6 +121,9 @@ export function createSdkworkSubscriptionCatalogController(
 
   return {
     async bootstrap() {
+      if (state.isLoading) {
+        return state;
+      }
       setState({
         isLoading: true,
         lastError: undefined,
@@ -147,6 +154,10 @@ export function createSdkworkSubscriptionCatalogController(
       return state;
     },
 
+    async getPurchaseStatus(orderId) {
+      return service.getPurchaseStatus(orderId);
+    },
+
     async purchaseSelectedPlan() {
       const checkoutPlan = state.selectedCheckoutPlan;
       if (!checkoutPlan) {
@@ -157,8 +168,9 @@ export function createSdkworkSubscriptionCatalogController(
       try {
         const result = await service.purchasePackage({
           packageId: checkoutPlan.packageNumericId,
+          paymentMethod: "WECHAT",
         });
-        setState({ isMutating: false, selectedCheckoutPlan: null });
+        setState({ isMutating: false });
         return result;
       } catch (error) {
         setState({
@@ -170,6 +182,11 @@ export function createSdkworkSubscriptionCatalogController(
     },
 
     async refresh() {
+      return this.bootstrap();
+    },
+
+    async retry() {
+      setState({ isBootstrapped: false, lastError: undefined });
       return this.bootstrap();
     },
 
@@ -206,12 +223,42 @@ export function useSdkworkSubscriptionCatalogControllerState(
   );
 }
 
+/**
+ * React hook that returns a stable `SdkworkSubscriptionCatalogController`.
+ *
+ * The `translate` option is captured in a ref so it does NOT participate in
+ * the `useMemo` dependency array.  This is critical because callers typically
+ * pass an inline arrow function for `translate` (e.g.
+ * `(k, d) => t(k, d ?? k)`), which would otherwise create a new function
+ * reference on every render, causing `useMemo` to rebuild the controller on
+ * every render, which in turn triggers `useSyncExternalStore` to detect a
+ * "new" store and re-render – producing an infinite update loop.
+ *
+ * The ref pattern lets the latest `translate` be used inside the controller
+ * without invalidating the memoised controller identity.
+ */
 export function useSdkworkSubscriptionCatalogController(
   controllerProp?: SdkworkSubscriptionCatalogController,
   options: CreateSdkworkSubscriptionCatalogControllerOptions = {},
 ): SdkworkSubscriptionCatalogController {
+  const translateRef = useRef(options.translate);
+  translateRef.current = options.translate;
+
+  const stableTranslate = useCallback(
+    (key: string, defaultValue?: string) => {
+      const fn = translateRef.current;
+      if (fn) return fn(key, defaultValue);
+      return defaultValue ?? key;
+    },
+    [],
+  );
+
   return useMemo(
-    () => controllerProp ?? createSdkworkSubscriptionCatalogController(options),
-    [controllerProp, options.locale, options.service, options.translate],
+    () => controllerProp ?? createSdkworkSubscriptionCatalogController({
+      ...options,
+      translate: stableTranslate,
+    }),
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- translate is via ref, locale and service are stable references when properly memoised by the caller
+    [controllerProp, options.locale, options.service, stableTranslate],
   );
 }

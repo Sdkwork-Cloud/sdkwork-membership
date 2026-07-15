@@ -69,6 +69,7 @@ export interface CreateSdkworkSubscriptionCatalogServiceOptions {
 
 export interface SdkworkSubscriptionCatalogService {
   getCatalog(): Promise<SdkworkSubscriptionCatalogData>;
+  getPurchaseStatus(orderId: string): Promise<SdkworkSubscriptionPurchaseResult>;
   getViewModel(
     catalog: SdkworkSubscriptionCatalogData,
     billingCycleIndex: number,
@@ -82,14 +83,22 @@ const CATALOG_LIST_QUERY = createSdkworkMembershipListQuery(1, 200);
 async function fetchBenefitsByRank(
   membershipAppService: SdkworkMembershipAppService,
 ): Promise<Readonly<Record<number, readonly RemoteMembershipCatalogBenefit[]>>> {
+  // Benefits are catalog data — they should be publicly visible.  However,
+  // if the backend still returns 401 (e.g. during migration), we catch the
+  // error and return empty arrays so the catalog page renders plans and
+  // packages without requiring login.
   const entries = await Promise.all(
     [0, 1, 2, 3].map(async (rank) => {
-      const payload = await membershipAppService.memberships.benefits.list({
-        ...CATALOG_LIST_QUERY,
-        ...(rank > 0 ? { plan_id: rank } : {}),
-      });
-      const benefits = unwrapSdkworkMembershipPageItems<RemoteMembershipCatalogBenefit>(payload);
-      return [rank, benefits] as const;
+      try {
+        const payload = await membershipAppService.memberships.benefits.list({
+          ...CATALOG_LIST_QUERY,
+          planId: String(rank),
+        });
+        const benefits = unwrapSdkworkMembershipPageItems<RemoteMembershipCatalogBenefit>(payload);
+        return [rank, benefits] as const;
+      } catch {
+        return [rank, [] as RemoteMembershipCatalogBenefit[]] as const;
+      }
     }),
   );
 
@@ -134,12 +143,27 @@ export function createSdkworkSubscriptionCatalogService(
   return {
     async getCatalog() {
       const membershipAppService = resolveMembershipAppService();
-      const [packageGroupsPayload, plansPayload, memberSummary, benefitsByRank] = await Promise.all([
-        membershipAppService.memberships.packageGroups.list(CATALOG_LIST_QUERY),
-        membershipAppService.memberships.plans.list(CATALOG_LIST_QUERY),
-        fetchMemberSummary(membershipAppService),
+      const isLoggedIn = hasSdkworkMembershipSession();
+
+      // Catalog data (package groups, plans, benefits) is public — visible
+      // to anonymous visitors browsing the token-plan page.
+      // The member summary requires authentication and is skipped for
+      // anonymous visitors.
+      const fetches: Promise<unknown>[] = [
+        membershipAppService.memberships.packageGroups.list(CATALOG_LIST_QUERY)
+          .catch(() => ({ code: 0, data: { items: [], pageInfo: { mode: "offset", page: 1, pageSize: 200, total: 0 } }, traceId: "" })),
+        membershipAppService.memberships.plans.list(CATALOG_LIST_QUERY)
+          .catch(() => ({ code: 0, data: { items: [], pageInfo: { mode: "offset", page: 1, pageSize: 200, total: 0 } }, traceId: "" })),
+        isLoggedIn ? fetchMemberSummary(membershipAppService) : Promise.resolve(null),
         fetchBenefitsByRank(membershipAppService),
-      ]);
+      ];
+
+      const [packageGroupsPayload, plansPayload, memberSummary, benefitsByRank] = await Promise.all(fetches) as [
+        unknown,
+        unknown,
+        SdkworkSubscriptionCatalogMemberSummaryModel | null,
+        Readonly<Record<number, readonly RemoteMembershipCatalogBenefit[]>>,
+      ];
 
       const packageGroups = unwrapSdkworkMembershipPageItems<RemoteMembershipCatalogPackageGroup>(packageGroupsPayload);
       const plans = unwrapSdkworkMembershipPageItems<RemoteMembershipCatalogPlan>(plansPayload);
@@ -206,6 +230,10 @@ export function createSdkworkSubscriptionCatalogService(
         selectedPackageGroupId: null,
         tierColumns,
       };
+    },
+
+    async getPurchaseStatus(orderId) {
+      return subscriptionService.getPurchaseStatus(orderId);
     },
 
     async purchasePackage(input) {

@@ -24,6 +24,8 @@ import {
   type SdkworkMembershipLevel,
   type SdkworkMembershipPlan,
   type SdkworkMembershipPurchaseResult,
+  type SdkworkMembershipQrPaymentStrategy,
+  type SdkworkMembershipQrPaymentStrategyId,
   type SdkworkMembershipService,
   type SdkworkMembershipSummary,
 } from "@sdkwork/membership-pc-membership";
@@ -143,11 +145,13 @@ export interface CreateSdkworkSubscriptionServiceOptions {
   couponService?: Pick<SdkworkCouponService, "getDashboard">;
   paymentMethodService?: Partial<SdkworkSubscriptionPaymentMethodService>;
   membershipService?: Partial<SdkworkMembershipService>;
+  qrPaymentStrategy?: SdkworkMembershipQrPaymentStrategyId | SdkworkMembershipQrPaymentStrategy;
 }
 
 export interface SdkworkSubscriptionService {
   getDashboard(): Promise<SdkworkSubscriptionDashboardData>;
   getEmptyDashboard(): SdkworkSubscriptionDashboardData;
+  getPurchaseStatus(orderId: string): Promise<SdkworkSubscriptionPurchaseResult>;
   purchaseSubscription(input: SdkworkSubscriptionMutationInput): Promise<SdkworkSubscriptionPurchaseResult>;
   renewSubscription(input: SdkworkSubscriptionMutationInput): Promise<SdkworkSubscriptionPurchaseResult>;
   upgradeSubscription(input: SdkworkSubscriptionMutationInput): Promise<SdkworkSubscriptionPurchaseResult>;
@@ -435,12 +439,14 @@ export function createSdkworkSubscriptionService(
         ...createSdkworkMembershipService({
           membershipAppService: options.membershipAppService,
           locale: options.locale,
+          qrPaymentStrategy: options.qrPaymentStrategy,
         }),
         ...options.membershipService,
       }
     : createSdkworkMembershipService({
         membershipAppService: options.membershipAppService,
         locale: options.locale,
+        qrPaymentStrategy: options.qrPaymentStrategy,
       });
   const couponService = options.couponService ?? createSdkworkCouponService({
     promotionAppService: options.promotionAppService,
@@ -457,7 +463,7 @@ export function createSdkworkSubscriptionService(
     try {
       const membershipAppService = resolveMembershipAppService();
       const payload = await membershipAppService.memberships.packageGroups.list(
-        createSdkworkMembershipListQuery(),
+        createSdkworkMembershipListQuery(1, 200),
       );
       const groups = unwrapSdkworkMembershipPageItems<RemoteMembershipPackageGroup>(payload);
       return sortPackageGroups(groups.map(mapPackageGroup));
@@ -490,6 +496,11 @@ export function createSdkworkSubscriptionService(
 
     getEmptyDashboard() {
       return createEmptyDashboard(membershipService);
+    },
+
+    async getPurchaseStatus(orderId) {
+      requireSdkworkMembershipSession(copy.service.signInRequired);
+      return membershipService.getPurchaseStatus(orderId);
     },
 
     async purchaseSubscription(input) {

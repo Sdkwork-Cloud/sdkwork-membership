@@ -1,9 +1,7 @@
-# en-US Seed Locale (Reserved)
+# en-US Seeds
 
-This directory is a reserved placeholder for English (United States) seed data.
+Locale-specific seed data for English (United States).
 
-Per `DATABASE_FRAMEWORK_SPEC.md` section 8.1, reserved locales must keep directory
-placeholders so future activation does not require structural migration.
-
-Activation: add `"en-US"` to `activeLocales` in `seed.manifest.json` and populate
-seed SQL files here when English locale initialization data is needed.
+This locale is **active**. Seed files in this directory are referenced by
+`seeds/seed.manifest.json` and run after common seed scripts to override
+display-facing columns with English text.

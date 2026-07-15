@@ -80,6 +80,7 @@ const PLAN_RANK_DISPLAY: Record<number, PlanRankDisplayConfig> = {
   1: { membershipTierKey: "pro", nameKey: "basic_plan" },
   2: { membershipTierKey: "peak", nameKey: "pro_plan" },
   3: { membershipTierKey: "peak", nameKey: "peak_plan" },
+  4: { membershipTierKey: "super", nameKey: "super_plan" },
 };
 
 const SUPER_RANK = 4;
@@ -150,36 +151,36 @@ function textValueWithFallback(
 }
 
 const COMPARE_BENEFIT_ROWS: ReadonlyArray<ComparisonBenefitRow> = [
-  // ── 积分 ──────────────────────────────────────────────
+  // ── 算力元 ──────────────────────────────────────────────
   {
     benefitKeys: ["platform_free_points"],
-    categoryLabel: "积分",
-    label: "平台免费积分",
+    categoryLabel: "算力元",
+    label: "平台免费算力元",
     valueForRank: (rank, benefits) =>
       textValueWithFallback(benefits, "platform_free_points", rank, (r) =>
-        r === 0 ? "每日登陆免费积分" : "每日登录赠送积分",
+        r === 0 ? "每日登陆免费算力元" : "每日登录赠送算力元",
       ),
   },
   {
     benefitKeys: ["purchased_points"],
-    categoryLabel: "积分",
-    label: "充值购买积分",
+    categoryLabel: "算力元",
+    label: "充值购买算力元",
     valueForRank: (rank, benefits) => booleanValueWithFallback(benefits, "purchased_points", rank),
   },
   {
     benefitKeys: ["daily_points"],
-    categoryLabel: "积分",
-    label: "订阅会员积分",
+    categoryLabel: "算力元",
+    label: "订阅会员算力元",
     valueForRank: (rank, benefits) => {
       if (rank === SUPER_RANK && !hasActiveBenefit(benefits, "daily_points")) {
-        return "每月54,600积分";
+        return "每月7,499算力元";
       }
       if (rank <= 0 && !hasActiveBenefit(benefits, "daily_points")) {
         return "-";
       }
       const benefit = findBenefit(benefits, "daily_points");
       const quantity = toNullableSdkworkMembershipNumber(benefit?.usageLimit);
-      return quantity ? `每月${formatSdkworkMembershipPoints(quantity, "zh-CN")}积分` : "-";
+      return quantity ? `每月${formatSdkworkMembershipPoints(quantity, "zh-CN")}算力元` : "-";
     },
   },
   // ── 视频生成 ──────────────────────────────────────────
@@ -195,7 +196,7 @@ const COMPARE_BENEFIT_ROWS: ReadonlyArray<ComparisonBenefitRow> = [
     label: "seedance1.5 Pro模型",
     valueForRank: (rank, benefits) =>
       textValueWithFallback(benefits, "seedance_pro_model", rank, (r) =>
-        r === 0 ? "-" : "8折积分",
+        r === 0 ? "-" : "8折算力元",
       ),
   },
   {
@@ -293,6 +294,9 @@ export function resolvePlanRankFromPackage(
     if (planName.includes("高级")) {
       return 3;
     }
+    if (planName.includes("超级")) {
+      return 4;
+    }
   }
 
   const packageName = toSdkworkMembershipOptionalString(pkg.name) ?? "";
@@ -304,6 +308,9 @@ export function resolvePlanRankFromPackage(
   }
   if (packageName.includes("高级")) {
     return 3;
+  }
+  if (packageName.includes("超级")) {
+    return 4;
   }
 
   return 0;
@@ -369,6 +376,18 @@ function resolveFeatureTemplates(
       { text: "创建专属赛事" },
       { text: translate("worry_free_refund", "Worry-free Refund") },
       { text: "商城专属折扣" },
+    ];
+  }
+
+  if (rank === SUPER_RANK) {
+    return [
+      { text: "智能体上限", tag: "无限" },
+      { text: "每日匹配次数", tag: "无限制" },
+      { text: translate("privilege_match", "Fast Match"), tag: translate("tag_priority", "Priority") },
+      { text: translate("quantum_compute_channel", "Quantum Compute Channel"), tag: translate("tag_free", "Free") },
+      { text: translate("host_global_tournaments", "Host Global Tournaments") },
+      { text: translate("worry_free_refund", "Worry-free Refund") },
+      { text: translate("super_exclusive_effects", "Super Exclusive Effects") },
     ];
   }
 
@@ -447,45 +466,16 @@ export function mapPackagesToPlanCards(
         pointsAllowanceLabel: `${formatSdkworkMembershipPoints(
           resolveMonthlyPointAllowance(pointAmount, durationDays),
           "zh-CN",
-        )} 算力积分/月`,
+        )} 算力元/月`,
         pointsConversionLabel: priceCny
-          ? `换算¥10=${Math.max(1, Math.round(pointAmount / Math.max(priceCny, 1) * 10))}积分`
+          ? `换算¥10=${Math.max(1, Math.round(pointAmount / Math.max(priceCny, 1) * 10))}算力元`
           : "",
         priceLabel,
         subtitle: pkg.description || "",
       };
     });
 
-  cards.push(createUnavailableSuperPlanCard(translate));
   return cards;
-}
-
-export function createUnavailableSuperPlanCard(
-  translate: (key: string, defaultValue?: string) => string,
-): SdkworkSubscriptionCatalogPlanCardModel {
-  return {
-    buttonStyle: "bg-zinc-100 dark:bg-zinc-800 text-zinc-400 dark:text-zinc-500 cursor-not-allowed",
-    buttonText: translate("coming_soon", "敬请期待"),
-    disabled: true,
-    features: [
-      { text: "智能体上限", tag: "无限" },
-      { text: "每日匹配次数", tag: "无限制" },
-      { text: translate("privilege_match", "Fast Match"), tag: translate("tag_priority", "Priority") },
-      { text: translate("quantum_compute_channel", "Quantum Compute Channel"), tag: translate("tag_free", "Free") },
-      { text: translate("host_global_tournaments", "Host Global Tournaments") },
-      { text: translate("worry_free_refund", "Worry-free Refund") },
-      { text: translate("super_exclusive_effects", "Super Exclusive Effects") },
-    ],
-    id: "super",
-    membershipTierKey: SDKWORK_SUBSCRIPTION_CATALOG_UNAVAILABLE_TIER_KEY,
-    name: translate("super_plan", "超级会员"),
-    originalPriceLabel: "",
-    packagePeriodLabel: translate("per_year_short", "每年"),
-    pointsAllowanceLabel: "54600 算力积分/月",
-    pointsConversionLabel: "",
-    priceLabel: "4???9",
-    subtitle: "",
-  };
 }
 
 export function mapPackagesToTierColumns(
@@ -521,7 +511,7 @@ export function mapPackagesToTierColumns(
         isCurrentPlan,
         membershipTierKey: display.membershipTierKey,
         name: translate(
-          rank === 2 ? "standard_plan" : rank === 3 ? "premium_plan" : "basic_plan",
+          rank === 2 ? "standard_plan" : rank === 3 ? "premium_plan" : rank === 4 ? "super_plan" : "basic_plan",
           pkg.name || "Membership",
         ),
         packageId: String(packageNumericId),

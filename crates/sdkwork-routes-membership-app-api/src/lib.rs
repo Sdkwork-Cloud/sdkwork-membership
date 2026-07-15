@@ -10,7 +10,7 @@ pub mod routes;
 mod subject;
 pub mod web_bootstrap;
 
-pub use manifest::APP_API_ROUTE_MANIFEST;
+pub use manifest::{APP_API_HTTP_ROUTE_MANIFEST, APP_API_ROUTE_MANIFEST};
 pub use router::{
     app_membership_router_with_postgres_pool, app_membership_router_with_sqlite_pool,
 };

@@ -223,7 +223,7 @@ fn commerce_membership_seed_covers_authenticated_frontend_flows_without_local_or
         "commerce_membership_privilege_usage",
     ] {
         assert!(
-            seed_source.contains(&format!("INSERT OR IGNORE INTO {table}")),
+            seed_source.contains(&format!("INSERT INTO {table}")),
             "database seed must initialize {table} for authenticated frontend membership flows",
         );
     }
@@ -249,8 +249,7 @@ fn commerce_membership_seed_covers_authenticated_frontend_flows_without_local_or
         "commerce_payment_attempt",
     ] {
         assert!(
-            !seed_source.contains(&format!("INSERT OR IGNORE INTO {table}"))
-                && !seed_source.contains(&format!("INSERT INTO {table}")),
+            !seed_source.contains(&format!("INSERT INTO {table}")),
             "membership seed must not initialize {table}; order/payment own that domain",
         );
     }

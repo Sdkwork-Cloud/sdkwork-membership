@@ -5,6 +5,12 @@ export {
   SubscriptionCatalogCheckoutModal,
 } from "./components/subscription-catalog-host-components";
 export {
+  SDKWORK_SUBSCRIPTION_I18N_KEYS,
+  sdkworkSubscriptionCheckoutI18nBundle,
+  sdkworkSubscriptionCheckoutMessages,
+  sdkworkSubscriptionCheckoutResources,
+} from "./i18n";
+export {
   createSdkworkSubscriptionCatalogController,
   useSdkworkSubscriptionCatalogController,
   useSdkworkSubscriptionCatalogControllerState,
@@ -19,6 +25,7 @@ export {
 } from "./subscription-catalog-service";
 export {
   SDKWORK_SUBSCRIPTION_CATALOG_UNAVAILABLE_TIER_KEY,
+  type SdkworkSubscriptionCatalogCheckoutPayment,
   type SdkworkSubscriptionCatalogCheckoutModalProps,
   type SdkworkSubscriptionCatalogCheckoutPlan,
   type SdkworkSubscriptionCatalogHostComponents,
