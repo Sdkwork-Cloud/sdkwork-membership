@@ -154,11 +154,6 @@ export function SdkworkSubscriptionCatalogPage({
   }
 
   function openPointsPurchase() {
-    if (!hasSdkworkMembershipSession()) {
-      handleLoginRequired();
-      return;
-    }
-
     setIsPointsModalOpen(true);
   }
 

@@ -110,7 +110,7 @@ sdks/sdkwork-membership-app-sdk/
 
 The composed facade package is `@sdkwork/membership-app-sdk`. Generated transport remains under `generated/server-openapi` and is regenerated from OpenAPI. Consumers must not import generator transport names or deep paths.
 
-`sdk-manifest.json` is the only per-family SDK metadata source of truth; retired per-family `.sdkwork-assembly.json` files must not be restored.
+`sdk-manifest.json` is the only per-family SDK metadata source of truth; retired per-family `sdk-manifest.json` files must not be restored.
 
 ### 5.3 PC Service Flow
 

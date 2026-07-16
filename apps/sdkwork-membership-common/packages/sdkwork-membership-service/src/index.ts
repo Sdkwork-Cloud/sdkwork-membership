@@ -201,10 +201,15 @@ export function bootstrapSdkworkMembershipAppService(
     appClient: createMembershipAppSdkClientFromTransport(transport),
   });
   configureSdkworkMembershipAppServiceProvider(() => service);
-  configureSdkworkMembershipSessionTokenProvider(() => ({
-    accessToken: input.accessToken,
-    authToken: input.authToken,
-  }));
+  configureSdkworkMembershipSessionTokenProvider(() => {
+    if (input.tokenManager) {
+      return input.tokenManager.getTokens();
+    }
+    return {
+      accessToken: input.accessToken,
+      authToken: input.authToken,
+    };
+  });
   return service;
 }
 

@@ -710,10 +710,10 @@ test("membership SDK families use sdk-manifest as the per-family metadata source
       (componentSpec.canonicalSpecs ?? []).map((canonicalSpec) => canonicalSpec.file),
     );
 
-    if (existsSync(path.join(root, sdkFamilyRoot, ".sdkwork-assembly.json"))) {
+    if (existsSync(path.join(root, sdkFamilyRoot, "sdk-manifest.json"))) {
       violations.push(`${sdkFamilyRoot}:legacy-per-family-assembly-file`);
     }
-    if (componentSpecText.includes(".sdkwork-assembly.json")) {
+    if (componentSpecText.includes("sdk-manifest.json")) {
       violations.push(`${sdkFamilyRoot}:legacy-per-family-assembly-reference`);
     }
     if (!canonicalSpecFiles.has("SDK_MANIFEST_SPEC.md")) {
@@ -725,7 +725,7 @@ test("membership SDK families use sdk-manifest as the per-family metadata source
   }
 
   assert.equal(
-    techSource.includes("`sdk-manifest.json` is the only per-family SDK metadata source of truth; retired per-family `.sdkwork-assembly.json` files must not be restored."),
+    techSource.includes("`sdk-manifest.json` is the only per-family SDK metadata source of truth; retired per-family `sdk-manifest.json` files must not be restored."),
     true,
     "technical architecture must document the retired per-family SDK assembly boundary",
   );

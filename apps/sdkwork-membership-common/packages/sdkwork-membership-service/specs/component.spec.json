@@ -160,6 +160,7 @@
         "methods": [
           "memberships.orders.create",
           "orders.payments.create",
+          "orders.paymentSuccess.retrieve",
           "recharges.packages.list",
           "recharges.orders.create",
           "recharges.orders.retrieve"
