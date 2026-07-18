@@ -1,96 +1,72 @@
 # Commerce Order And Membership Boundary Spec
 
-Status: active  
-Owner: SDKWork maintainers  
-Capability: `commerce.membership`  
-Updated: 2026-07-06  
+Status: active
+Owner: SDKWork maintainers
+Capability: `commerce.membership`
+Updated: 2026-07-17
 Machine contract: `specs/commerce-order-membership-boundary.spec.json`
-
-Authority: `../sdkwork-order/specs/RECHARGE_ORDER_SPEC.md`, `../sdkwork-order/specs/commerce-checkout-topology.spec.json`, `../sdkwork-payment/specs/commerce-dependency-boundary.spec.json`
 
 ## 1. Purpose
 
-Eliminate cross-capability confusion by fixing **who creates orders**, **who settles payment**, and **who fulfills membership** when `subject=membership`.
+Fix the dependency direction for membership purchase flows. `sdkwork-membership` owns membership catalog, state, subscriptions, entitlements, and fulfillment results. It does not own order creation, payment status, or checkout UI. Those capabilities belong to `sdkwork-order`.
 
-This spec applies to all deployments (standalone gateway, composed mall, platform gateway).
-
-## 2. Capability roles
+## 2. Capability Roles
 
 | Capability | Repository | Owns |
 | --- | --- | --- |
-| **Order** | `sdkwork-order` | `commerce_order*` headers, checkout, `orders.payments.create`, PSP webhook ingestion, payment settlement orchestration |
-| **Payment** | `sdkwork-payment` | Payment execution (`commerce_payment_intent`, attempts, providers, refunds); webhook persistence **via port only** |
-| **Membership** | `sdkwork-membership` | Plans, packages, subscriptions, entitlements, points; **fulfillment after order payment success** |
+| Order | `sdkwork-order` | `commerce_order*`, membership-subject order creation, checkout UI/service, payment status, settlement orchestration |
+| Payment | `sdkwork-payment` | Payment execution, attempts, providers, refunds, and webhook persistence behind order-owned ports |
+| Membership | `sdkwork-membership` | Plans, packages, membership state, subscriptions, entitlements, and idempotent fulfillment after payment success |
+| Application composition | Product application root such as `sdkwork-clawrouter` | Composes membership and order packages and injects the order-owned checkout implementation into membership UI |
 
-## 3. Mandatory dependency direction
+## 3. Mandatory Dependency Direction
 
 ```text
-order  →  payment     (in-process ports; payment MUST NOT depend on order)
-order  →  membership  (fulfillment port after settlement; membership MUST NOT write commerce_order in production)
-client →  order-app-sdk, membership-app-sdk (checkout composition; payment executes behind order/payment ports)
-client →  payment-app-sdk (optional cashier read/redirect consumer only; not payment execution)
+sdkwork-order -> sdkwork-payment
+sdkwork-order -> sdkwork-membership fulfillment port
+application composition root -> sdkwork-membership + sdkwork-order
+sdkwork-membership -> membership SDK only
 ```
 
-**Answer to the common question:** yes — at **gateway assembly / settlement saga** time, **order depends on membership** through a narrow fulfillment port (same pattern as order → account for `points_recharge`). That is **not** membership depending on order service crates to create orders.
+The following dependencies are forbidden in `sdkwork-membership` application, service, shell, and UI packages:
 
-| Direction | Allowed | Notes |
-| --- | --- | --- |
-| Order → Payment | Yes | `orders.payments.create`, webhook ingest, confirm payment |
-| Order → Membership | Yes | `MembershipPurchaseFulfillmentPort` or HTTP adapter after `subject=membership` payment success |
-| Order → Account | Yes | `points_recharge` in-process saga (reference implementation) |
-| Payment → Order | **No** | Foundation module |
-| Payment → Membership | **No** | Foundation module |
-| Membership → Order (Rust crate) | **No** | Use `@sdkwork/order-app-sdk` at client/service facade |
-| Membership PC UI → `@sdkwork/order-pc-checkout` | Yes | Controlled QR checkout UI only; Membership supplies localized copy and an injected payment-status driver |
-| Membership → Payment (Rust crate) | **No** | No payment orchestration in membership service |
-| Membership → `@sdkwork/payment-app-sdk` | Yes | Optional cashier read/redirect consumer only; checkout payment requests go through `@sdkwork/order-app-sdk` `orders.payments.create` |
+- Any `@sdkwork/order-*` package, including app SDK, service, checkout, and recharge packages.
+- Any `@sdkwork/payment-*` package used for checkout or payment execution.
+- Any `sdkwork-order-*` or `sdkwork-payment-*` Rust crate.
+- Raw order/payment HTTP, manual auth headers, or local order transport facades.
+- Direct writes to `commerce_order*` or `commerce_payment*` tables.
 
-## 4. Create and pay boundary (normative)
+## 4. Checkout Composition Contract
 
-Analogous to `recharges.orders.create` in `RECHARGE_ORDER_SPEC.md` §7:
+Membership frontend packages may define and consume a domain-neutral, host-injected `SdkworkMembershipCheckoutPort`. The port carries membership intent and normalized checkout results only:
 
-| Step | Owner | Operation |
-| --- | --- | --- |
-| 1. Create order | **Order** | Checkout session or membership-subject order create writes `commerce_order` + items + breakdown only (`subject=membership`) |
-| 2. Reserve subscription | **Membership** | Create or link `membership_subscription` in `pending_activation`, keyed by `order_id` |
-| 3. Pay | **Order** | `orders.payments.create(orderId, { paymentMethod })` calls the payment port to create intent/attempt and returns payment parameters |
-| 4. PSP notify | **Order** | `POST /app/v3/api/orders/payments/webhooks/{providerCode}` |
-| 5. Settle | **Order** | `settle_owner_order_after_payment_success` confirms payment via payment port |
-| 6. Fulfill | **Order → Membership port** | Activate subscription, grant entitlements; idempotent on `order_id` |
+- `createCheckout({ action, packageId, couponId?, paymentMethod? })`
+- `getCheckoutStatus(orderId)`
 
-Order create writes **order domain only**. Payment intent/attempt is created by **`orders.payments.create`**, not at membership purchase API.
+The port is implemented outside `sdkwork-membership`. A product application composition root creates the implementation from `sdkwork-order` and injects it into the membership catalog. The checkout modal is also supplied by the composition root and owned by `sdkwork-order`.
 
-## 5. What membership MUST NOT do (production)
+The standalone membership application intentionally has no default ordering capability. Without a host-provided port it must return an explicit configuration error instead of bootstrapping an order SDK.
 
-- Insert or update `commerce_order`, `commerce_order_item`, or `commerce_order_amount_breakdown`.
-- Insert `commerce_payment_intent` or orchestrate PSP webhooks.
-- Import `sdkwork-order-service` or `sdkwork-order-repository-sqlx`.
-- Expose PSP-facing webhook routes for checkout.
+## 5. Canonical Purchase Flow
 
-## 6. Production checkout path (normative)
+1. Membership UI selects a package and delegates a membership checkout intent through the injected port.
+2. The order-owned checkout service calls `memberships.orders.create` and returns normalized payment data.
+3. The order-owned checkout UI renders payment state and polls `orders.paymentSuccess.retrieve` through the same order-owned service.
+4. Order settles payment through payment ports.
+5. Order calls the membership fulfillment port after successful settlement.
+6. Membership activates the subscription and grants entitlements idempotently.
 
-Membership standalone gateway does **not** write `commerce_order`. All purchase flows use:
+## 6. Verification
 
-1. `@sdkwork/order-app-sdk` → `memberships.orders.create`
-2. `@sdkwork/membership-app-sdk` → `memberships.purchases.*` (reservation with `orderId` + `requestNo`)
-3. `@sdkwork/order-app-sdk` → `orders.payments.create(orderId, { paymentMethod })`
-4. `@sdkwork/order-pc-checkout` renders the QR code and polls the injected status driver; it has no Membership, Account, or Payment SDK dependency
-5. Order webhook settlement → `MembershipPurchaseFulfillmentPort` → membership backend fulfillments API
-
-## 7. Purchase API contract
-
-`memberships.purchases.*` reserves subscription/entitlement rows only. It **requires** `orderId` and `requestNo` from order create (step 1).
-
-## 8. Related specs
-
-- Order checkout topology: `../sdkwork-order/specs/commerce-checkout-topology.spec.json`
-- Order recharge reference flow: `../sdkwork-order/specs/RECHARGE_ORDER_SPEC.md`
-- Payment dependency boundary: `../sdkwork-payment/specs/commerce-dependency-boundary.spec.json`
-- Architecture narrative: `docs/architecture/tech/TECH_ARCHITECTURE.md` section 7
-
-## 9. Verification
-
-- No `sdkwork_order_*` crate dependency in membership `Cargo.toml` workspace members (production).
-- App packages consume `@sdkwork/order-app-sdk` for checkout; no raw order HTTP from membership UI.
-- Membership PC package consumes `@sdkwork/order-pc-checkout` only through its public export and supplies the driver from Membership service methods.
+- `rg '@sdkwork/order|@sdkwork/payment' apps packages` returns no active membership consumer dependency.
+- `rg 'sdkwork_order|commerce_order' crates/**/Cargo.toml crates` returns no membership-to-order production dependency or write path.
+- The membership workspace and app manifest contain no order SDK package or order base URL.
+- The product composition root proves injection of an order-owned checkout service and checkout UI.
 - `node ../sdkwork-specs/tools/check-app-sdk-consumer-imports.mjs --workspace .`
+
+## 7. Related Specs
+
+- `../sdkwork-order/specs/commerce-checkout-topology.spec.json`
+- `../sdkwork-order/specs/RECHARGE_ORDER_SPEC.md`
+- `../sdkwork-order/docs/architecture/commerce/COMMERCE_CHECKOUT_ARCHITECTURE.md`
+- `../sdkwork-payment/specs/commerce-dependency-boundary.spec.json`

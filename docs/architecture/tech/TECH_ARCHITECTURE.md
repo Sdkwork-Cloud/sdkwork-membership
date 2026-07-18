@@ -29,7 +29,7 @@ sdkwork-specs
 - Database lifecycle, migrations, seeds, and drift checks use `sdkwork-database`.
 - Shared validation, string, datetime, number, currency, and HTTP API helpers should use `sdkwork-utils` before adding local utility code.
 - Frontend integration follows `UI -> service class -> composed SDK facade -> generated SDK`.
-- TypeScript consumers import scoped composed SDK packages such as `@sdkwork/membership-app-sdk` and `@sdkwork/order-app-sdk`, never generator transport package names.
+- TypeScript code in this repository imports the scoped composed `@sdkwork/membership-app-sdk` only; product composition roots own order SDK integration.
 
 ## 3. System Boundaries And Modules
 
@@ -46,9 +46,9 @@ sdkwork-specs
 | App SDK | `sdks/sdkwork-membership-app-sdk` | Owner-only membership app-api SDK family |
 | PC app | `apps/sdkwork-membership-pc` | PC React shell and membership UI/service packages |
 
-Rust membership crates must not depend on `sdkwork-order-*` crates. The only allowed membership-to-order dependency in this repository is frontend/service consumption of `@sdkwork/order-app-sdk`.
+No membership crate or TypeScript package may depend on `sdkwork-order` crates, SDKs, services, or UI packages. Membership exposes a host-injected checkout port; product application roots supply its order-owned implementation.
 
-`sdkwork-order` is the backend capability that depends on membership through the fulfillment port; membership does not depend on order Rust crates or order/payment database lifecycle assets.
+`sdkwork-order` is the backend capability that depends on membership through the fulfillment port; membership does not depend on order packages, SDKs, services, UI, Rust crates, or order/payment database lifecycle assets.
 
 ## 4. Web Framework Integration
 
@@ -110,7 +110,7 @@ sdks/sdkwork-membership-app-sdk/
 
 The composed facade package is `@sdkwork/membership-app-sdk`. Generated transport remains under `generated/server-openapi` and is regenerated from OpenAPI. Consumers must not import generator transport names or deep paths.
 
-`sdk-manifest.json` is the only per-family SDK metadata source of truth; retired per-family `sdk-manifest.json` files must not be restored.
+`sdk-manifest.json` is the required per-family SDK metadata source of truth and must stay aligned with `specs/component.spec.json`.
 
 ### 5.3 PC Service Flow
 
@@ -182,10 +182,11 @@ Dependency rules:
 ```text
 sdkwork-order -> sdkwork-payment
 sdkwork-order -> sdkwork-membership fulfillment port
-frontend membership service -> @sdkwork/order-app-sdk
 frontend membership service -> @sdkwork/membership-app-sdk
+application composition root -> sdkwork-membership + sdkwork-order
+application composition root -> inject order-owned checkout port and UI
 sdkwork-payment MUST NOT -> sdkwork-order | sdkwork-membership
-membership Rust crates MUST NOT -> sdkwork-order-* crates
+membership MUST NOT -> sdkwork-order packages, SDKs, services, UI, or Rust crates
 membership MUST NOT -> INSERT commerce_order
 ```
 
@@ -212,19 +213,19 @@ Local split-gateway development:
 ```text
 sdkwork-order-standalone-gateway      owns order app-api and order/payment checkout
 sdkwork-membership-standalone-gateway owns membership app-api/backend-api
-sdkwork-membership-pc                 composes @sdkwork/order-app-sdk and @sdkwork/membership-app-sdk
+sdkwork-membership-pc                 consumes @sdkwork/membership-app-sdk only
+product application root             composes order checkout with membership checkout port
 ```
 
 PC runtime SDK base URL binding:
 
 ```text
 VITE_SDKWORK_MEMBERSHIP_PC_APP_API_BASE_URL -> @sdkwork/membership-app-sdk
-VITE_SDKWORK_ORDER_APP_API_BASE_URL         -> @sdkwork/order-app-sdk
 ```
 
-`apps/sdkwork-membership-pc/sdkwork.app.config.json` owns the schema-v2 `envBindings` contract for these Vite keys. The manifest records `backend.appId = sdkwork-membership-pc`, `preset = vite-react-standard`, and the SDK base URL mapping from membership/order SDK families to their explicit app-api env keys. Tracked `.env.example` files and shell bootstrap must stay aligned with that manifest contract.
+`apps/sdkwork-membership-pc/sdkwork.app.config.json` owns the schema-v2 `envBindings` contract for the membership Vite key. The manifest records `backend.appId = sdkwork-membership-pc`, `preset = vite-react-standard`, and the membership SDK base URL mapping. Tracked `.env.example` files and shell bootstrap must stay aligned with that manifest contract.
 
-The PC shell must not bind `@sdkwork/order-app-sdk` to the membership app-api base URL and must not inherit browser same-origin routing for external-service SDK surfaces. This repository does not declare `VITE_SDKWORK_MEMBERSHIP_PC_SDK_BASE_URL` or any other common SDK base URL fallback. Local development uses explicit membership and order defaults only when the Vite runtime is in development mode; production deployment must configure both app-api base URL keys before SDK bootstrap.
+The membership PC shell does not bootstrap an order SDK and does not declare an order SDK base URL. This repository does not declare `VITE_SDKWORK_MEMBERSHIP_PC_SDK_BASE_URL` or any other common SDK base URL fallback. Product applications own their order runtime configuration and inject checkout through the membership port.
 
 Composed platform deployment:
 

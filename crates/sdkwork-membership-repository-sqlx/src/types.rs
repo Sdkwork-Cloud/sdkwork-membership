@@ -333,6 +333,12 @@ pub struct ListAdminMembershipMembersQuery {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
+pub struct RetrieveAdminMembershipMemberQuery {
+    pub subject: AdminMembershipSubject,
+    pub membership_id: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ListAdminMembershipEntitlementsQuery {
     pub subject: AdminMembershipSubject,
     pub plan_id: Option<String>,
@@ -623,6 +629,11 @@ pub trait AdminMembershipStore {
         &'a self,
         query: ListAdminMembershipMembersQuery,
     ) -> AdminMembershipFuture<'a, SdkWorkPageData<AdminMembershipMemberItem>>;
+
+    fn retrieve_admin_membership_member<'a>(
+        &'a self,
+        query: RetrieveAdminMembershipMemberQuery,
+    ) -> AdminMembershipFuture<'a, AdminMembershipMemberItem>;
 
     fn update_admin_membership_member_status<'a>(
         &'a self,

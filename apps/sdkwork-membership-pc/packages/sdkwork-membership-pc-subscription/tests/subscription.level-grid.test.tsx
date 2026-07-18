@@ -42,9 +42,9 @@ describe("sdkwork-membership-pc-subscription level grid", () => {
     expect(levelGrid?.className).toContain("shadow-[var(--sdk-shadow-md)]");
     expect(levelGrid?.className).not.toContain("shadow-[0_18px_48px_rgba");
 
-    const pointsChip = screen.getByText(/500 points/i);
-    expect(pointsChip.className).toContain("shadow-[var(--sdk-shadow-soft)]");
-    expect(pointsChip.className).not.toContain("bg-white");
+    const creditsChip = screen.getByText(/500 credits/i);
+    expect(creditsChip.className).toContain("shadow-[var(--sdk-shadow-soft)]");
+    expect(creditsChip.className).not.toContain("bg-white");
   });
 
   it("renders an empty state when the runtime exposes no levels", () => {

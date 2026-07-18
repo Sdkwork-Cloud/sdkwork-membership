@@ -176,19 +176,14 @@
         "package": "@sdkwork/membership-pc-membership"
       },
       {
+        "name": "membershipCheckoutPort",
+        "export": "./catalog",
+        "package": "@sdkwork/membership-pc-membership"
+      },
+      {
         "name": "promotionService",
         "export": ".",
         "package": "@sdkwork/promotion-service"
-      },
-      {
-        "name": "orderCheckoutDialog",
-        "export": ".",
-        "package": "@sdkwork/order-pc-checkout"
-      },
-      {
-        "name": "pointsRechargeDialog",
-        "export": ".",
-        "package": "@sdkwork/order-pc-recharge"
       }
     ],
     "runtimeEntrypoints": [
@@ -214,6 +209,7 @@
   },
   "metadata": {
     "managedBy": "apps/scripts/initialize-component-specs.mjs",
-    "standardVersion": "2026-05-13"
+    "standardVersion": "2026-05-13",
+    "boundary": "Catalog UI delegates checkout through the host-injected membership checkout port and has no order or payment package dependency."
   }
 }

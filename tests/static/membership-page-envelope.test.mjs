@@ -30,7 +30,7 @@ test("unwrapSdkworkMembershipPageItems extracts items from SdkWorkPageData", () 
 test("createSdkworkMembershipListQuery defaults page size to 20", () => {
   assert.deepEqual(createSdkworkMembershipListQuery(), {
     page: 1,
-    page_size: 20,
+    pageSize: 20,
   });
 });
 

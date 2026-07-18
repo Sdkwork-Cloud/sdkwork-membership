@@ -20,6 +20,7 @@
         ],
         "summary": "Membership plans list.",
         "operationId": "memberships.plans.list",
+        "x-sdkwork-permission": "commerce.memberships.read",
         "parameters": [
           {
             "name": "status",
@@ -143,6 +144,7 @@
         ],
         "summary": "Membership plan create.",
         "operationId": "memberships.plans.create",
+        "x-sdkwork-permission": "commerce.memberships.manage",
         "parameters": [],
         "requestBody": {
           "required": true,
@@ -248,6 +250,7 @@
         ],
         "summary": "Membership plan update.",
         "operationId": "memberships.plans.update",
+        "x-sdkwork-permission": "commerce.memberships.manage",
         "parameters": [
           {
             "name": "id",
@@ -360,6 +363,7 @@
         ],
         "summary": "Membership plan delete.",
         "operationId": "memberships.plans.delete",
+        "x-sdkwork-permission": "commerce.memberships.manage",
         "parameters": [
           {
             "name": "id",
@@ -457,6 +461,7 @@
         ],
         "summary": "Membership package groups list.",
         "operationId": "memberships.packageGroups.list",
+        "x-sdkwork-permission": "commerce.memberships.read",
         "parameters": [
           {
             "name": "status",
@@ -580,6 +585,7 @@
         ],
         "summary": "Membership package group create.",
         "operationId": "memberships.packageGroups.create",
+        "x-sdkwork-permission": "commerce.memberships.manage",
         "parameters": [],
         "requestBody": {
           "required": true,
@@ -685,6 +691,7 @@
         ],
         "summary": "Membership package group update.",
         "operationId": "memberships.packageGroups.update",
+        "x-sdkwork-permission": "commerce.memberships.manage",
         "parameters": [
           {
             "name": "id",
@@ -797,6 +804,7 @@
         ],
         "summary": "Membership package group delete.",
         "operationId": "memberships.packageGroups.delete",
+        "x-sdkwork-permission": "commerce.memberships.manage",
         "parameters": [
           {
             "name": "id",
@@ -894,6 +902,7 @@
         ],
         "summary": "Membership packages list.",
         "operationId": "memberships.packages.list",
+        "x-sdkwork-permission": "commerce.memberships.read",
         "parameters": [
           {
             "name": "package_group_id",
@@ -1033,6 +1042,7 @@
         ],
         "summary": "Membership package create.",
         "operationId": "memberships.packages.create",
+        "x-sdkwork-permission": "commerce.memberships.manage",
         "parameters": [],
         "requestBody": {
           "required": true,
@@ -1138,6 +1148,7 @@
         ],
         "summary": "Membership package update.",
         "operationId": "memberships.packages.update",
+        "x-sdkwork-permission": "commerce.memberships.manage",
         "parameters": [
           {
             "name": "id",
@@ -1250,6 +1261,7 @@
         ],
         "summary": "Membership package delete.",
         "operationId": "memberships.packages.delete",
+        "x-sdkwork-permission": "commerce.memberships.manage",
         "parameters": [
           {
             "name": "id",
@@ -1347,6 +1359,7 @@
         ],
         "summary": "Membership members list.",
         "operationId": "memberships.members.list",
+        "x-sdkwork-permission": "commerce.memberships.read",
         "parameters": [
           {
             "name": "user_id",
@@ -1481,6 +1494,80 @@
         "x-sdkwork-server-request-id": true
       }
     },
+    "/backend/v3/api/memberships/members/{id}": {
+      "get": {
+        "tags": ["memberships"],
+        "summary": "Membership member detail.",
+        "operationId": "memberships.members.retrieve",
+        "x-sdkwork-permission": "commerce.memberships.read",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/AdminMembershipMemberResponse" }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request",
+            "content": {
+              "application/problem+json": {
+                "schema": { "$ref": "#/components/schemas/ProblemDetail" }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/problem+json": {
+                "schema": { "$ref": "#/components/schemas/ProblemDetail" }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/problem+json": {
+                "schema": { "$ref": "#/components/schemas/ProblemDetail" }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/problem+json": {
+                "schema": { "$ref": "#/components/schemas/ProblemDetail" }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/problem+json": {
+                "schema": { "$ref": "#/components/schemas/ProblemDetail" }
+              }
+            }
+          }
+        },
+        "security": [{ "AuthToken": [], "AccessToken": [] }],
+        "x-sdkwork-owner": "sdkwork-membership",
+        "x-sdkwork-api-authority": "sdkwork-membership-backend-api",
+        "x-sdkwork-domain": "commerce",
+        "x-sdkwork-resource": "memberships.members",
+        "x-sdkwork-request-context": "WebRequestContext",
+        "x-sdkwork-api-surface": "backend-api",
+        "x-sdkwork-server-request-id": true
+      }
+    },
     "/backend/v3/api/memberships/members/{id}/status": {
       "patch": {
         "tags": [
@@ -1488,6 +1575,7 @@
         ],
         "summary": "Membership member status update.",
         "operationId": "memberships.members.status.update",
+        "x-sdkwork-permission": "commerce.memberships.manage",
         "parameters": [
           {
             "name": "id",
@@ -1602,6 +1690,7 @@
         ],
         "summary": "Membership entitlements list.",
         "operationId": "memberships.entitlements.list",
+        "x-sdkwork-permission": "commerce.memberships.read",
         "parameters": [
           {
             "name": "plan_id",
@@ -1743,6 +1832,7 @@
         ],
         "summary": "Membership purchase fulfillment.",
         "operationId": "memberships.purchases.fulfillments.create",
+        "x-sdkwork-credential-mode": "service-token",
         "parameters": [],
         "requestBody": {
           "required": true,

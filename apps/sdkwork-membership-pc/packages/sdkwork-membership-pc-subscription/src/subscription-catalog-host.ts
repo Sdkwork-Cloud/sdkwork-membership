@@ -1,5 +1,6 @@
 import type { ComponentType } from "react";
 import type { SdkworkSubscriptionPurchaseResult } from "./subscription-service";
+import type { SdkworkMembershipCheckoutPort } from "@sdkwork/membership-pc-membership";
 
 export { SDKWORK_SUBSCRIPTION_CATALOG_UNAVAILABLE_TIER_KEY } from "./subscription-catalog-content";
 
@@ -52,6 +53,7 @@ export interface SdkworkSubscriptionCatalogHostComponents {
 }
 
 export interface SdkworkSubscriptionCatalogPageProps {
+  checkoutPort?: SdkworkMembershipCheckoutPort;
   components?: SdkworkSubscriptionCatalogHostComponents;
   memberSummary?: SdkworkSubscriptionMemberSummary | null;
   notifyOutlet?: ComponentType;

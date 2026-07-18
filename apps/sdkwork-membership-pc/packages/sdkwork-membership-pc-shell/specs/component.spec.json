@@ -133,18 +133,6 @@
         "packageByLanguage": {
           "typescript": "@sdkwork/membership-app-sdk"
         }
-      },
-      {
-        "workspace": "sdkwork-order-app-sdk",
-        "sdkFamily": "sdkwork-order-app-sdk",
-        "apiAuthority": "sdkwork-order-app-api",
-        "surface": "app-api",
-        "apiPrefix": "/app/v3/api",
-        "required": true,
-        "dependencyMode": "service-facade",
-        "packageByLanguage": {
-          "typescript": "@sdkwork/order-app-sdk"
-        }
       }
     ],
     "permissionComposition": {},
@@ -160,23 +148,11 @@
         "sameOriginAllowed": false,
         "requiredBaseUrlKey": "VITE_SDKWORK_MEMBERSHIP_PC_APP_API_BASE_URL",
         "coverage": "verified"
-      },
-      {
-        "workspace": "sdkwork-order-app-sdk",
-        "sdkFamily": "sdkwork-order-app-sdk",
-        "apiAuthority": "sdkwork-order-app-api",
-        "surface": "app-api",
-        "apiPrefix": "/app/v3/api",
-        "runtimeMode": "external-service",
-        "sameOriginAllowed": false,
-        "requiredBaseUrlKey": "VITE_SDKWORK_ORDER_APP_API_BASE_URL",
-        "coverage": "verified"
       }
     ],
     "events": [],
     "configKeys": [
-      "VITE_SDKWORK_MEMBERSHIP_PC_APP_API_BASE_URL",
-      "VITE_SDKWORK_ORDER_APP_API_BASE_URL"
+      "VITE_SDKWORK_MEMBERSHIP_PC_APP_API_BASE_URL"
     ]
   },
   "verification": {
@@ -189,6 +165,6 @@
   "metadata": {
     "managedBy": "sdkwork-membership",
     "standardVersion": "2026-07-08",
-    "boundary": "The shell composes frontend routes and service bootstrap only. Membership and order API calls stay behind composed SDK-backed services."
+    "boundary": "The standalone membership shell bootstraps membership APIs only. Order checkout is available only when an external application composition root injects an order-owned checkout port and UI."
   }
 }

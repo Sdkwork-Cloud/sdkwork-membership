@@ -39,6 +39,7 @@ function redirectToDefaultLogin(): void {
 
 export function SdkworkSubscriptionCatalogPage({
   catalogController: catalogControllerProp,
+  checkoutPort,
   components,
   memberSummary: memberSummaryProp,
   notifyOutlet: NotifyOutletProp,
@@ -80,6 +81,7 @@ export function SdkworkSubscriptionCatalogPage({
   } = hostComponents;
 
   const controller = useSdkworkSubscriptionCatalogController(catalogControllerProp, {
+    checkoutPort,
     translate: (key, defaultValue) => String(t(key, defaultValue ?? key)),
   });
   const state = useSdkworkSubscriptionCatalogControllerState(controller);

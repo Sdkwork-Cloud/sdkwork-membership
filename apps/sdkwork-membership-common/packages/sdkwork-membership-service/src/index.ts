@@ -33,18 +33,9 @@ export {
   type BootstrapSdkworkMembershipAppServiceInput,
 } from "./transport.ts";
 
-export {
-  bootstrapSdkworkOrderAppService,
-  configureSdkworkOrderAppServiceProvider,
-  createOrderAppTransportClient,
-  createSdkworkOrderWriteCommandHeaders,
-  getSdkworkOrderAppService,
-  type BootstrapSdkworkOrderAppServiceInput,
-  type OrderAppTransportClient,
-  type SdkworkOrderWriteCommandHeaders,
-} from "./order-transport.ts";
-
 export type { PageInfo, SdkWorkPageData };
+
+export * from "./backend.ts";
 
 export {
   SDKWORK_MEMBERSHIP_DEFAULT_LIST_PAGE_SIZE,

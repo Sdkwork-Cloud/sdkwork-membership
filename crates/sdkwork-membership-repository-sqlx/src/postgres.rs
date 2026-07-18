@@ -35,7 +35,8 @@ use crate::{
     FulfillMembershipPurchaseCommand, FulfillMembershipPurchaseOutcome,
     ListAdminMembershipEntitlementsQuery, ListAdminMembershipMembersQuery,
     ListAdminMembershipPackageGroupsQuery, ListAdminMembershipPackagesQuery,
-    ListAdminMembershipPlansQuery, SubmitMembershipPurchaseCommand,
+    ListAdminMembershipPlansQuery, RetrieveAdminMembershipMemberQuery,
+    SubmitMembershipPurchaseCommand,
     UpdateAdminMembershipMemberStatusCommand, UpdateAdminMembershipPackageCommand,
     UpdateAdminMembershipPackageGroupCommand, UpdateAdminMembershipPlanCommand,
 };
@@ -660,6 +661,13 @@ impl AdminMembershipStore for PostgresCommerceMembershipStore {
         query: ListAdminMembershipMembersQuery,
     ) -> AdminMembershipFuture<'a, SdkWorkPageData<AdminMembershipMemberItem>> {
         Box::pin(async move { list_admin_membership_members(&self.pool, query).await })
+    }
+
+    fn retrieve_admin_membership_member<'a>(
+        &'a self,
+        query: RetrieveAdminMembershipMemberQuery,
+    ) -> AdminMembershipFuture<'a, AdminMembershipMemberItem> {
+        Box::pin(async move { load_admin_membership(&self.pool, &query).await })
     }
 
     fn update_admin_membership_member_status<'a>(
@@ -1395,12 +1403,14 @@ async fn update_admin_membership_member_status(
         SET status = $1,
             updated_at = $2
         WHERE tenant_id = CAST($3 AS TEXT)
-          AND id = $4
+          AND ($4 = 0 OR organization_id IS NULL OR organization_id = CAST($4 AS TEXT) OR organization_id = '0')
+          AND id = $5
         "#,
     )
     .bind(&command.status)
     .bind(&command.requested_at)
     .bind(command.subject.tenant_id)
+    .bind(command.subject.organization_id)
     .bind(&command.membership_id)
     .execute(pool)
     .await
@@ -1410,7 +1420,14 @@ async fn update_admin_membership_member_status(
             "membership membership was not found",
         ));
     }
-    load_admin_membership(pool, command.subject.tenant_id, &command.membership_id).await
+    load_admin_membership(
+        pool,
+        &RetrieveAdminMembershipMemberQuery {
+            subject: command.subject,
+            membership_id: command.membership_id,
+        },
+    )
+    .await
 }
 
 async fn list_admin_membership_entitlements(
@@ -1608,8 +1625,7 @@ async fn load_admin_membership_package_group(
 
 async fn load_admin_membership(
     pool: &PgPool,
-    tenant_id: i64,
-    membership_id: &str,
+    query: &RetrieveAdminMembershipMemberQuery,
 ) -> AppMembershipResult<AdminMembershipMemberItem> {
     let row = sqlx::query(
         r#"
@@ -1617,12 +1633,15 @@ async fn load_admin_membership(
                CAST(m.expires_at AS TEXT) AS expires_at, l.plan_no AS plan_no, m.plan_id AS plan_id
         FROM membership_subscription m
         LEFT JOIN membership_plan l ON l.id = m.plan_id
-        WHERE m.tenant_id = CAST($1 AS TEXT) AND m.id = $2
+        WHERE m.tenant_id = CAST($1 AS TEXT)
+          AND ($2 = 0 OR m.organization_id IS NULL OR m.organization_id = CAST($2 AS TEXT) OR m.organization_id = '0')
+          AND m.id = $3
         LIMIT 1
         "#,
     )
-    .bind(tenant_id)
-    .bind(membership_id)
+    .bind(query.subject.tenant_id)
+    .bind(query.subject.organization_id)
+    .bind(&query.membership_id)
     .fetch_optional(pool)
     .await
     .or_else(none_when_read_model_is_missing)?

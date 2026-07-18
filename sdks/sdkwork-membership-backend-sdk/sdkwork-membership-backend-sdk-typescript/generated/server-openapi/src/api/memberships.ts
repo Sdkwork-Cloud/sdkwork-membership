@@ -76,6 +76,11 @@ export class MembershipsMembersApi {
     ]);
     return this.client.get<Record<string, unknown>>(appendQueryString(backendApiPath(`/memberships/members`), query));
   }
+
+/** Membership member detail. */
+  async retrieve(id: string): Promise<AdminMembershipMemberItem> {
+    return this.client.get<AdminMembershipMemberItem>(backendApiPath(`/memberships/members/${serializePathParameter(id, { name: 'id', style: 'simple', explode: false })}`));
+  }
 }
 
 export interface MembershipsPackagesListParams {

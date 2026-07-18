@@ -15,3 +15,8 @@ pub async fn assemble_application_router(host: Arc<MembershipServiceHost>) -> Ap
     router = router.merge(sdkwork_routes_membership_backend_api::gateway_mount(host).await);
     ApplicationAssembly { router }
 }
+
+pub async fn assemble_application_business_router_from_env() -> Result<ApplicationAssembly, String> {
+    let host = Arc::new(MembershipServiceHost::from_env().await?);
+    Ok(assemble_application_router(host).await)
+}

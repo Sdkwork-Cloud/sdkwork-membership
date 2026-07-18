@@ -3,7 +3,7 @@
   "kind": "sdkwork.commerce.order-membership-boundary.spec",
   "capability": "membership",
   "domain": "commerce",
-  "principle": "commerce_order creation and payment settlement orchestration are owned by sdkwork-order; membership owns subscription/entitlement domain and fulfillment after order payment success",
+  "principle": "Membership owns catalog, state, subscriptions, entitlements, and fulfillment results. Order exclusively owns order creation, checkout, and payment status. Product application roots compose both capabilities.",
   "tableOwnership": {
     "order": [
       "commerce_order",
@@ -37,53 +37,49 @@
     ]
   },
   "allowedDependencyDirection": [
-    "order -> payment (in-process OwnerOrderPaymentStore, webhook ingest, confirm payment ports)",
-    "order -> membership (MembershipPurchaseFulfillmentPort or HTTP adapter at gateway assembly, after payment settlement)",
-    "membership -> order-app-sdk (client / service facade consumer only)",
-    "membership PC UI -> order-pc-checkout (controlled QR checkout component via injected driver only)",
-    "membership -> payment-app-sdk (optional cashier read/redirect consumer only; not payment execution)"
+    "order -> payment through in-process execution and settlement ports",
+    "order -> membership through MembershipPurchaseFulfillmentPort after settlement",
+    "application composition root -> membership and order public packages",
+    "application composition root -> inject order-owned checkout port and checkout UI into membership"
   ],
   "forbiddenDependencies": [
     {
+      "from": "sdkwork-membership",
+      "to": "sdkwork-order",
+      "reason": "Membership has no order creation or payment-status capability; host composition injects an order-owned checkout port"
+    },
+    {
+      "from": "sdkwork-membership",
+      "to": "sdkwork-payment",
+      "reason": "Membership does not execute or orchestrate payment"
+    },
+    {
       "from": "sdkwork-payment",
       "to": "sdkwork-order",
-      "reason": "Payment is foundation executor; order orchestrates settlement"
+      "reason": "Payment is a foundation executor and order owns settlement orchestration"
     },
     {
       "from": "sdkwork-payment",
       "to": "sdkwork-membership",
       "reason": "Payment must not call business fulfillment capabilities"
-    },
-    {
-      "from": "sdkwork-membership",
-      "to": "sdkwork-order-service",
-      "reason": "Membership must not import order service crates; consume order via SDK at client boundary"
-    },
-    {
-      "from": "sdkwork-membership",
-      "to": "sdkwork-order-repository-sqlx",
-      "reason": "Membership repository must not write commerce_order in production paths"
-    },
-    {
-      "from": "sdkwork-membership",
-      "to": "sdkwork-payment-service",
-      "reason": "Membership must not orchestrate payment execution; order owns orders.payments.create"
     }
   ],
   "forbiddenProductionPatterns": [
-    "INSERT INTO commerce_order from sdkwork-membership-repository-sqlx",
-    "INSERT INTO commerce_payment_intent from membership repository",
-    "PSP webhook route on membership or payment gateway for membership checkout",
+    "@sdkwork/order-* import from sdkwork-membership apps or packages",
+    "@sdkwork/payment-* import from sdkwork-membership checkout paths",
+    "order SDK bootstrap in sdkwork-membership shell",
+    "local order transport facade in sdkwork-membership",
+    "INSERT INTO commerce_order from sdkwork-membership",
+    "INSERT INTO commerce_payment_intent from sdkwork-membership",
     "payment HTTP callback into membership for subscription activation"
   ],
   "canonicalMembershipPurchaseFlow": [
-    "order checkout or membership-subject order create (subject=membership) on order app-api",
-    "membership reserve pending_activation subscription linked to orderId (membership app-api or order create port)",
-    "orders.payments.create(orderId, { paymentMethod })",
-    "paymentParams.cashierUrl -> cashier UI",
-    "PSP webhook -> POST /app/v3/api/orders/payments/webhooks/{providerCode}",
-    "order settlement -> payment confirmed",
-    "order -> membership fulfillment port -> pending_activation to active + entitlements"
+    "membership UI delegates checkout intent through host-injected SdkworkMembershipCheckoutPort",
+    "order-owned service creates membership-subject order",
+    "order-owned checkout UI renders and polls payment status",
+    "order settles payment through payment ports",
+    "order calls membership fulfillment port",
+    "membership activates subscription and grants entitlements idempotently"
   ],
   "crossReferences": [
     "../sdkwork-order/specs/commerce-checkout-topology.spec.json",
@@ -92,8 +88,9 @@
     "../sdkwork-payment/specs/commerce-dependency-boundary.spec.json"
   ],
   "verification": [
-    "rg 'INSERT INTO commerce_order' crates/sdkwork-membership-repository-sqlx must return no matches",
-    "rg 'sdkwork_order' crates/ Cargo.toml in sdkwork-membership must return no production crate dependencies",
+    "membership package manifests contain no @sdkwork/order-* or @sdkwork/payment-* checkout dependencies",
+    "membership workspace contains no sdkwork-order workspace members",
+    "membership PC app manifest contains no order SDK base URL",
     "node ../sdkwork-specs/tools/check-app-sdk-consumer-imports.mjs --workspace ."
   ]
 }

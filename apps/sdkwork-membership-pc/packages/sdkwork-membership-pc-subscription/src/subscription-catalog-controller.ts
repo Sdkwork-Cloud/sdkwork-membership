@@ -12,6 +12,7 @@ import {
 } from "./subscription-catalog-service";
 import type { SdkworkSubscriptionPurchaseResult } from "./subscription-service";
 import type { SdkworkSubscriptionCatalogCheckoutPlan } from "./subscription-catalog-host";
+import type { SdkworkMembershipCheckoutPort } from "@sdkwork/membership-pc-membership";
 
 export interface SdkworkSubscriptionCatalogControllerState extends SdkworkSubscriptionCatalogViewModel {
   catalog: SdkworkSubscriptionCatalogData | null;
@@ -37,6 +38,7 @@ export interface SdkworkSubscriptionCatalogController {
 }
 
 export interface CreateSdkworkSubscriptionCatalogControllerOptions {
+  checkoutPort?: SdkworkMembershipCheckoutPort;
   initialState?: Partial<SdkworkSubscriptionCatalogControllerState>;
   locale?: string | null;
   service?: Partial<SdkworkSubscriptionCatalogService>;
@@ -73,12 +75,14 @@ export function createSdkworkSubscriptionCatalogController(
   const service: SdkworkSubscriptionCatalogService = options.service
     ? {
         ...createSdkworkSubscriptionCatalogService({
+          checkoutPort: options.checkoutPort,
           locale: options.locale,
           translate: options.translate,
         }),
         ...options.service,
       }
     : createSdkworkSubscriptionCatalogService({
+        checkoutPort: options.checkoutPort,
         locale: options.locale,
         translate: options.translate,
       });
@@ -259,6 +263,6 @@ export function useSdkworkSubscriptionCatalogController(
       translate: stableTranslate,
     }),
     // eslint-disable-next-line react-hooks/exhaustive-deps -- translate is via ref, locale and service are stable references when properly memoised by the caller
-    [controllerProp, options.locale, options.service, stableTranslate],
+    [controllerProp, options.checkoutPort, options.locale, options.service, stableTranslate],
   );
 }

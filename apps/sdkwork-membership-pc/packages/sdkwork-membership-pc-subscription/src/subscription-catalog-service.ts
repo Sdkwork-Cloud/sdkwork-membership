@@ -34,6 +34,7 @@ import type {
   SdkworkSubscriptionCatalogComparisonCategory,
   SdkworkSubscriptionCatalogPlanCardModel,
 } from "./subscription-catalog-content";
+import type { SdkworkMembershipCheckoutPort } from "@sdkwork/membership-pc-membership";
 import {
   createSdkworkSubscriptionCatalogBillingCycles,
   createSdkworkSubscriptionCatalogComparisonCategories,
@@ -61,6 +62,7 @@ export interface SdkworkSubscriptionCatalogViewModel {
 }
 
 export interface CreateSdkworkSubscriptionCatalogServiceOptions {
+  checkoutPort?: SdkworkMembershipCheckoutPort;
   locale?: string | null;
   membershipAppService?: SdkworkMembershipAppService;
   subscriptionService?: SdkworkSubscriptionService;
@@ -135,6 +137,7 @@ export function createSdkworkSubscriptionCatalogService(
     options.membershipAppService ?? getSdkworkMembershipService();
   const subscriptionService = options.subscriptionService
     ?? createSdkworkSubscriptionService({
+      checkoutPort: options.checkoutPort,
       membershipAppService: options.membershipAppService,
       locale: options.locale,
     });

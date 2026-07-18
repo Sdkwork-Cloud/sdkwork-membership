@@ -34,7 +34,8 @@ use sdkwork_membership_repository_sqlx::{
     ListAdminMembershipEntitlementsQuery, ListAdminMembershipMembersQuery,
     ListAdminMembershipPackageGroupsQuery, ListAdminMembershipPackagesQuery,
     ListAdminMembershipPlansQuery, PostgresCommerceMembershipStore, SqliteCommerceMembershipStore,
-    TimestampMembershipEntityIdGenerator, UpdateAdminMembershipMemberStatusCommand,
+    RetrieveAdminMembershipMemberQuery, TimestampMembershipEntityIdGenerator,
+    UpdateAdminMembershipMemberStatusCommand,
     UpdateAdminMembershipPackageCommand, UpdateAdminMembershipPackageGroupCommand,
     UpdateAdminMembershipPlanCommand,
 };
@@ -204,6 +205,10 @@ pub fn admin_membership_router_with_store(
             put(update_package).delete(delete_package),
         )
         .route("/backend/v3/api/memberships/members", get(list_memberships))
+        .route(
+            "/backend/v3/api/memberships/members/{membershipId}",
+            get(retrieve_membership),
+        )
         .route(
             "/backend/v3/api/memberships/members/{membershipId}/status",
             patch(update_membership_status),
@@ -675,6 +680,32 @@ async fn list_memberships(
                     ApiProblem::from_service("membership membership read model is unavailable", e)
                 })?;
             Ok(items)
+        }
+        .await,
+    )
+}
+
+async fn retrieve_membership(
+    ctx: WebRequestContext,
+    State(state): State<AdminMembershipState>,
+    Path(membership_id): Path<String>,
+) -> axum::response::Response {
+    finish_api_json(
+        &ctx,
+        async {
+            let subject = admin_membership_subject_from_context(&ctx)?;
+            let membership_id = normalize_path_id(&membership_id, "membership membership id")?;
+            let item = state
+                .store
+                .retrieve_admin_membership_member(RetrieveAdminMembershipMemberQuery {
+                    subject,
+                    membership_id,
+                })
+                .await
+                .map_err(|e| {
+                    ApiProblem::from_service("membership membership read model is unavailable", e)
+                })?;
+            Ok(ItemEnvelope { item })
         }
         .await,
     )

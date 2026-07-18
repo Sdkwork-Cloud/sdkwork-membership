@@ -8,11 +8,10 @@ import {
   useNavigate,
 } from "react-router-dom";
 import { SdkworkThemeProvider } from "@sdkwork/ui-pc-react/theme";
-import { bootstrapSdkworkMembershipAppService, bootstrapSdkworkOrderAppService } from "@sdkwork/membership-service";
+import { bootstrapSdkworkMembershipAppService } from "@sdkwork/membership-service";
 import { sdkworkMembershipPcRuntimeIdentity } from "@sdkwork/membership-pc-core";
 
 const DEFAULT_MEMBERSHIP_APP_API_BASE_URL = "http://127.0.0.1:18096";
-const DEFAULT_ORDER_APP_API_BASE_URL = "http://127.0.0.1:18093";
 const env = (import.meta as ImportMeta & { env?: Record<string, boolean | string | undefined> }).env;
 const SdkworkMembershipPage = lazy(async () => {
   const module = await import("@sdkwork/membership-pc-membership");
@@ -59,13 +58,6 @@ function resolveMembershipApiBaseUrl(): string {
   return resolveRequiredAppApiBaseUrl(
     "VITE_SDKWORK_MEMBERSHIP_PC_APP_API_BASE_URL",
     DEFAULT_MEMBERSHIP_APP_API_BASE_URL,
-  );
-}
-
-function resolveOrderApiBaseUrl(): string {
-  return resolveRequiredAppApiBaseUrl(
-    "VITE_SDKWORK_ORDER_APP_API_BASE_URL",
-    DEFAULT_ORDER_APP_API_BASE_URL,
   );
 }
 
@@ -118,9 +110,7 @@ export function MembershipAppShell() {
    */
   useMemo(() => {
     const membershipBaseUrl = resolveMembershipApiBaseUrl();
-    const orderBaseUrl = resolveOrderApiBaseUrl();
     bootstrapSdkworkMembershipAppService({ baseUrl: membershipBaseUrl });
-    bootstrapSdkworkOrderAppService({ baseUrl: orderBaseUrl });
   }, []);
 
   return (

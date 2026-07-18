@@ -152,6 +152,10 @@
       {
         "name": "membershipFeature",
         "export": "."
+      },
+      {
+        "name": "membershipCheckoutPort",
+        "export": "."
       }
     ],
     "requiredPorts": [
@@ -189,6 +193,7 @@
   },
   "metadata": {
     "managedBy": "apps/scripts/initialize-component-specs.mjs",
-    "standardVersion": "2026-05-13"
+    "standardVersion": "2026-05-13",
+    "boundary": "Defines the host-injected checkout port but does not import or implement order or payment capabilities."
   }
 }

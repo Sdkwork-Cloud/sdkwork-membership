@@ -29,7 +29,8 @@ pub use types::{
     FulfillMembershipPurchaseCommand, FulfillMembershipPurchaseOutcome,
     ListAdminMembershipEntitlementsQuery, ListAdminMembershipMembersQuery,
     ListAdminMembershipPackageGroupsQuery, ListAdminMembershipPackagesQuery,
-    ListAdminMembershipPlansQuery, SubmitMembershipPurchaseCommand,
+    ListAdminMembershipPlansQuery, RetrieveAdminMembershipMemberQuery,
+    SubmitMembershipPurchaseCommand,
     UpdateAdminMembershipMemberStatusCommand, UpdateAdminMembershipPackageCommand,
     UpdateAdminMembershipPackageGroupCommand, UpdateAdminMembershipPlanCommand,
 };

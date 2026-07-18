@@ -122,6 +122,14 @@ pub const BACKEND_API_ROUTE_MANIFEST: &[RouteManifestEntry] = &[
         auth_mode: "dual-token",
     },
     RouteManifestEntry {
+        path: "/members/{id}",
+        method: "GET",
+        operation_id: "memberships.members.retrieve",
+        request_context: "WebRequestContext",
+        api_surface: "backend-api",
+        auth_mode: "dual-token",
+    },
+    RouteManifestEntry {
         path: "/members/{id}/status",
         method: "PATCH",
         operation_id: "memberships.members.status.update",

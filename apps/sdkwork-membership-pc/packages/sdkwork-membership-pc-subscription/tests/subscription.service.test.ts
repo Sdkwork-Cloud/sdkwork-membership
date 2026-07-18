@@ -3,9 +3,7 @@ import { resolve } from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   configureMembershipServiceMockSession,
-  configureOrderServiceMock,
   createMembershipAppServiceMock,
-  createOrderAppServiceMock,
   resetMembershipServiceMockSession,
 } from "../../../tests/test-utils/membership-service-mock";
 import { createSdkworkSubscriptionService } from "../src";
@@ -477,28 +475,11 @@ describe("sdkwork-membership-pc-subscription service", () => {
     ).rejects.toThrow("请先登录后再管理订阅。");
 
     configureMembershipServiceMockSession({ accessToken: "subscription-access-token", authToken: "subscription-auth-token" });
-    configureOrderServiceMock(createOrderAppServiceMock({
-      memberships: {
-        orders: {
-          create: vi.fn().mockResolvedValue(
-            wrapSdkworkMembershipResourceResponse({
-              orderId: "order-uuid-purchase",
-              orderNo: "MEMBERSHIP-ORDER-001",
-            }),
-          ),
-        },
-      },
-      orders: {
-        payments: {
-          create: vi.fn().mockResolvedValue(
-            wrapSdkworkMembershipResourceResponse({
-              paymentParams: { cashierUrl: "https://example.test/cashier" },
-            }),
-          ),
-        },
-      },
-    }));
     const localizedMutationService = createSdkworkSubscriptionService({
+      checkoutPort: {
+        createCheckout: vi.fn().mockRejectedValue(new Error("购买会员失败。")),
+        getCheckoutStatus: vi.fn(),
+      },
       membershipAppService: createMembershipAppServiceMock({
         memberships: {
           purchases: {

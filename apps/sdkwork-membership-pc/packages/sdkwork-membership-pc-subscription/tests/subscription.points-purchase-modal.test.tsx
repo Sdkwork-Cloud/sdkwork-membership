@@ -35,7 +35,7 @@ afterEach(() => {
 });
 
 describe("subscription catalog points purchase", () => {
-  it("opens the Order-owned recharge modal without redirecting anonymous users", async () => {
+  it("opens the host-provided points purchase modal without redirecting anonymous users", async () => {
     configureSdkworkMembershipSessionTokenProvider(() => ({}));
     const onLoginRequired = vi.fn();
     const controller = createSdkworkSubscriptionCatalogController({

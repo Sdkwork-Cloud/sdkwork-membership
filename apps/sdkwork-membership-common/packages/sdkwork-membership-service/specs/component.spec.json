@@ -9,7 +9,7 @@
     "root": "apps/sdkwork-membership-common/packages/sdkwork-membership-service",
     "domain": "commerce",
     "capability": "membership-service",
-    "surface": "app",
+    "surface": "shared-service",
     "status": "ready",
     "languages": [
       "typescript"
@@ -83,7 +83,7 @@
         "export": "."
       },
       {
-        "name": "orderAppServiceProvider",
+        "name": "membershipBackendService",
         "export": "."
       }
     ],
@@ -94,16 +94,15 @@
         "sdkDependency": "sdkwork-membership-app-sdk"
       },
       {
-        "name": "orderAppSdkClient",
+        "name": "membershipBackendSdkClient",
         "export": ".",
-        "sdkDependency": "sdkwork-order-app-sdk"
+        "sdkDependency": "sdkwork-membership-backend-sdk"
       }
     ],
     "runtimeEntrypoints": [
       "createSdkworkMembershipAppService",
       "bootstrapSdkworkMembershipAppService",
-      "bootstrapSdkworkOrderAppService",
-      "configureSdkworkOrderAppServiceProvider"
+      "createSdkworkMembershipBackendService"
     ],
     "routeManifest": null,
     "sdkClients": [],
@@ -122,16 +121,18 @@
         }
       },
       {
-        "workspace": "sdkwork-order-app-sdk",
-        "sdkFamily": "sdkwork-order-app-sdk",
-        "apiAuthority": "sdkwork-order-app-api",
-        "surface": "app-api",
-        "apiPrefix": "/app/v3/api",
+        "workspace": "sdkwork-membership-backend-sdk",
+        "sdkFamily": "sdkwork-membership-backend-sdk",
+        "apiAuthority": "sdkwork-membership-backend-api",
+        "surface": "backend-api",
+        "apiPrefix": "/backend/v3/api",
         "required": true,
         "dependencyMode": "consumer-sdk",
+        "credentialMode": "authenticated-backend-admin",
+        "permissionModuleId": "commerce",
         "generatedTransportImportPolicy": "forbidden",
         "packageByLanguage": {
-          "typescript": "@sdkwork/order-app-sdk"
+          "typescript": "@sdkwork/membership-backend-sdk"
         }
       }
     ],
@@ -148,25 +149,6 @@
         "packageExport": ".",
         "servicePort": "SdkworkMembershipAppService",
         "runtimeRequired": true
-      },
-      {
-        "workspace": "sdkwork-order-app-sdk",
-        "sdkFamily": "sdkwork-order-app-sdk",
-        "apiAuthority": "sdkwork-order-app-api",
-        "surface": "app-api",
-        "apiPrefix": "/app/v3/api",
-        "exportMode": "dependency-sdk",
-        "visibility": "app",
-        "methods": [
-          "memberships.orders.create",
-          "orders.payments.create",
-          "orders.paymentSuccess.retrieve",
-          "recharges.packages.list",
-          "recharges.orders.create",
-          "recharges.orders.retrieve"
-        ],
-        "packageExport": ".",
-        "runtimeRequired": true
       }
     ],
     "dependencyApiSurfaces": [
@@ -180,24 +162,12 @@
         "sameOriginAllowed": false,
         "requiredBaseUrlKey": "BootstrapSdkworkMembershipAppServiceInput.baseUrl",
         "coverage": "verified"
-      },
-      {
-        "workspace": "sdkwork-order-app-sdk",
-        "sdkFamily": "sdkwork-order-app-sdk",
-        "apiAuthority": "sdkwork-order-app-api",
-        "surface": "app-api",
-        "apiPrefix": "/app/v3/api",
-        "runtimeMode": "external-service",
-        "sameOriginAllowed": false,
-        "requiredBaseUrlKey": "BootstrapSdkworkOrderAppServiceInput.baseUrl",
-        "coverage": "verified"
       }
     ],
     "events": [],
     "configKeys": [
       "package.json",
-      "BootstrapSdkworkMembershipAppServiceInput.baseUrl",
-      "BootstrapSdkworkOrderAppServiceInput.baseUrl"
+      "BootstrapSdkworkMembershipAppServiceInput.baseUrl"
     ]
   },
   "verification": {
@@ -210,6 +180,6 @@
   "metadata": {
     "managedBy": "sdkwork-membership",
     "standardVersion": "2026-07-08",
-    "boundary": "Order creation and payment settlement remain owned by sdkwork-order. This package consumes @sdkwork/order-app-sdk through service composition only."
+    "boundary": "This package owns membership SDK composition only and has no dependency on order or payment packages. Checkout is composed by the host application through the frontend membership checkout port."
   }
 }

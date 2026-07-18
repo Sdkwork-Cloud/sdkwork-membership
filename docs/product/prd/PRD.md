@@ -23,7 +23,7 @@ The product goal is to let host applications embed a complete membership experie
 
 - **Operators** configure membership plans, packages, benefits, rewards, and operational state through backend-api surfaces.
 - **Buyers** browse membership levels and packages, start purchase/renew/upgrade flows, complete cashier through the order/payment flow, and use membership privileges after settlement.
-- **Integrators** embed the PC membership package and consume `@sdkwork/membership-app-sdk` plus dependency SDKs such as `@sdkwork/order-app-sdk` through service classes.
+- **Integrators** embed the PC membership package, consume `@sdkwork/membership-app-sdk`, and inject checkout through the public membership checkout port from their application composition root.
 
 ## 3. Goals And Non-Goals
 
@@ -68,12 +68,11 @@ Purchase, renew, and upgrade follow a single order-first flow:
 Token-plan and membership-package purchase ordering is in scope for `sdkwork-order` unified order management.
 
 ```text
-PC UI payment choice
-  -> membership service class
-  -> @sdkwork/order-app-sdk memberships.orders.create({ packageId, paymentMethod })
-  -> @sdkwork/membership-app-sdk memberships.purchases.create|renew|upgrade({ packageId, orderId, requestNo, couponId? })
-  -> @sdkwork/order-app-sdk orders.payments.create(orderId, { paymentMethod })
-  -> order/payment cashier and settlement
+PC membership UI payment choice
+  -> host-injected SdkworkMembershipCheckoutPort
+  -> order-owned service creates the membership-subject order
+  -> order-owned checkout UI and payment-status service
+  -> order/payment settlement
   -> order settlement calls membership fulfillment port
   -> membership activates subscription and entitlements
 ```
@@ -124,15 +123,16 @@ Allowed dependency direction:
 ```text
 sdkwork-order -> sdkwork-payment
 sdkwork-order -> sdkwork-membership fulfillment port
-frontend membership service -> @sdkwork/order-app-sdk
 frontend membership service -> @sdkwork/membership-app-sdk
+application composition root -> sdkwork-membership + sdkwork-order
+application composition root -> inject order-owned checkout port and UI
 ```
 
 Forbidden dependency direction:
 
 ```text
 sdkwork-payment -> sdkwork-order | sdkwork-membership
-sdkwork-membership Rust crates -> sdkwork-order-* crates
+sdkwork-membership -> sdkwork-order packages, SDKs, services, UI, or Rust crates
 sdkwork-membership -> INSERT commerce_order
 sdkwork-membership database -> payment intent/attempt/method/cashier tables
 ```
@@ -165,11 +165,11 @@ Authority:
 
 - `sdkwork-order` owns membership package and token plan order creation through unified order management.
 - Membership app-api reserves subscription by `orderId` and `requestNo`.
-- PC service composes order app SDK and membership app SDK without changing UI visuals.
+- Product application roots compose the order-owned checkout service/UI with the membership checkout port.
 - The PC subscription dashboard uses membership-owned default payment-method options for order checkout selection and does not depend on `sdkwork-payment` frontend or service packages.
-- PC split-gateway runtime must configure `VITE_SDKWORK_MEMBERSHIP_PC_APP_API_BASE_URL` for membership app-api and `VITE_SDKWORK_ORDER_APP_API_BASE_URL` for order app-api.
-- `apps/sdkwork-membership-pc/sdkwork.app.config.json` `envBindings` is the source of truth for those two Vite SDK base URL keys.
-- PC runtime must not use `VITE_SDKWORK_MEMBERSHIP_PC_SDK_BASE_URL`, browser same-origin inheritance, or any unregistered common SDK base URL fallback for membership/order app SDK bootstrap.
+- The standalone membership PC runtime configures only `VITE_SDKWORK_MEMBERSHIP_PC_APP_API_BASE_URL`.
+- `apps/sdkwork-membership-pc/sdkwork.app.config.json` `envBindings` is the source of truth for the membership SDK base URL key.
+- Order runtime configuration belongs to the product application composition root, not the membership application.
 - `orders.payments.create` returns cashier/payment parameters from order/payment.
 - Order settlement calls membership fulfillment port to activate subscription and entitlements.
 - Membership database initialization excludes order/payment/recharge/exchange tables.

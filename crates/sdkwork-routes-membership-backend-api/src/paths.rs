@@ -17,6 +17,9 @@ pub const PACKAGES: &str = "/packages";
 /// Members listing: `/backend/v3/api/memberships/members`
 pub const MEMBERS: &str = "/members";
 
+/// Member detail: `/backend/v3/api/memberships/members/{id}`
+pub const MEMBER_DETAIL: &str = "/members/{id}";
+
 /// Entitlements listing: `/backend/v3/api/memberships/entitlements`
 pub const ENTITLEMENTS: &str = "/entitlements";
 

@@ -19,6 +19,7 @@
     "gateway:assembly:materialize": "node scripts/gateway/assembly-materialize.mjs",
     "gateway:assembly:validate": "node scripts/gateway/assembly-validate.mjs",
     "sdk:generate": "node sdks/sdkwork-membership-app-sdk/bin/generate-sdk.mjs",
+    "sdk:generate:backend": "node sdks/sdkwork-membership-backend-sdk/bin/generate-sdk.mjs",
     "check": "pnpm run check:app-composition && pnpm db:validate && pnpm gateway:assembly:validate && pnpm typecheck",
     "db:validate": "node ../sdkwork-specs/tools/check-database-framework-standard.mjs --root .",
     "db:materialize:contract": "node ../sdkwork-specs/tools/materialize-database-contract-from-baseline.mjs --root . --baseline database/ddl/baseline/postgres/0001_membership_baseline.sql --module-id membership --owner sdkwork-membership --prefixes commerce_ --engines postgres,sqlite",

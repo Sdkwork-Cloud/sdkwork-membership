@@ -39,11 +39,12 @@ This is a **T1 commerce capability repository**. This repository is self-contain
 | --- | --- |
 | Order → Payment | Yes (in-process ports; payment MUST NOT depend on order) |
 | Order → Membership | Yes (`MembershipPurchaseFulfillmentPort` after `subject=membership` settlement) |
-| Membership → `@sdkwork/order-app-sdk` | Yes (client / service facade consumer only) |
-| Membership → `@sdkwork/payment-app-sdk` | Yes (optional cashier read/redirect consumer only; checkout payment requests go through `@sdkwork/order-app-sdk` `orders.payments.create`) |
+| Membership → Order packages, SDKs, services, or UI | **No** (membership exposes a host-injected checkout port only) |
+| Membership → Payment packages, SDKs, services, or UI | **No** |
 | Payment → Order / Membership | **No** (foundation module) |
 | Membership → `sdkwork-order-*` Rust crates | **No** |
 | Membership → `INSERT commerce_order` | **No** (order domain only; membership reserves subscription by `orderId`) |
+| Application composition root → Membership + Order | Yes (inject the order-owned checkout implementation into membership UI) |
 
 Authority: `specs/commerce-order-membership-boundary.spec.json`, `specs/COMMERCE_ORDER_BOUNDARY_SPEC.md`, `../sdkwork-order/specs/commerce-checkout-topology.spec.json`, `../sdkwork-payment/specs/commerce-dependency-boundary.spec.json`.
 

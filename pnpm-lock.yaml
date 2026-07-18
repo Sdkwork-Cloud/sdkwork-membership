@@ -9,9 +9,6 @@ catalogs:
     '@testing-library/jest-dom':
       specifier: ^6.9.1
       version: 6.9.1
-    '@types/qrcode':
-      specifier: ^1.5.6
-      version: 1.5.6
     '@types/react':
       specifier: ^19.2.14
       version: 19.2.14
@@ -418,105 +415,6 @@ importers:
         specifier: workspace:*
         version: link:../../../../sdkwork-sdk-commons/sdkwork-sdk-common-typescript
 
-  ../sdkwork-order/apps/sdkwork-order-common/packages/sdkwork-order-contracts: {}
-
-  ../sdkwork-order/apps/sdkwork-order-common/packages/sdkwork-order-sdk-ports: {}
-
-  ../sdkwork-order/apps/sdkwork-order-common/packages/sdkwork-order-service:
-    dependencies:
-      '@sdkwork/order-app-sdk':
-        specifier: workspace:*
-        version: link:../../../../sdks/sdkwork-order-app-sdk/sdkwork-order-app-sdk-typescript
-      '@sdkwork/order-backend-sdk':
-        specifier: workspace:*
-        version: link:../../../../sdks/sdkwork-order-backend-sdk/sdkwork-order-backend-sdk-typescript
-      '@sdkwork/order-sdk-ports':
-        specifier: workspace:*
-        version: link:../sdkwork-order-sdk-ports
-      '@sdkwork/sdk-common':
-        specifier: workspace:*
-        version: link:../../../../../sdkwork-sdk-commons/sdkwork-sdk-common-typescript
-      '@sdkwork/utils':
-        specifier: workspace:*
-        version: link:../../../../../sdkwork-utils/packages/sdkwork-utils-typescript
-
-  ../sdkwork-order/apps/sdkwork-order-pc/packages/sdkwork-order-pc-checkout:
-    dependencies:
-      lucide-react:
-        specifier: 'catalog:'
-        version: 1.7.0(react@19.2.4)
-      qrcode:
-        specifier: 'catalog:'
-        version: 1.5.4
-    devDependencies:
-      '@sdkwork/ui-pc-react':
-        specifier: workspace:*
-        version: link:../../../../../sdkwork-ui/sdkwork-ui-pc-react
-      '@types/qrcode':
-        specifier: 'catalog:'
-        version: 1.5.6
-      '@types/react':
-        specifier: 'catalog:'
-        version: 19.2.14
-      '@types/react-dom':
-        specifier: 'catalog:'
-        version: 19.2.3(@types/react@19.2.14)
-      react:
-        specifier: 'catalog:'
-        version: 19.2.4
-      react-dom:
-        specifier: 'catalog:'
-        version: 19.2.4(react@19.2.4)
-      typescript:
-        specifier: 'catalog:'
-        version: 6.0.3
-
-  ../sdkwork-order/apps/sdkwork-order-pc/packages/sdkwork-order-pc-recharge:
-    dependencies:
-      '@sdkwork/order-service':
-        specifier: workspace:*
-        version: link:../../../sdkwork-order-common/packages/sdkwork-order-service
-      '@sdkwork/ui-pc-react':
-        specifier: workspace:*
-        version: link:../../../../../sdkwork-ui/sdkwork-ui-pc-react
-      lucide-react:
-        specifier: 'catalog:'
-        version: 1.7.0(react@19.2.4)
-      qrcode:
-        specifier: 'catalog:'
-        version: 1.5.4
-    devDependencies:
-      '@types/qrcode':
-        specifier: 'catalog:'
-        version: 1.5.6
-      '@types/react':
-        specifier: 'catalog:'
-        version: 19.2.14
-      '@types/react-dom':
-        specifier: 'catalog:'
-        version: 19.2.3(@types/react@19.2.14)
-      react:
-        specifier: 'catalog:'
-        version: 19.2.4
-      react-dom:
-        specifier: 'catalog:'
-        version: 19.2.4(react@19.2.4)
-      typescript:
-        specifier: 'catalog:'
-        version: 6.0.3
-
-  ../sdkwork-order/sdks/sdkwork-order-app-sdk/sdkwork-order-app-sdk-typescript:
-    dependencies:
-      '@sdkwork/sdk-common':
-        specifier: workspace:*
-        version: link:../../../../sdkwork-sdk-commons/sdkwork-sdk-common-typescript
-
-  ../sdkwork-order/sdks/sdkwork-order-backend-sdk/sdkwork-order-backend-sdk-typescript:
-    dependencies:
-      '@sdkwork/sdk-common':
-        specifier: workspace:*
-        version: link:../../../../sdkwork-sdk-commons/sdkwork-sdk-common-typescript
-
   ../sdkwork-promotion/apps/sdkwork-promotion-common/packages/sdkwork-promotion-contracts: {}
 
   ../sdkwork-promotion/apps/sdkwork-promotion-common/packages/sdkwork-promotion-sdk-ports: {}
@@ -759,12 +657,6 @@ importers:
       '@sdkwork/membership-sdk-ports':
         specifier: workspace:*
         version: link:../sdkwork-membership-sdk-ports
-      '@sdkwork/order-app-sdk':
-        specifier: workspace:*
-        version: link:../../../../../sdkwork-order/sdks/sdkwork-order-app-sdk/sdkwork-order-app-sdk-typescript
-      '@sdkwork/order-service':
-        specifier: workspace:*
-        version: link:../../../../../sdkwork-order/apps/sdkwork-order-common/packages/sdkwork-order-service
       '@sdkwork/sdk-common':
         specifier: workspace:*
         version: link:../../../../../sdkwork-sdk-commons/sdkwork-sdk-common-typescript
@@ -880,12 +772,6 @@ importers:
       '@sdkwork/membership-service':
         specifier: workspace:*
         version: link:../../../sdkwork-membership-common/packages/sdkwork-membership-service
-      '@sdkwork/order-pc-checkout':
-        specifier: workspace:*
-        version: link:../../../../../sdkwork-order/apps/sdkwork-order-pc/packages/sdkwork-order-pc-checkout
-      '@sdkwork/order-pc-recharge':
-        specifier: workspace:*
-        version: link:../../../../../sdkwork-order/apps/sdkwork-order-pc/packages/sdkwork-order-pc-recharge
       '@sdkwork/promotion-pc-coupon':
         specifier: workspace:*
         version: link:../../../../../sdkwork-promotion/apps/sdkwork-promotion-pc/packages/sdkwork-promotion-pc-coupon
@@ -2476,9 +2362,6 @@ packages:
 
   '@types/node@25.9.4':
     resolution: {integrity: sha512-dszCsrKb5U7ZsVZBWiHFklTloVl0mSEnWH/iZXfZUlI4rzCUnsvGmgqfuVRHL54ugE7/wRuxEIXRa2iMZ+BG6g==}
-
-  '@types/qrcode@1.5.6':
-    resolution: {integrity: sha512-te7NQcV2BOvdj2b1hCAHzAoMNuj65kNBMz0KBaxM6c3VGBOhU0dURQKOtH8CFNI/dsKkwlv32p26qYQTWoB5bw==}
 
   '@types/react-dom@19.2.3':
     resolution: {integrity: sha512-jp2L/eY6fn+KgVVQAOqYItbF0VY/YApe5Mz2F0aykSO8gx31bYCZyvSeYxCHKvzHG5eZjc+zyaS5BrBWya2+kQ==}
@@ -5529,10 +5412,6 @@ snapshots:
   '@types/node@25.9.4':
     dependencies:
       undici-types: 7.24.6
-
-  '@types/qrcode@1.5.6':
-    dependencies:
-      '@types/node': 25.9.4
 
   '@types/react-dom@19.2.3(@types/react@19.2.14)':
     dependencies:

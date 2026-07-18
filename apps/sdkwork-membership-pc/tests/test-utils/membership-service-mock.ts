@@ -1,10 +1,8 @@
 import {
   configureSdkworkMembershipSessionTokenProvider,
-  configureSdkworkOrderAppServiceProvider,
   type SdkworkMembershipAppService,
   type SdkworkMembershipSessionTokens,
 } from "@sdkwork/membership-service";
-import type { OrderAppTransportClient } from "@sdkwork/membership-service";
 
 type DeepPartial<T> = {
   [K in keyof T]?: T[K] extends (...args: infer TArgs) => infer TReturn
@@ -29,33 +27,6 @@ export function configureMembershipServiceMockSession(
 
 export function resetMembershipServiceMockSession(): void {
   configureSdkworkMembershipSessionTokenProvider(null);
-  configureSdkworkOrderAppServiceProvider(null);
-}
-
-export function createOrderAppServiceMock(
-  overrides: DeepPartial<OrderAppTransportClient> = {},
-): OrderAppTransportClient {
-  const base = {
-    memberships: {
-      orders: {
-        create: async () => {
-          throw new Error("Missing order service test method: memberships.orders.create");
-        },
-      },
-    },
-    orders: {
-      payments: {
-        create: async () => {
-          throw new Error("Missing order service test method: orders.payments.create");
-        },
-      },
-    },
-  } as unknown as OrderAppTransportClient;
-  return mergeMembershipAppService(base, overrides as DeepPartial<OrderAppTransportClient>);
-}
-
-export function configureOrderServiceMock(client: OrderAppTransportClient): void {
-  configureSdkworkOrderAppServiceProvider(() => client);
 }
 
 function createMissingMembershipsTree(): SdkworkMembershipAppService["memberships"] {

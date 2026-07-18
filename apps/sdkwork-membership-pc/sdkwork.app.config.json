@@ -48,22 +48,11 @@
         "tracked": true,
         "surface": "app-api",
         "sdkFamily": "sdkwork-membership-app-sdk"
-      },
-      {
-        "name": "VITE_SDKWORK_ORDER_APP_API_BASE_URL",
-        "required": true,
-        "tracked": true,
-        "surface": "app-api",
-        "sdkFamily": "sdkwork-order-app-sdk"
       }
     ],
     "sdkBaseUrls": {
       "appApiBaseUrlKey": "VITE_SDKWORK_MEMBERSHIP_PC_APP_API_BASE_URL",
-      "dependencySdkBaseUrlKeys": {
-        "sdkwork-order-app-sdk": {
-          "appApiBaseUrlKey": "VITE_SDKWORK_ORDER_APP_API_BASE_URL"
-        }
-      }
+      "dependencySdkBaseUrlKeys": {}
     }
   },
   "publish": {

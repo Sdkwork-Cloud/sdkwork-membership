@@ -64,13 +64,11 @@ The baseline does not create and seeds do not insert any of these external table
 
 ## Checkout And Fulfillment Data Flow
 
-Membership checkout uses an order-first flow:
+Membership persistence participates only after host-composed order checkout:
 
 ```text
-PC service
-  -> @sdkwork/order-app-sdk memberships.orders.create({ packageId, paymentMethod })
-  -> @sdkwork/membership-app-sdk memberships.purchases.create|renew|upgrade({ packageId, orderId, requestNo, couponId? })
-  -> @sdkwork/order-app-sdk orders.payments.create(orderId, { paymentMethod })
+product application composition root
+  -> order-owned membership checkout service and UI
   -> sdkwork-order settlement
   -> membership fulfillment port activates subscription and entitlements
 ```

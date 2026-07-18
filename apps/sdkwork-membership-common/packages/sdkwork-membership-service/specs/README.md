@@ -19,13 +19,13 @@ Root SDKWork standards remain authoritative. Local component specs can narrow or
 ## Contract Manifest
 
 - [component.spec.json](./component.spec.json) is the machine-readable component contract.
-- This package is an app-side service facade over injected or constructed composed SDK clients.
-- It consumes `@sdkwork/membership-app-sdk` and `@sdkwork/order-app-sdk`.
+- This package exposes app and backend-admin service facades over injected composed SDK clients.
+- It consumes `@sdkwork/membership-app-sdk` and `@sdkwork/membership-backend-sdk` without constructing clients or credentials.
 - It does not own order or payment APIs, database tables, generated transport output, or raw HTTP fallbacks.
 
 ## Boundary
 
-Membership service composition may call `@sdkwork/order-app-sdk` for membership order creation and order payment requests. Order creation, cashier/payment execution, settlement, and fulfillment saga ownership remain in `sdkwork-order` and `sdkwork-payment`; membership only reserves and fulfills membership entitlements.
+Membership service composition has no order or payment dependency. Product application roots compose order-owned checkout behavior separately and inject it through the frontend membership checkout port. Membership owns catalog, state, subscriptions, entitlements, and fulfillment results only.
 
 ## Canonical Specs
 
@@ -45,6 +45,8 @@ Membership service composition may call `@sdkwork/order-app-sdk` for membership 
 ## Public Exports
 
 - `.`
+
+The backend-admin export covers catalog, member, and entitlement operations. Service-only purchase fulfillment is intentionally excluded.
 
 ## Verification
 

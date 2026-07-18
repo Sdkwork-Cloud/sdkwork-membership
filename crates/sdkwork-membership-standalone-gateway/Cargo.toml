@@ -16,6 +16,4 @@ tokio = { workspace = true }
 tracing = { workspace = true }
 tracing-subscriber = { workspace = true }
 sdkwork-web-bootstrap.workspace = true
-sdkwork_routes_membership_app_api.workspace = true
-sdkwork_routes_membership_backend_api.workspace = true
 sdkwork_membership_service_host.workspace = true

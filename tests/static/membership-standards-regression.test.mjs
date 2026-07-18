@@ -112,7 +112,7 @@ test("membership authored app packages declare component specs", () => {
   assert.deepEqual(missing, []);
 });
 
-test("membership docs describe order-owned payment execution without stale payment-app-sdk ownership", () => {
+test("membership docs require host-injected order checkout without membership order dependencies", () => {
   const agentSource = readRelative("AGENTS.md");
   const prdSource = readRelative("docs/product/prd/PRD.md");
   const techSource = readRelative("docs/architecture/tech/TECH_ARCHITECTURE.md");
@@ -137,9 +137,14 @@ test("membership docs describe order-owned payment execution without stale payme
       `${label} must not document a payment-to-membership callback path`,
     );
     assert.equal(
-      source.includes("orders.payments.create"),
+      source.includes("host-injected"),
       true,
-      `${label} must document the order app SDK payment method boundary`,
+      `${label} must document host-injected checkout composition`,
+    );
+    assert.equal(
+      source.includes("@sdkwork/order-app-sdk"),
+      false,
+      `${label} must not document a membership-to-order SDK dependency`,
     );
   }
 
@@ -170,7 +175,7 @@ test("membership docs describe order-owned payment execution without stale payme
     "PRD must document resolved order-owned purchase responsibility in a normative section",
   );
   assert.equal(
-    techSource.includes("`sdkwork-order` is the backend capability that depends on membership through the fulfillment port; membership does not depend on order Rust crates or order/payment database lifecycle assets."),
+    techSource.includes("`sdkwork-order` is the backend capability that depends on membership through the fulfillment port; membership does not depend on order packages, SDKs, services, UI, Rust crates, or order/payment database lifecycle assets."),
     true,
     "technical architecture must document the corrected order-to-membership dependency direction",
   );
@@ -221,33 +226,25 @@ test("membership PC shell lazy-loads feature route packages", () => {
   );
 });
 
-test("membership PC shell wires order SDK to the order app-api base URL", () => {
+test("membership PC shell does not own order SDK bootstrap or configuration", () => {
   const shellSource = readRelative("apps/sdkwork-membership-pc/packages/sdkwork-membership-pc-shell/src/index.tsx");
   const shellComponent = readJson("apps/sdkwork-membership-pc/packages/sdkwork-membership-pc-shell/specs/component.spec.json");
   const envExample = readRelative("apps/sdkwork-membership-pc/.env.example");
-  const orderSurface = shellComponent.contracts.dependencyApiSurfaces.find(
-    (surface) => surface.workspace === "sdkwork-order-app-sdk",
-  );
 
   assert.equal(
     envExample.includes("VITE_SDKWORK_ORDER_APP_API_BASE_URL="),
-    true,
-    "membership PC env example must declare the dependency-specific order app-api base URL",
+    false,
+    "membership PC env example must not declare an order app-api base URL",
   );
   assert.equal(
     shellSource.includes("VITE_SDKWORK_ORDER_APP_API_BASE_URL"),
-    true,
-    "membership PC shell must read the dependency-specific order app-api base URL",
-  );
-  assert.equal(
-    shellSource.includes("bootstrapSdkworkOrderAppService({\n      baseUrl: orderApiBaseUrl,"),
-    true,
-    "membership PC shell must bootstrap @sdkwork/order-app-sdk with orderApiBaseUrl",
-  );
-  assert.equal(
-    shellSource.includes("bootstrapSdkworkOrderAppService({\n      baseUrl: apiBaseUrl,"),
     false,
-    "membership PC shell must not reuse the membership app-api base URL for @sdkwork/order-app-sdk",
+    "membership PC shell must not read an order app-api base URL",
+  );
+  assert.equal(
+    shellSource.includes("bootstrapSdkworkOrderAppService"),
+    false,
+    "membership PC shell must not bootstrap the order app SDK",
   );
   assert.deepEqual(
     shellComponent.contracts.runtimeEntrypoints,
@@ -255,31 +252,9 @@ test("membership PC shell wires order SDK to the order app-api base URL", () => 
     "membership PC shell runtime entrypoints must list only public integration entrypoints",
   );
   assert.equal(
-    orderSurface?.runtimeMode,
-    "external-service",
-    "order app SDK dependency surface must remain an external service",
-  );
-  assert.equal(
-    orderSurface?.sameOriginAllowed,
-    false,
-    "order app SDK external-service dependency surface must not silently inherit same-origin coverage",
-  );
-  assert.equal(
-    orderSurface?.requiredBaseUrlKey,
-    "VITE_SDKWORK_ORDER_APP_API_BASE_URL",
-    "order app SDK dependency surface must require the order app-api base URL key",
-  );
-  assert.equal(
     shellComponent.contracts.configKeys.includes("VITE_SDKWORK_ORDER_APP_API_BASE_URL"),
-    true,
-    "membership PC shell component config keys must include the order app-api base URL",
-  );
-
-  const prdSource = readRelative("docs/product/prd/PRD.md");
-  assert.equal(
-    prdSource.includes("PC split-gateway runtime must configure `VITE_SDKWORK_MEMBERSHIP_PC_APP_API_BASE_URL` for membership app-api and `VITE_SDKWORK_ORDER_APP_API_BASE_URL` for order app-api."),
-    true,
-    "PRD must state the split-gateway SDK base URL acceptance requirement",
+    false,
+    "membership PC shell component config must not include an order base URL",
   );
 });
 
@@ -289,10 +264,7 @@ test("membership PC runtime config does not use unregistered common SDK base URL
   const envExample = readRelative("apps/sdkwork-membership-pc/.env.example");
   const techSource = readRelative("docs/architecture/tech/TECH_ARCHITECTURE.md");
   const shellComponent = readJson("apps/sdkwork-membership-pc/packages/sdkwork-membership-pc-shell/specs/component.spec.json");
-  const expectedConfigKeys = [
-    "VITE_SDKWORK_MEMBERSHIP_PC_APP_API_BASE_URL",
-    "VITE_SDKWORK_ORDER_APP_API_BASE_URL",
-  ];
+  const expectedConfigKeys = ["VITE_SDKWORK_MEMBERSHIP_PC_APP_API_BASE_URL"];
   const dependencySurfaces = shellComponent.contracts.dependencyApiSurfaces ?? [];
 
   for (const [label, source] of [
@@ -329,11 +301,6 @@ test("membership PC runtime config does not use unregistered common SDK base URL
         runtimeMode: "external-service",
         sameOriginAllowed: false,
       },
-      {
-        workspace: "sdkwork-order-app-sdk",
-        runtimeMode: "external-service",
-        sameOriginAllowed: false,
-      },
     ],
     "membership PC shell external-service dependency surfaces must explicitly disable same-origin inheritance",
   );
@@ -346,10 +313,7 @@ test("membership PC app manifest owns Vite SDK base URL env bindings", () => {
   const prdSource = readRelative("docs/product/prd/PRD.md");
   const techSource = readRelative("docs/architecture/tech/TECH_ARCHITECTURE.md");
   const envBindings = appManifest.envBindings;
-  const expectedConfigKeys = [
-    "VITE_SDKWORK_MEMBERSHIP_PC_APP_API_BASE_URL",
-    "VITE_SDKWORK_ORDER_APP_API_BASE_URL",
-  ];
+  const expectedConfigKeys = ["VITE_SDKWORK_MEMBERSHIP_PC_APP_API_BASE_URL"];
 
   assert.ok(envBindings, "membership PC app manifest must declare envBindings");
   assert.equal(
@@ -386,10 +350,10 @@ test("membership PC app manifest owns Vite SDK base URL env bindings", () => {
     "VITE_SDKWORK_MEMBERSHIP_PC_APP_API_BASE_URL",
     "manifest must bind the membership app SDK to the membership app-api base URL key",
   );
-  assert.equal(
-    envBindings.sdkBaseUrls?.dependencySdkBaseUrlKeys?.["sdkwork-order-app-sdk"]?.appApiBaseUrlKey,
-    "VITE_SDKWORK_ORDER_APP_API_BASE_URL",
-    "manifest must bind the order dependency SDK to the order app-api base URL key",
+  assert.deepEqual(
+    envBindings.sdkBaseUrls?.dependencySdkBaseUrlKeys,
+    {},
+    "membership manifest must not bind dependency SDK base URLs",
   );
   assert.deepEqual(
     shellComponent.contracts.configKeys,
@@ -402,12 +366,12 @@ test("membership PC app manifest owns Vite SDK base URL env bindings", () => {
     "manifest must not reintroduce the retired common SDK base URL fallback",
   );
   assert.equal(
-    prdSource.includes("`apps/sdkwork-membership-pc/sdkwork.app.config.json` `envBindings` is the source of truth for those two Vite SDK base URL keys."),
+    prdSource.includes("`apps/sdkwork-membership-pc/sdkwork.app.config.json` `envBindings` is the source of truth for the membership SDK base URL key."),
     true,
     "PRD must document manifest-owned Vite SDK base URL binding",
   );
   assert.equal(
-    techSource.includes("`apps/sdkwork-membership-pc/sdkwork.app.config.json` owns the schema-v2 `envBindings` contract for these Vite keys."),
+    techSource.includes("`apps/sdkwork-membership-pc/sdkwork.app.config.json` owns the schema-v2 `envBindings` contract for the membership Vite key."),
     true,
     "technical architecture must document manifest-owned envBindings",
   );
@@ -705,29 +669,31 @@ test("membership SDK families use sdk-manifest as the per-family metadata source
 
   for (const sdkFamilyRoot of sdkFamilyRoots) {
     const componentSpec = readJson(`${sdkFamilyRoot}/specs/component.spec.json`);
-    const componentSpecText = readRelative(`${sdkFamilyRoot}/specs/component.spec.json`);
+    const manifestPath = `${sdkFamilyRoot}/sdk-manifest.json`;
     const canonicalSpecFiles = new Set(
       (componentSpec.canonicalSpecs ?? []).map((canonicalSpec) => canonicalSpec.file),
     );
 
-    if (existsSync(path.join(root, sdkFamilyRoot, "sdk-manifest.json"))) {
-      violations.push(`${sdkFamilyRoot}:legacy-per-family-assembly-file`);
-    }
-    if (componentSpecText.includes("sdk-manifest.json")) {
-      violations.push(`${sdkFamilyRoot}:legacy-per-family-assembly-reference`);
-    }
     if (!canonicalSpecFiles.has("SDK_MANIFEST_SPEC.md")) {
       violations.push(`${sdkFamilyRoot}:missing-sdk-manifest-spec-link`);
     }
-    if (!existsSync(path.join(root, sdkFamilyRoot, "sdk-manifest.json"))) {
+    if (!existsSync(path.join(root, manifestPath))) {
       violations.push(`${sdkFamilyRoot}:missing-sdk-manifest`);
+      continue;
+    }
+    if (!(componentSpec.component?.manifests ?? []).includes("sdk-manifest.json")) {
+      violations.push(`${sdkFamilyRoot}:component-manifest-not-declared`);
+    }
+    const sdkManifest = readJson(manifestPath);
+    if (JSON.stringify(componentSpec.contracts?.sdkDependencies ?? []) !== JSON.stringify(sdkManifest.sdkDependencies ?? [])) {
+      violations.push(`${sdkFamilyRoot}:sdk-dependencies-mismatch`);
     }
   }
 
   assert.equal(
-    techSource.includes("`sdk-manifest.json` is the only per-family SDK metadata source of truth; retired per-family `sdk-manifest.json` files must not be restored."),
+    techSource.includes("`sdk-manifest.json` is the required per-family SDK metadata source of truth and must stay aligned with `specs/component.spec.json`."),
     true,
-    "technical architecture must document the retired per-family SDK assembly boundary",
+    "technical architecture must document the per-family SDK manifest boundary",
   );
   assert.equal(
     agentSource.includes("SDK assembly"),
@@ -780,7 +746,7 @@ test("membership Rust purchase command does not own order item or payment artifa
   }
 });
 
-test("membership PC subscription package does not depend on payment frontend or service packages", () => {
+test("membership PC packages do not depend on order or payment packages", () => {
   const subscriptionPackage = readJson("apps/sdkwork-membership-pc/packages/sdkwork-membership-pc-subscription/package.json");
   const subscriptionComponent = readJson("apps/sdkwork-membership-pc/packages/sdkwork-membership-pc-subscription/specs/component.spec.json");
   const membershipServicePackage = readJson("apps/sdkwork-membership-common/packages/sdkwork-membership-service/package.json");
@@ -793,7 +759,11 @@ test("membership PC subscription package does not depend on payment frontend or 
   const workspaceConfig = readRelative("pnpm-workspace.yaml");
   const prdSource = readRelative("docs/product/prd/PRD.md");
   const techSource = readRelative("docs/architecture/tech/TECH_ARCHITECTURE.md");
-  const forbiddenPaymentPackages = [
+  const forbiddenCommercePackages = [
+    "@sdkwork/order-app-sdk",
+    "@sdkwork/order-service",
+    "@sdkwork/order-pc-checkout",
+    "@sdkwork/order-pc-recharge",
     "@sdkwork/payment-pc-payment",
     "@sdkwork/payment-service",
     "@sdkwork/payment-contracts",
@@ -801,7 +771,7 @@ test("membership PC subscription package does not depend on payment frontend or 
     "@sdkwork/payment-pc-core",
   ];
 
-  for (const packageName of forbiddenPaymentPackages) {
+  for (const packageName of forbiddenCommercePackages) {
     for (const field of ["dependencies", "peerDependencies", "devDependencies"]) {
       assert.equal(
         Object.hasOwn(subscriptionPackage[field] ?? {}, packageName),
@@ -820,13 +790,13 @@ test("membership PC subscription package does not depend on payment frontend or 
   );
   assert.equal(
     membershipServicePackage.dependencies?.["@sdkwork/order-app-sdk"],
-    "workspace:*",
-    "membership service must consume order checkout through the composed order app SDK workspace dependency",
+    undefined,
+    "membership service must not consume the order app SDK",
   );
   assert.equal(
     workspaceConfig.includes("../sdkwork-order/sdks/sdkwork-order-app-sdk/sdkwork-order-app-sdk-typescript"),
-    true,
-    "pnpm workspace must include the composed order app SDK package used by membership-service",
+    false,
+    "membership pnpm workspace must not include order packages",
   );
   assert.equal(
     promotionCouponPackage.dependencies?.["@sdkwork/promotion-pc-core"],
@@ -841,8 +811,8 @@ test("membership PC subscription package does not depend on payment frontend or 
   const overlayPackages = membershipWorkspaceOverlay.pnpm?.packages ?? [];
   assert.equal(
     overlayPackages.includes("../sdkwork-order/sdks/sdkwork-order-app-sdk/sdkwork-order-app-sdk-typescript"),
-    true,
-    "sdkwork-specs membership workspace overlay must include the composed order app SDK package",
+    false,
+    "sdkwork-specs membership workspace overlay must not include the order app SDK package",
   );
   assert.equal(
     overlayPackages.includes("../sdkwork-promotion/apps/sdkwork-promotion-pc/packages/sdkwork-promotion-pc-core"),

@@ -82,6 +82,7 @@ export default defineConfig({
     environment: "jsdom",
     setupFiles: [path.join(root, "vitest.setup.ts")],
     include: [
+      "apps/sdkwork-membership-common/packages/**/*.test.ts",
       "apps/sdkwork-membership-pc/packages/**/*.test.ts",
       "apps/sdkwork-membership-pc/packages/**/*.test.tsx",
     ],

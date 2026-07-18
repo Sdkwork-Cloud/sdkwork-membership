@@ -19,13 +19,12 @@ import {
 import type { SdkworkPromotionAppService } from "@sdkwork/promotion-service";
 import {
   createSdkworkMembershipService,
+  type SdkworkMembershipCheckoutPort,
   type SdkworkMembershipBenefit,
   type SdkworkMembershipDashboardData,
   type SdkworkMembershipLevel,
   type SdkworkMembershipPlan,
   type SdkworkMembershipPurchaseResult,
-  type SdkworkMembershipQrPaymentStrategy,
-  type SdkworkMembershipQrPaymentStrategyId,
   type SdkworkMembershipService,
   type SdkworkMembershipSummary,
 } from "@sdkwork/membership-pc-membership";
@@ -138,6 +137,7 @@ export interface SdkworkSubscriptionPaymentMethodService {
 }
 
 export interface CreateSdkworkSubscriptionServiceOptions {
+  checkoutPort?: SdkworkMembershipCheckoutPort;
   promotionAppService?: SdkworkPromotionAppService;
   membershipAppService?: SdkworkMembershipAppService;
   locale?: string | null;
@@ -145,7 +145,6 @@ export interface CreateSdkworkSubscriptionServiceOptions {
   couponService?: Pick<SdkworkCouponService, "getDashboard">;
   paymentMethodService?: Partial<SdkworkSubscriptionPaymentMethodService>;
   membershipService?: Partial<SdkworkMembershipService>;
-  qrPaymentStrategy?: SdkworkMembershipQrPaymentStrategyId | SdkworkMembershipQrPaymentStrategy;
 }
 
 export interface SdkworkSubscriptionService {
@@ -437,16 +436,16 @@ export function createSdkworkSubscriptionService(
   const membershipService: SdkworkMembershipService = options.membershipService
     ? {
         ...createSdkworkMembershipService({
+          checkoutPort: options.checkoutPort,
           membershipAppService: options.membershipAppService,
           locale: options.locale,
-          qrPaymentStrategy: options.qrPaymentStrategy,
         }),
         ...options.membershipService,
       }
     : createSdkworkMembershipService({
+        checkoutPort: options.checkoutPort,
         membershipAppService: options.membershipAppService,
         locale: options.locale,
-        qrPaymentStrategy: options.qrPaymentStrategy,
       });
   const couponService = options.couponService ?? createSdkworkCouponService({
     promotionAppService: options.promotionAppService,
