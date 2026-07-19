@@ -13,5 +13,5 @@ path = "src/lib.rs"
 axum.workspace = true
 tokio.workspace = true
 sdkwork_membership_service_host.workspace = true
-sdkwork-routes-membership-app-api = { path = "../sdkwork-routes-membership-app-api" }
-sdkwork-routes-membership-backend-api = { path = "../sdkwork-routes-membership-backend-api" }
+sdkwork_routes_membership_app_api.workspace = true
+sdkwork_routes_membership_backend_api.workspace = true
