@@ -5,11 +5,21 @@
 mod bootstrap;
 mod generated;
 
-pub use bootstrap::{
-    assemble_api_router_from_env, assemble_api_router,
-    assemble_backend_business_router, assemble_backend_business_router_from_env,
-    ApiAssembly,
-};
+pub use bootstrap::{assemble_api_router, assemble_backend_business_router, ApiAssembly};
+
+pub async fn assemble_api_router_from_env() -> Result<ApiAssembly, String> {
+    let host = std::sync::Arc::new(
+        sdkwork_membership_service_host::MembershipServiceHost::from_env().await?,
+    );
+    Ok(assemble_api_router(host).await)
+}
+
+pub async fn assemble_backend_business_router_from_env() -> Result<ApiAssembly, String> {
+    let host = std::sync::Arc::new(
+        sdkwork_membership_service_host::MembershipServiceHost::from_env().await?,
+    );
+    Ok(assemble_backend_business_router(host).await)
+}
 
 pub fn assembly_route_count() -> usize {
     generated::ROUTE_CRATE_COUNT
