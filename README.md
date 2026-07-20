@@ -6,7 +6,7 @@ SDKWork commerce **membership** capability building-block repository (domain `co
 - Standards: `../sdkwork-specs/README.md`
 - Domain service: `crates/sdkwork-membership-service/`
 - Repository SQL: `crates/sdkwork-membership-repository-sqlx/`
-- HTTP API server: `crates/sdkwork-membership-standalone-gateway/`
+- HTTP API server: `crates/sdkwork-api-membership-standalone-gateway/`
 
 ## Quick start
 

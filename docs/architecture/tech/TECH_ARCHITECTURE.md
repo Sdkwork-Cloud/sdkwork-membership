@@ -41,8 +41,8 @@ sdkwork-specs
 | Backend API routes | `crates/sdkwork-routes-membership-backend-api` | `/backend/v3/api/memberships` route adapter |
 | Database host | `crates/sdkwork-membership-database-host` | Database lifecycle bootstrap |
 | Service host | `crates/sdkwork-membership-service-host` | In-process service container |
-| Standalone gateway | `crates/sdkwork-membership-standalone-gateway` | HTTP process entrypoint |
-| Gateway assembly | `crates/sdkwork-membership-gateway-assembly` | Route assembly manifest |
+| Standalone gateway | `crates/sdkwork-api-membership-standalone-gateway` | HTTP process entrypoint |
+| Gateway assembly | `crates/sdkwork-api-membership-assembly` | Route assembly manifest |
 | App SDK | `sdks/sdkwork-membership-app-sdk` | Owner-only membership app-api SDK family |
 | PC app | `apps/sdkwork-membership-pc` | PC React shell and membership UI/service packages |
 
@@ -212,7 +212,7 @@ Local split-gateway development:
 
 ```text
 sdkwork-order-standalone-gateway      owns order app-api and order/payment checkout
-sdkwork-membership-standalone-gateway owns membership app-api/backend-api
+sdkwork-api-membership-standalone-gateway owns membership app-api/backend-api
 sdkwork-membership-pc                 consumes @sdkwork/membership-app-sdk only
 product application root             composes order checkout with membership checkout port
 ```

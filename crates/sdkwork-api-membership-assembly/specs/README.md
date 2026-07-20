@@ -2,4 +2,4 @@
 
 Component root: `crates/sdkwork-api-membership-assembly`
 
-API assembly manifest, business-router composition, and verification contract.
+Gateway assembly manifest, business-router composition, and verification contract.

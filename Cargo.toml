@@ -2,14 +2,14 @@
 resolver = "2"
 members = [
     "crates/sdkwork-api-membership-assembly",
-    "crates/sdkwork-membership-gateway-assembly",
+    "crates/sdkwork-api-membership-assembly",
   "crates/sdkwork-membership-service",
   "crates/sdkwork-membership-repository-sqlx",
   "crates/sdkwork-routes-membership-app-api",
   "crates/sdkwork-routes-membership-backend-api",
   "crates/sdkwork-membership-database-host",
   "crates/sdkwork-membership-service-host",
-  "crates/sdkwork-membership-standalone-gateway",
+  "crates/sdkwork-api-membership-standalone-gateway",
 ]
 
 [workspace.package]
@@ -49,6 +49,6 @@ sdkwork_membership_service = { path = "crates/sdkwork-membership-service", packa
 sdkwork_membership_repository_sqlx = { path = "crates/sdkwork-membership-repository-sqlx", package = "sdkwork-membership-repository-sqlx" }
 sdkwork_routes_membership_app_api = { path = "crates/sdkwork-routes-membership-app-api", package = "sdkwork-routes-membership-app-api" }
 sdkwork_routes_membership_backend_api = { path = "crates/sdkwork-routes-membership-backend-api", package = "sdkwork-routes-membership-backend-api" }
-sdkwork_membership_gateway_assembly = { path = "crates/sdkwork-membership-gateway-assembly", package = "sdkwork-membership-gateway-assembly" }
+sdkwork_api_membership_assembly = { path = "crates/sdkwork-api-membership-assembly", package = "sdkwork-api-membership-assembly" }
 sdkwork_membership_database_host = { path = "crates/sdkwork-membership-database-host", package = "sdkwork-membership-database-host" }
 sdkwork_membership_service_host = { path = "crates/sdkwork-membership-service-host", package = "sdkwork-membership-service-host" }

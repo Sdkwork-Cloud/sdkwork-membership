@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use sdkwork_membership_gateway_assembly::assemble_application_router;
+use sdkwork_api_membership_assembly::assemble_api_router;
 use sdkwork_membership_service_host::MembershipServiceHost;
 use sdkwork_web_bootstrap::{service_router, ServiceRouterConfig};
 
@@ -15,7 +15,7 @@ async fn main() {
 
 async fn run() -> Result<(), String> {
     let host = Arc::new(MembershipServiceHost::from_env().await?);
-    let business = assemble_application_router(host).await.router;
+    let business = assemble_api_router(host).await.router;
     // CORS is handled by the sdkwork-web-framework standard interceptor
     // chain (deny-by-default). Do not add permissive CORS here.
     let app = service_router(business, ServiceRouterConfig::default().with_always_ready());
