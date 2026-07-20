@@ -1,0 +1,16 @@
+[package]
+name = "sdkwork-api-membership-assembly"
+edition.workspace = true
+license.workspace = true
+version.workspace = true
+description = "Generated API assembly for sdkwork-membership application HTTP plane."
+
+[lib]
+name = "sdkwork_api_membership_assembly"
+path = "src/lib.rs"
+
+[dependencies]
+axum.workspace = true
+tokio.workspace = true
+sdkwork-routes-membership-app-api = { path = "../sdkwork-routes-membership-app-api" }
+sdkwork-routes-membership-backend-api = { path = "../sdkwork-routes-membership-backend-api" }
