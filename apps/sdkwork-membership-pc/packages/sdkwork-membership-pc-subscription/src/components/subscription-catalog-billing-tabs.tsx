@@ -14,10 +14,10 @@ export function SubscriptionCatalogBillingTabs({
   onSelectBillingCycle,
 }: SubscriptionCatalogBillingTabsProps) {
   return (
-    <div className="bg-zinc-100 dark:bg-zinc-900 rounded-full p-1 border border-zinc-200 dark:border-zinc-800 inline-flex">
+    <div className="inline-flex rounded-full border border-zinc-200 bg-zinc-100 p-1 dark:border-zinc-800 dark:bg-zinc-900 max-sm:grid max-sm:w-full max-sm:grid-cols-2 max-sm:rounded-lg">
       {billingCycles.map((cycle, index) => (
         <button
-          className={`relative px-6 py-2 rounded-full text-[14px] font-medium transition-colors flex items-center gap-1.5 ${
+          className={`relative flex items-center gap-1.5 rounded-full px-6 py-2 text-[14px] font-medium transition-colors max-sm:justify-center max-sm:rounded-md max-sm:px-2 ${
             billingCycleIndex === index
               ? "bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white shadow-sm"
               : "text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white"
@@ -26,9 +26,9 @@ export function SubscriptionCatalogBillingTabs({
           onClick={() => onSelectBillingCycle(index)}
           type="button"
         >
-          <span>{cycle.label}</span>
+          <span className="whitespace-nowrap">{cycle.label}</span>
           {cycle.discountLabel ? (
-            <span className="text-[12px] opacity-70 font-bold">{cycle.discountLabel}</span>
+            <span className="whitespace-nowrap text-[12px] font-bold opacity-70">{cycle.discountLabel}</span>
           ) : null}
         </button>
       ))}

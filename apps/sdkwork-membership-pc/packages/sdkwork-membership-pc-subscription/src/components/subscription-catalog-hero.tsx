@@ -27,11 +27,11 @@ export function SubscriptionCatalogHero({
   title,
 }: SubscriptionCatalogHeroProps) {
   return (
-    <div className="text-center pt-12 pb-12 w-full w-full mx-auto px-6">
+    <div className="mx-auto w-full px-4 pb-12 pt-12 text-center sm:px-6">
       <h1 className="text-3xl md:text-4xl font-black text-zinc-900 dark:text-white mb-4 tracking-tight">
         {title}
       </h1>
-      <div className="text-zinc-500 dark:text-zinc-400 text-[15px] flex items-center justify-center gap-1 font-medium">
+      <div className="flex flex-wrap items-center justify-center gap-1 text-[15px] font-medium text-zinc-500 dark:text-zinc-400">
         <span>{subtitleLead}</span>
         <button
           className="text-zinc-700 dark:text-zinc-300 hover:text-zinc-900 dark:hover:text-white transition-colors"
@@ -50,7 +50,7 @@ export function SubscriptionCatalogHero({
         </button>
       </div>
 
-      <div className="flex items-center justify-center mt-10 relative">
+      <div className="relative mt-7 flex items-center justify-center sm:mt-10">
         <SubscriptionCatalogBillingTabs
           billingCycleIndex={billingCycleIndex}
           billingCycles={billingCycles}
