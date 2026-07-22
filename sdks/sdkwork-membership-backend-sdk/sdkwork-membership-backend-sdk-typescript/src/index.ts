@@ -1,15 +1,15 @@
 import {
   createClient as createGeneratedBackendClient,
   SdkworkBackendClient,
-} from '../generated/server-openapi/src/index.ts';
-import type { SdkworkBackendConfig } from '../generated/server-openapi/src/types/common.ts';
+} from '../generated/server-openapi/src/index';
+import type { SdkworkBackendConfig } from '../generated/server-openapi/src/types/common';
 
 export { SdkworkBackendClient, SdkworkBackendClient as SdkworkMembershipBackendClient, createGeneratedBackendClient };
 export type { SdkworkBackendConfig };
-export * from '../generated/server-openapi/src/types/index.ts';
-export * from '../generated/server-openapi/src/api/index.ts';
-export * from '../generated/server-openapi/src/http/index.ts';
-export * from '../generated/server-openapi/src/auth/index.ts';
+export * from '../generated/server-openapi/src/types/index';
+export * from '../generated/server-openapi/src/api/index';
+export * from '../generated/server-openapi/src/http/index';
+export * from '../generated/server-openapi/src/auth/index';
 
 export function createClient(config: SdkworkBackendConfig): SdkworkBackendClient {
   return createGeneratedBackendClient(config);

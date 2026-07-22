@@ -1,6 +1,7 @@
 use sdkwork_database_sqlx::DatabasePool;
 use sdkwork_membership_database_host::{
-    bootstrap_membership_database_from_env, MembershipDatabaseHost,
+    bootstrap_membership_database_from_env, bootstrap_membership_database_host_with_pool,
+    MembershipDatabaseHost,
 };
 
 pub struct MembershipServiceHost {
@@ -14,6 +15,11 @@ impl MembershipServiceHost {
 
     pub async fn from_env() -> Result<Self, String> {
         let database = bootstrap_membership_database_from_env().await?;
+        Ok(Self { database })
+    }
+
+    pub async fn from_pool(pool: &DatabasePool) -> Result<Self, String> {
+        let database = bootstrap_membership_database_host_with_pool(pool).await?;
         Ok(Self { database })
     }
 

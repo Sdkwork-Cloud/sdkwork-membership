@@ -5,7 +5,24 @@
 mod bootstrap;
 mod generated;
 
-pub use bootstrap::{assemble_api_router, assemble_backend_business_router, ApiAssembly};
+pub use bootstrap::{assemble_api_router, ApiAssembly};
+
+pub async fn assemble_backend_business_router(
+    host: std::sync::Arc<sdkwork_membership_service_host::MembershipServiceHost>,
+) -> ApiAssembly {
+    ApiAssembly {
+        router: sdkwork_routes_membership_backend_api::gateway_mount(host).await,
+    }
+}
+
+pub async fn assemble_api_router_with_process_pool(
+    pool: &sdkwork_database_sqlx::DatabasePool,
+) -> Result<ApiAssembly, String> {
+    let host = std::sync::Arc::new(
+        sdkwork_membership_service_host::MembershipServiceHost::from_pool(pool).await?,
+    );
+    Ok(assemble_api_router(host).await)
+}
 
 pub async fn assemble_api_router_from_env() -> Result<ApiAssembly, String> {
     let host = std::sync::Arc::new(

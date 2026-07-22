@@ -18,9 +18,3 @@ pub async fn assemble_api_router(host: Arc<MembershipServiceHost>) -> ApiAssembl
     router = router.merge(sdkwork_routes_membership_backend_api::gateway_mount(host.clone()).await);
     ApiAssembly { router }
 }
-
-pub async fn assemble_backend_business_router(host: Arc<MembershipServiceHost>) -> ApiAssembly {
-    ApiAssembly {
-        router: sdkwork_routes_membership_backend_api::gateway_mount(host).await,
-    }
-}

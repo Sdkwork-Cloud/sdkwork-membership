@@ -1,15 +1,15 @@
 import {
   createClient as createGeneratedAppClient,
   SdkworkAppClient,
-} from "../generated/server-openapi/src/index.ts";
-import type { SdkworkAppConfig } from "../generated/server-openapi/src/types/common.ts";
+} from '../generated/server-openapi/src/index';
+import type { SdkworkAppConfig } from '../generated/server-openapi/src/types/common';
 
 export { SdkworkAppClient, SdkworkAppClient as SdkworkMembershipAppClient, createGeneratedAppClient };
 export type { SdkworkAppConfig };
-export * from "../generated/server-openapi/src/types/index.ts";
-export * from "../generated/server-openapi/src/api/index.ts";
-export * from "../generated/server-openapi/src/http/index.ts";
-export * from "../generated/server-openapi/src/auth/index.ts";
+export * from '../generated/server-openapi/src/types/index';
+export * from '../generated/server-openapi/src/api/index';
+export * from '../generated/server-openapi/src/http/index';
+export * from '../generated/server-openapi/src/auth/index';
 
 /**
  * Typed domain interfaces for the Membership App API.
