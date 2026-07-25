@@ -3,6 +3,8 @@
 //! Every route entry declares `requestContext: WebRequestContext`
 //! and `apiSurface: app-api` per `WEB_FRAMEWORK_SPEC.md` section 7.
 
+use std::sync::LazyLock;
+
 use sdkwork_web_core::{HttpMethod, HttpRoute, HttpRouteManifest};
 use serde::{Deserialize, Serialize};
 
@@ -172,7 +174,7 @@ pub const APP_API_ROUTE_MANIFEST: &[RouteManifestEntry] = &[
 /// resolves the principal for tenant-scoped catalog reads.
 ///
 /// All mutation and user-scoped routes remain `RouteAuth::DualToken`.
-pub const APP_API_HTTP_ROUTE_MANIFEST: HttpRouteManifest = HttpRouteManifest::new(&[
+const APP_API_HTTP_ROUTES: &[HttpRoute] = &[
     // ── Public catalog routes (anonymous-accessible) ──────────────────
     HttpRoute::public(
         HttpMethod::Get,
@@ -283,7 +285,10 @@ pub const APP_API_HTTP_ROUTE_MANIFEST: HttpRouteManifest = HttpRouteManifest::ne
         "Membership",
         "memberships.purchases.upgrade",
     ),
-]);
+];
+
+pub static APP_API_HTTP_ROUTE_MANIFEST: LazyLock<HttpRouteManifest> =
+    LazyLock::new(|| HttpRouteManifest::new(APP_API_HTTP_ROUTES));
 
 /// Returns the route manifest as a JSON string for materialization and validation.
 pub fn app_api_route_manifest_json() -> String {

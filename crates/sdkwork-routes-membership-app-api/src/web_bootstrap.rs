@@ -26,7 +26,7 @@ pub async fn wrap_router_with_web_framework_from_env(router: Router) -> Router {
             ..WebRequestContextProfile::default()
         })
         .with_security_policy(security_policy)
-        .with_route_manifest(APP_API_HTTP_ROUTE_MANIFEST);
+        .with_route_manifest(APP_API_HTTP_ROUTE_MANIFEST.clone());
     with_web_request_context(router, layer)
 }
 
