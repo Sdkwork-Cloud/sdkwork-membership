@@ -84,6 +84,37 @@ test("membership PC bootstrap does not expose auth tokens through browser env", 
   );
 });
 
+test("membership anonymous catalog SDK operations suppress stored credentials", () => {
+  const sdkgen = readJson("sdks/sdkwork-membership-app-sdk/openapi/sdkwork-membership-app-api.sdkgen.json");
+  const generatedMembershipsApi = readRelative(
+    "sdks/sdkwork-membership-app-sdk/sdkwork-membership-app-sdk-typescript/generated/server-openapi/src/api/memberships.ts",
+  );
+  const anonymousCatalogPaths = [
+    "/app/v3/api/memberships/plans",
+    "/app/v3/api/memberships/benefits",
+    "/app/v3/api/memberships/packages",
+  ];
+
+  for (const operationPath of anonymousCatalogPaths) {
+    const operation = sdkgen.paths[operationPath]?.get;
+    assert.ok(operation, `${operationPath} must remain in the membership app SDK input`);
+    assert.deepEqual(operation.security, [], `${operation.operationId} must declare security: []`);
+    assert.equal(
+      operation["x-sdkwork-auth-mode"],
+      "anonymous",
+      `${operation.operationId} must retain the anonymous credential profile`,
+    );
+
+    const relativePath = operationPath.replace("/app/v3/api", "");
+    const escapedPath = relativePath.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    assert.match(
+      generatedMembershipsApi,
+      new RegExp("appApiPath\\(`" + escapedPath + "`\\)[\\s\\S]{0,320}skipAuth: true"),
+      `${operation.operationId} must suppress TokenManager credentials in generated transport`,
+    );
+  }
+});
+
 test("membership PC SDK inventory marks generated app SDK as available", () => {
   const inventorySource = readRelative("apps/sdkwork-membership-pc/packages/sdkwork-membership-pc-core/src/composition/sdk-inventory.ts");
   const sdkDescriptorSource = readRelative("apps/sdkwork-membership-pc/packages/sdkwork-membership-pc-core/src/sdk/index.ts");

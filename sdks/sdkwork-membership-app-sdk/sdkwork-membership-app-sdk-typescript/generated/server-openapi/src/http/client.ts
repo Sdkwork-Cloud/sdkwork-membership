@@ -3,16 +3,20 @@ import type { RequestOptions, QueryParams } from '@sdkwork/sdk-common';
 import type { AuthTokenManager } from '@sdkwork/sdk-common';
 import { BaseHttpClient, withRetry } from '@sdkwork/sdk-common';
 
-type HttpRequestOptions = RequestOptions & {
+export type HttpRequestOptions = RequestOptions & {
   method?: string;
   body?: unknown;
   headers?: Record<string, string>;
   contentType?: string;
+  accessTokenOnly?: boolean;
 };
+
+export type ApiRequestOptions = Pick<HttpRequestOptions, 'signal' | 'timeout'>;
 
 export class HttpClient extends BaseHttpClient {
   private static readonly ACCESS_TOKEN_HEADER: string = 'Access-Token';
   private static readonly SDKWORK_V3_UNWRAP = true;
+  private static readonly REQUIRES_SDKWORK_ACCESS_TOKEN = true;
 
   constructor(config: SdkworkAppConfig) {
     super(config as any);
@@ -48,14 +52,25 @@ export class HttpClient extends BaseHttpClient {
 
   protected buildHeaders(config: any, skipAuth = false): Record<string, string> {
     const headers = super.buildHeaders(config, skipAuth);
+    if (config?.accessTokenOnly) {
+      this.stripCredentialHeaders(headers, true);
+      return headers;
+    }
     if (!skipAuth && !config?.skipAuth) {
       return headers;
     }
 
+    this.stripCredentialHeaders(headers, false);
+    return headers;
+  }
+
+  private stripCredentialHeaders(
+    headers: Record<string, string>,
+    preserveAccessToken: boolean,
+  ): void {
     [
-      HttpClient.ACCESS_TOKEN_HEADER,
+      ...(preserveAccessToken ? [] : [HttpClient.ACCESS_TOKEN_HEADER, 'Access-Token']),
       'Authorization',
-      'Access-Token',
       ['X', 'API', 'Key'].join('-'),
       'X-Tenant-Id',
       'X-Organization-Id',
@@ -67,8 +82,6 @@ export class HttpClient extends BaseHttpClient {
     ].forEach((key) => {
       delete headers[key];
     });
-    this.applyCredentialEntryBootstrapAccessToken(headers);
-    return headers;
   }
 
   private buildRequestBody(body: unknown, contentType?: string): unknown {
@@ -219,26 +232,41 @@ export class HttpClient extends BaseHttpClient {
     this.getInternalAuthConfig().tokenManager = manager;
   }
 
-  private applyCredentialEntryBootstrapAccessToken(headers: Record<string, string>): void {
+  private applyAccessTokenOnlyHeaders(
+    headers?: Record<string, string>,
+  ): Record<string, string> {
     const authConfig = this.getInternalAuthConfig();
     const tokenManager = authConfig.tokenManager;
     const accessToken = tokenManager?.getAccessToken?.();
-    if (typeof accessToken === 'string' && accessToken.length > 0) {
-      headers[HttpClient.ACCESS_TOKEN_HEADER] = accessToken;
+    if (typeof accessToken !== 'string' || accessToken.trim().length === 0) {
+      throw new Error(
+        'access-token-only request requires Access-Token before request dispatch',
+      );
     }
+
+    const result = { ...(headers ?? {}) };
+    this.stripCredentialHeaders(result, false);
+    result[HttpClient.ACCESS_TOKEN_HEADER] = accessToken.trim();
+    return result;
   }
 
   private applySdkworkAuthHeaders(headers?: Record<string, string>): Record<string, string> | undefined {
     const authConfig = this.getInternalAuthConfig();
     const tokenManager = authConfig.tokenManager;
     const accessToken = tokenManager?.getAccessToken?.();
-    if (!accessToken) {
+    const authToken = tokenManager?.getAuthToken?.();
+    if (HttpClient.REQUIRES_SDKWORK_ACCESS_TOKEN
+      && (typeof accessToken !== 'string' || accessToken.trim().length === 0)) {
+      throw new Error('non-open-api request requires Access-Token before request dispatch');
+    }
+    if (!accessToken && !authToken) {
       return headers;
     }
 
     return {
       ...(headers ?? {}),
-      [HttpClient.ACCESS_TOKEN_HEADER]: accessToken,
+      ...(accessToken ? { [HttpClient.ACCESS_TOKEN_HEADER]: accessToken } : {}),
+      ...(authToken ? { Authorization: `Bearer ${authToken}` } : {}),
     };
   }
 
@@ -249,7 +277,7 @@ export class HttpClient extends BaseHttpClient {
 
     const record = payload as Record<string, unknown>;
     if (record.code !== 0 || !('data' in record)) {
-      return payload as T;
+      return this.unwrapSdkworkV3Data<T>(record);
     }
 
     const data = record.data;
@@ -257,15 +285,18 @@ export class HttpClient extends BaseHttpClient {
       return data as T;
     }
 
-    const envelopeData = data as Record<string, unknown>;
-    if ('items' in envelopeData && 'pageInfo' in envelopeData) {
+    return this.unwrapSdkworkV3Data<T>(data as Record<string, unknown>);
+  }
+
+  private unwrapSdkworkV3Data<T>(data: Record<string, unknown>): T {
+    if ('items' in data && 'pageInfo' in data) {
       return data as T;
     }
-    if ('accepted' in envelopeData) {
+    if ('accepted' in data) {
       return data as T;
     }
-    if ('item' in envelopeData) {
-      return envelopeData.item as T;
+    if ('item' in data) {
+      return data.item as T;
     }
 
     return data as T;
@@ -276,14 +307,27 @@ export class HttpClient extends BaseHttpClient {
     if (typeof execute !== 'function') {
       throw new Error('BaseHttpClient execute method is not available');
     }
-    const { body, headers, contentType, method = 'GET', skipAuth, ...rest } = options;
-    const requestHeaders = skipAuth ? headers : this.applySdkworkAuthHeaders(headers);
+    const {
+      body,
+      headers,
+      contentType,
+      method = 'GET',
+      skipAuth,
+      accessTokenOnly,
+      ...rest
+    } = options;
+    const requestHeaders = accessTokenOnly
+      ? this.applyAccessTokenOnlyHeaders(headers)
+      : skipAuth
+        ? headers
+        : this.applySdkworkAuthHeaders(headers);
     const payload = await withRetry(
       () => execute.call(this, {
         url: path,
         method,
         ...rest,
         skipAuth,
+        accessTokenOnly,
         body: this.buildRequestBody(body, contentType),
         headers: this.buildRequestHeaders(requestHeaders, body == null ? undefined : contentType),
       }),
@@ -297,8 +341,20 @@ export class HttpClient extends BaseHttpClient {
     if (typeof stream !== 'function') {
       throw new Error('BaseHttpClient stream method is not available');
     }
-    const { body, headers, contentType, method = 'GET', skipAuth, ...rest } = options;
-    const authHeaders = skipAuth ? headers : this.applySdkworkAuthHeaders(headers);
+    const {
+      body,
+      headers,
+      contentType,
+      method = 'GET',
+      skipAuth,
+      accessTokenOnly,
+      ...rest
+    } = options;
+    const authHeaders = accessTokenOnly
+      ? this.applyAccessTokenOnlyHeaders(headers)
+      : skipAuth
+        ? headers
+        : this.applySdkworkAuthHeaders(headers);
     const requestHeaders = this.buildRequestHeaders(
       { Accept: 'text/event-stream', ...(authHeaders ?? {}) },
       body == null ? undefined : contentType,
@@ -308,6 +364,7 @@ export class HttpClient extends BaseHttpClient {
       method,
       ...rest,
       skipAuth,
+      accessTokenOnly,
       body: this.buildRequestBody(body, contentType),
       headers: requestHeaders,
     })) {
