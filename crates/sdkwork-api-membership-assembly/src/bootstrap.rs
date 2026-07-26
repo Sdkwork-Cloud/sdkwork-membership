@@ -4,12 +4,46 @@
 //! Multi-surface merges mount shared infrastructure routes once at the assembly layer
 //! so `/healthz`, `/livez`, `/readyz`, and `/metrics` are not duplicated per surface.
 
-use axum::Router;
-use sdkwork_membership_service_host::MembershipServiceHost;
+use std::collections::BTreeSet;
 use std::sync::Arc;
+
+use axum::Router;
+use sdkwork_database_sqlx::DatabasePool;
+use sdkwork_membership_service_host::MembershipServiceHost;
+use sdkwork_web_bootstrap::{ReadinessCheck, ReadinessFuture};
+use sdkwork_web_core::{DomainContextInjector, HttpRoute, HttpRouteManifest};
 
 pub struct ApiAssembly {
     pub router: Router,
+}
+
+pub struct ApiAssemblyContribution {
+    pub router: Router,
+    pub route_manifest: HttpRouteManifest,
+    pub openapi: serde_json::Value,
+    pub permission_catalog: Vec<&'static str>,
+    pub domain_context_injectors: Vec<Arc<dyn DomainContextInjector>>,
+    pub readiness_check: Arc<dyn ReadinessCheck>,
+}
+
+#[derive(Clone)]
+struct MembershipReadiness {
+    pool: DatabasePool,
+}
+
+impl ReadinessCheck for MembershipReadiness {
+    fn check(&self) -> ReadinessFuture<'_> {
+        let pool = self.pool.clone();
+        Box::pin(async move {
+            match pool.test_connection().await {
+                Ok(true) => Ok(()),
+                Ok(false) => Err("membership database readiness query returned no row".to_owned()),
+                Err(error) => Err(format!(
+                    "membership database readiness check failed: {error}"
+                )),
+            }
+        })
+    }
 }
 
 pub async fn assemble_api_router(host: Arc<MembershipServiceHost>) -> ApiAssembly {
@@ -17,4 +51,37 @@ pub async fn assemble_api_router(host: Arc<MembershipServiceHost>) -> ApiAssembl
     router = router.merge(sdkwork_routes_membership_app_api::gateway_mount(host.clone()).await);
     router = router.merge(sdkwork_routes_membership_backend_api::gateway_mount(host.clone()).await);
     ApiAssembly { router }
+}
+
+/// Builds the raw Membership App API for a gateway-owned Web Framework layer.
+pub async fn assemble_app_api_contribution() -> Result<ApiAssemblyContribution, String> {
+    let host = Arc::new(MembershipServiceHost::from_env().await?);
+    let route_manifest = sdkwork_routes_membership_app_api::APP_API_HTTP_ROUTE_MANIFEST.clone();
+    let router = sdkwork_routes_membership_app_api::build_membership_app_router(host.clone());
+    Ok(ApiAssemblyContribution {
+        router,
+        openapi: sdkwork_web_contract::build_openapi_document(
+            "SDKWork Membership App API",
+            route_manifest.routes(),
+        ),
+        permission_catalog: permission_catalog(route_manifest.routes()),
+        route_manifest,
+        domain_context_injectors: Vec::new(),
+        readiness_check: Arc::new(MembershipReadiness {
+            pool: host.database_pool().clone(),
+        }),
+    })
+}
+
+fn permission_catalog(routes: &[HttpRoute]) -> Vec<&'static str> {
+    let mut permissions = BTreeSet::new();
+    for route in routes {
+        if let Some(permission) = route.required_permission {
+            permissions.insert(permission);
+        }
+        if let Some(alternate_permissions) = route.alternate_permissions {
+            permissions.extend(alternate_permissions.iter().copied());
+        }
+    }
+    permissions.into_iter().collect()
 }

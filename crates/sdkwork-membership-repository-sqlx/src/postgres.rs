@@ -36,9 +36,9 @@ use crate::{
     ListAdminMembershipEntitlementsQuery, ListAdminMembershipMembersQuery,
     ListAdminMembershipPackageGroupsQuery, ListAdminMembershipPackagesQuery,
     ListAdminMembershipPlansQuery, RetrieveAdminMembershipMemberQuery,
-    SubmitMembershipPurchaseCommand,
-    UpdateAdminMembershipMemberStatusCommand, UpdateAdminMembershipPackageCommand,
-    UpdateAdminMembershipPackageGroupCommand, UpdateAdminMembershipPlanCommand,
+    SubmitMembershipPurchaseCommand, UpdateAdminMembershipMemberStatusCommand,
+    UpdateAdminMembershipPackageCommand, UpdateAdminMembershipPackageGroupCommand,
+    UpdateAdminMembershipPlanCommand,
 };
 
 const LOAD_MEMBERSHIP_PACKAGES_BASE: &str = r#"

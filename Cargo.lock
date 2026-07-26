@@ -1618,6 +1618,10 @@ dependencies = [
  "sdkwork-membership-service-host",
  "sdkwork-routes-membership-app-api",
  "sdkwork-routes-membership-backend-api",
+ "sdkwork-web-bootstrap",
+ "sdkwork-web-contract",
+ "sdkwork-web-core",
+ "serde_json",
  "tokio",
 ]
 

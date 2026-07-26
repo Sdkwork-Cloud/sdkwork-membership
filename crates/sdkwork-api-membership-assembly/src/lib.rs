@@ -5,7 +5,9 @@
 mod bootstrap;
 mod generated;
 
-pub use bootstrap::{assemble_api_router, ApiAssembly};
+pub use bootstrap::{
+    assemble_api_router, assemble_app_api_contribution, ApiAssembly, ApiAssemblyContribution,
+};
 
 pub async fn assemble_backend_business_router(
     host: std::sync::Arc<sdkwork_membership_service_host::MembershipServiceHost>,
