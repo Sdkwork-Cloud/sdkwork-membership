@@ -9,6 +9,11 @@ export const sdkworkSubscriptionCheckoutZhCnResource = {
         close: "关闭",
         completed: "支付完成",
         creatingPayment: "正在生成支付二维码...",
+        expired: {
+          description: "当前订单已过期，请重新创建订单后继续支付。",
+          title: "订单已过期",
+        },
+        expiresIn: "订单剩余支付时间",
         payByQr: "扫码支付",
         paymentUnavailable: {
           description: "暂未获取到支付二维码，请重试。",
@@ -22,6 +27,7 @@ export const sdkworkSubscriptionCheckoutZhCnResource = {
           title: "安全结算",
         },
         selectedPlan: "已选套餐",
+        title: "购买套餐",
       },
       dialogs: {
         close: "关闭",

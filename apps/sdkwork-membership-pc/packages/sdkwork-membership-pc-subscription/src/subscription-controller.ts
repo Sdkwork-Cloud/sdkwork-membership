@@ -30,6 +30,7 @@ type SdkworkSubscriptionCouponSelectionMode = "auto" | "manual" | "none";
 export interface SdkworkSubscriptionPendingPayment {
   amountCny: number | null;
   cashierUrl?: string;
+  expiresAt?: string;
   orderId?: string;
   packageId: number | null;
   packageName?: string;
@@ -471,6 +472,7 @@ export function createSdkworkSubscriptionController(
             pendingPayment: {
               amountCny: result.amountCny,
               cashierUrl: result.cashierUrl,
+              expiresAt: result.expiresAt,
               orderId: result.orderId,
               packageId: result.packageId,
               packageName: result.packageName,

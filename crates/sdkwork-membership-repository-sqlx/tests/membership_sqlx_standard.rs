@@ -385,3 +385,42 @@ fn commerce_membership_points_queries_use_account_baseline_tables() {
         "postgres points queries must compare account baseline BIGINT subject columns as BIGINT",
     );
 }
+
+#[test]
+fn membership_plan_rank_and_storage_id_queries_use_distinct_bindings() {
+    for (label, source, rank_predicate, storage_id_predicate) in [
+        (
+            "sqlite repository",
+            include_str!("../src/sqlite.rs"),
+            "AND CAST(p.rank AS INTEGER) = ?3",
+            "WHERE p.id = ?1",
+        ),
+        (
+            "postgres repository",
+            include_str!("../src/postgres.rs"),
+            "AND CAST(p.rank AS INTEGER) = $3",
+            "WHERE p.id = $1",
+        ),
+    ] {
+        assert!(
+            source.contains(rank_predicate),
+            "{label} must keep the catalog plan lookup keyed by numeric rank",
+        );
+        assert!(
+            source.contains(storage_id_predicate),
+            "{label} must provide a separate lookup keyed by text storage id",
+        );
+        assert!(
+            source.contains(
+                "let rows = sqlx::query(LOAD_MEMBERSHIP_PLAN_BY_RANK)\n        .bind(DEFAULT_CATALOG_TENANT_ID)\n        .bind(DEFAULT_CATALOG_ORGANIZATION_ID)\n        .bind(rank)",
+            ),
+            "{label} rank lookup must bind catalog scope followed by numeric rank",
+        );
+        assert!(
+            source.contains(
+                "let rows = sqlx::query(LOAD_MEMBERSHIP_PLAN_BY_STORAGE_ID)\n        .bind(&package.plan_storage_id)",
+            ),
+            "{label} purchase lookup must bind the package's text plan storage id",
+        );
+    }
+}

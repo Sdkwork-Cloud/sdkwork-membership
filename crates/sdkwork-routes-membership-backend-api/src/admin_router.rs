@@ -30,7 +30,7 @@ use sdkwork_membership_repository_sqlx::{
     AppMembershipSubject, CreateAdminMembershipPackageCommand,
     CreateAdminMembershipPackageGroupCommand, CreateAdminMembershipPlanCommand,
     DeleteAdminMembershipPackageCommand, DeleteAdminMembershipPackageGroupCommand,
-    DeleteAdminMembershipPlanCommand, FulfillMembershipPurchaseCommand,
+    DeleteAdminMembershipPlanCommand, FulfillPaidMembershipPurchaseCommand,
     ListAdminMembershipEntitlementsQuery, ListAdminMembershipMembersQuery,
     ListAdminMembershipPackageGroupsQuery, ListAdminMembershipPackagesQuery,
     ListAdminMembershipPlansQuery, PostgresCommerceMembershipStore,
@@ -39,6 +39,7 @@ use sdkwork_membership_repository_sqlx::{
     UpdateAdminMembershipPackageCommand, UpdateAdminMembershipPackageGroupCommand,
     UpdateAdminMembershipPlanCommand,
 };
+use sdkwork_utils_rust::datetime::{format_datetime, parse_datetime};
 use sdkwork_web_core::WebRequestContext;
 
 const MAX_CODE_LEN: usize = 128;
@@ -148,10 +149,15 @@ struct AdminMembershipMembershipStatusRequest {
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
 struct FulfillMembershipPurchaseRequest {
-    tenant_id: i64,
-    organization_id: i64,
-    owner_user_id: i64,
+    action: String,
+    tenant_id: String,
+    organization_id: Option<String>,
+    owner_user_id: String,
+    package_id: String,
     order_id: String,
+    membership_id: String,
+    order_no: String,
+    paid_at: String,
     request_no: String,
     idempotency_key: String,
 }
@@ -798,7 +804,7 @@ async fn fulfill_membership_purchase(
             let command = normalize_fulfillment_command(request)?;
             let item = state
                 .app_store
-                .fulfill_purchase(command)
+                .fulfill_paid_purchase(command)
                 .await
                 .map_err(|e| {
                     ApiProblem::from_service("membership fulfillment store is unavailable", e)
@@ -845,7 +851,15 @@ fn validate_fulfillment_service_auth(headers: &HeaderMap) -> Result<(), ApiProbl
 
 fn normalize_fulfillment_command(
     request: FulfillMembershipPurchaseRequest,
-) -> Result<FulfillMembershipPurchaseCommand, ApiProblem> {
+) -> Result<FulfillPaidMembershipPurchaseCommand, ApiProblem> {
+    let tenant_id = parse_fulfillment_id(request.tenant_id, "tenant id", false)?;
+    let organization_id = request
+        .organization_id
+        .map(|value| parse_fulfillment_id(value, "organization id", true))
+        .transpose()?
+        .unwrap_or(0);
+    let owner_user_id = parse_fulfillment_id(request.owner_user_id, "owner user id", false)?;
+    let package_id = parse_fulfillment_id(request.package_id, "package id", false)?;
     let order_id = request.order_id.trim().to_owned();
     if order_id.is_empty() {
         return Err(ApiProblem::bad_request("membership order id is required"));
@@ -860,22 +874,70 @@ fn normalize_fulfillment_command(
             "membership fulfillment idempotency key is required",
         ));
     }
-    if request.tenant_id <= 0 || request.organization_id <= 0 || request.owner_user_id <= 0 {
+    if idempotency_key.chars().count() > 160 {
         return Err(ApiProblem::bad_request(
-            "membership fulfillment subject identifiers must be greater than zero",
+            "membership fulfillment idempotency key must not exceed 160 characters",
+        ));
+    }
+    let membership_id = required_fulfillment_text(request.membership_id, "membership id")?;
+    let order_no = required_fulfillment_text(request.order_no, "order number")?;
+    let paid_at = parse_datetime(&request.paid_at, None)
+        .map(|value| format_datetime(value, None))
+        .ok_or_else(|| ApiProblem::bad_request("membership fulfillment paid at must be RFC3339"))?;
+    let action = request.action;
+    if !matches!(action.as_str(), "purchase" | "renew" | "upgrade") {
+        return Err(ApiProblem::bad_request(
+            "membership fulfillment action must be purchase, renew, or upgrade",
         ));
     }
 
-    Ok(FulfillMembershipPurchaseCommand {
+    Ok(FulfillPaidMembershipPurchaseCommand {
         subject: AppMembershipSubject {
-            tenant_id: request.tenant_id,
-            organization_id: request.organization_id,
-            user_id: request.owner_user_id,
+            tenant_id,
+            organization_id,
+            user_id: owner_user_id,
         },
+        package_id,
         order_id,
+        membership_id,
+        order_no,
         request_no,
         idempotency_key,
+        paid_at,
+        action,
     })
+}
+
+fn parse_fulfillment_id(value: String, name: &str, allow_zero: bool) -> Result<i64, ApiProblem> {
+    let value = value.as_str();
+    let valid_digits = value.as_bytes().split_first().is_some_and(|(first, rest)| {
+        let valid_first = if allow_zero {
+            first.is_ascii_digit()
+        } else {
+            first.is_ascii_digit() && *first != b'0'
+        };
+        valid_first && rest.iter().all(u8::is_ascii_digit) && (value == "0" || *first != b'0')
+    });
+    if !valid_digits {
+        return Err(ApiProblem::bad_request(format!(
+            "membership fulfillment {name} must be a canonical int64 string"
+        )));
+    }
+    sdkwork_utils_rust::number::parse_int(value).ok_or_else(|| {
+        ApiProblem::bad_request(format!(
+            "membership fulfillment {name} is outside the int64 range"
+        ))
+    })
+}
+
+fn required_fulfillment_text(value: String, name: &str) -> Result<String, ApiProblem> {
+    let value = value.trim().to_owned();
+    if value.is_empty() {
+        return Err(ApiProblem::bad_request(format!(
+            "membership fulfillment {name} is required"
+        )));
+    }
+    Ok(value)
 }
 
 fn admin_membership_subject_from_context(
@@ -1242,6 +1304,135 @@ mod tests {
     use super::*;
     use sdkwork_utils_rust::validation::is_uuid;
     use sdkwork_web_core::REQUEST_ID_HEADER;
+
+    fn fulfillment_request(paid_at: &str) -> FulfillMembershipPurchaseRequest {
+        FulfillMembershipPurchaseRequest {
+            action: "purchase".to_owned(),
+            tenant_id: "200002".to_owned(),
+            organization_id: Some("0".to_owned()),
+            owner_user_id: "300003".to_owned(),
+            package_id: "201".to_owned(),
+            order_id: "order-1".to_owned(),
+            membership_id: "membership-1".to_owned(),
+            order_no: "M202607270001".to_owned(),
+            paid_at: paid_at.to_owned(),
+            request_no: "request-1".to_owned(),
+            idempotency_key: "membership:order-1".to_owned(),
+        }
+    }
+
+    #[test]
+    fn fulfillment_accepts_rfc3339_paid_at() {
+        let command =
+            normalize_fulfillment_command(fulfillment_request("2026-07-27T08:00:00+08:00"))
+                .expect("RFC3339 paidAt must be accepted");
+
+        assert_eq!(command.paid_at, "2026-07-27T00:00:00.000Z");
+    }
+
+    #[test]
+    fn fulfillment_rejects_naive_paid_at() {
+        let result = normalize_fulfillment_command(fulfillment_request("2026-07-27 08:00:00"));
+
+        assert!(result.is_err(), "paidAt without an offset must be rejected");
+    }
+
+    #[test]
+    fn fulfillment_rejects_numeric_json_identifiers() {
+        let body = br#"{
+            "action":"purchase",
+            "tenantId":200002,
+            "ownerUserId":300003,
+            "packageId":201,
+            "orderId":"order-1",
+            "membershipId":"membership-1",
+            "orderNo":"M202607270001",
+            "paidAt":"2026-07-27T00:00:00Z",
+            "requestNo":"request-1",
+            "idempotencyKey":"membership:order-1"
+        }"#;
+
+        let result = parse_body::<FulfillMembershipPurchaseRequest>(body, "membership fulfillment");
+
+        assert!(
+            result.is_err(),
+            "HTTP int64 identifiers must be JSON strings"
+        );
+    }
+
+    #[test]
+    fn fulfillment_accepts_maximum_int64_string() {
+        let mut request = fulfillment_request("2026-07-27T00:00:00Z");
+        request.tenant_id = i64::MAX.to_string();
+
+        let command =
+            normalize_fulfillment_command(request).expect("maximum int64 string must be accepted");
+
+        assert_eq!(command.subject.tenant_id, i64::MAX);
+    }
+
+    #[test]
+    fn fulfillment_rejects_action_outside_openapi_enum() {
+        let mut request = fulfillment_request("2026-07-27T00:00:00Z");
+        request.action = "cancel".to_owned();
+
+        let result = normalize_fulfillment_command(request);
+
+        assert!(
+            result.is_err(),
+            "unknown fulfillment action must be rejected"
+        );
+    }
+
+    #[test]
+    fn fulfillment_rejects_noncanonical_identifier_whitespace() {
+        let mut request = fulfillment_request("2026-07-27T00:00:00Z");
+        request.tenant_id = " 200002 ".to_owned();
+
+        let result = normalize_fulfillment_command(request);
+
+        assert!(
+            result.is_err(),
+            "identifier whitespace outside the OpenAPI pattern must be rejected"
+        );
+    }
+
+    #[test]
+    fn fulfillment_rejects_action_whitespace_outside_openapi_enum() {
+        let mut request = fulfillment_request("2026-07-27T00:00:00Z");
+        request.action = " purchase ".to_owned();
+
+        let result = normalize_fulfillment_command(request);
+
+        assert!(
+            result.is_err(),
+            "action whitespace outside the OpenAPI enum must be rejected"
+        );
+    }
+
+    #[test]
+    fn fulfillment_rejects_oversized_idempotency_key() {
+        let mut request = fulfillment_request("2026-07-27T00:00:00Z");
+        request.idempotency_key = "i".repeat(161);
+
+        let result = normalize_fulfillment_command(request);
+
+        assert!(
+            result.is_err(),
+            "oversized idempotency key must be rejected"
+        );
+    }
+
+    #[test]
+    fn fulfillment_idempotency_max_length_counts_characters() {
+        let mut request = fulfillment_request("2026-07-27T00:00:00Z");
+        request.idempotency_key = "界".repeat(160);
+
+        let command = normalize_fulfillment_command(request)
+            .expect("OpenAPI maxLength counts Unicode characters, not UTF-8 bytes");
+
+        assert_eq!(command.idempotency_key.chars().count(), 160);
+    }
 
     #[tokio::test]
     async fn request_id_generates_canonical_uuid_when_upstream_header_is_absent() {

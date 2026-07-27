@@ -12,8 +12,10 @@ use crate::pagination::{
 use crate::read_model::is_missing_sqlite_read_model;
 use crate::shared::{
     build_package_group_from_packages, decimal_string, map_membership_package_record,
+    paid_membership_purchase_submit_command, parse_coupon_subscription_quota_policy,
     parse_points_amount, plan_code_from_rank, plan_rank_from_code, privilege_usage_from_benefits,
-    resolve_catalog_scope, resolve_membership_purchase_binding,
+    resolve_catalog_scope, resolve_membership_purchase_binding, stable_membership_i64_id,
+    subscription_quota_day_bounds, validate_coupon_subscription_quota_contract,
     validate_membership_purchase_action, CurrentMembershipSnapshot, MembershipPurchaseBinding,
     MembershipPurchasePersistenceMode, ParsedMembershipPackage, StoredMembershipPlan,
     DEFAULT_CATALOG_ORGANIZATION_ID, DEFAULT_CATALOG_TENANT_ID, POINTS_ASSET_CODE,
@@ -29,16 +31,18 @@ use crate::{
     AppMembershipPointsHistoryItem, AppMembershipPointsHistoryQuery,
     AppMembershipPrivilegeUsageResponse, AppMembershipPurchaseOutcome, AppMembershipReadFuture,
     AppMembershipResult, AppMembershipStatusResponse, AppMembershipStore, AppMembershipSubject,
+    ConsumeSubscriptionQuotaCommand, CouponSubscriptionFulfillmentOutcome,
     CreateAdminMembershipPackageCommand, CreateAdminMembershipPackageGroupCommand,
     CreateAdminMembershipPlanCommand, DeleteAdminMembershipPackageCommand,
     DeleteAdminMembershipPackageGroupCommand, DeleteAdminMembershipPlanCommand,
     FulfillMembershipPurchaseCommand, FulfillMembershipPurchaseOutcome,
+    FulfillPaidMembershipPurchaseCommand, GrantCouponSubscriptionCommand,
     ListAdminMembershipEntitlementsQuery, ListAdminMembershipMembersQuery,
     ListAdminMembershipPackageGroupsQuery, ListAdminMembershipPackagesQuery,
     ListAdminMembershipPlansQuery, RetrieveAdminMembershipMemberQuery,
-    SubmitMembershipPurchaseCommand, UpdateAdminMembershipMemberStatusCommand,
-    UpdateAdminMembershipPackageCommand, UpdateAdminMembershipPackageGroupCommand,
-    UpdateAdminMembershipPlanCommand,
+    SubmitMembershipPurchaseCommand, SubscriptionQuotaConsumptionOutcome,
+    UpdateAdminMembershipMemberStatusCommand, UpdateAdminMembershipPackageCommand,
+    UpdateAdminMembershipPackageGroupCommand, UpdateAdminMembershipPlanCommand,
 };
 
 const LOAD_MEMBERSHIP_PACKAGES_BASE: &str = r#"
@@ -109,13 +113,22 @@ LEFT JOIN membership_plan l
     ON l.id = p.plan_id
 LEFT JOIN commerce_product_sku s
     ON s.id = p.sku_id
-WHERE (p.tenant_id = CAST(?1 AS TEXT) OR p.tenant_id IS NULL)
-  AND (p.organization_id = CAST(?2 AS TEXT) OR p.organization_id IS NULL)
-  AND (g.tenant_id = CAST(?1 AS TEXT) OR g.tenant_id IS NULL)
-  AND (g.organization_id = CAST(?2 AS TEXT) OR g.organization_id IS NULL)
+WHERE (p.tenant_id = CAST(?1 AS TEXT) OR p.tenant_id = CAST(?4 AS TEXT) OR p.tenant_id IS NULL)
+  AND (p.organization_id = CAST(?2 AS TEXT) OR p.organization_id = CAST(?5 AS TEXT) OR p.organization_id IS NULL)
+  AND (g.tenant_id = CAST(?1 AS TEXT) OR g.tenant_id = CAST(?4 AS TEXT) OR g.tenant_id IS NULL)
+  AND (g.organization_id = CAST(?2 AS TEXT) OR g.organization_id = CAST(?5 AS TEXT) OR g.organization_id IS NULL)
   AND p.external_id = ?3
   AND p.status = 'active'
   AND g.status = 'active'
+ORDER BY
+    CASE
+        WHEN p.tenant_id = CAST(?1 AS TEXT) AND p.organization_id = CAST(?2 AS TEXT) THEN 0
+        WHEN p.tenant_id = CAST(?1 AS TEXT) THEN 1
+        WHEN p.tenant_id = CAST(?4 AS TEXT) AND p.organization_id = CAST(?5 AS TEXT) THEN 2
+        WHEN p.tenant_id = CAST(?4 AS TEXT) THEN 3
+        ELSE 4
+    END,
+    p.id
 LIMIT 1
 "#;
 
@@ -149,6 +162,37 @@ WHERE (p.tenant_id = CAST(?1 AS TEXT) OR p.tenant_id IS NULL)
   AND (p.organization_id = CAST(?2 AS TEXT) OR p.organization_id IS NULL)
   AND p.status = 'active'
   AND CAST(p.rank AS INTEGER) = ?3
+ORDER BY b.sort_weight ASC, b.id ASC
+"#;
+
+const LOAD_MEMBERSHIP_PLAN_BY_STORAGE_ID: &str = r#"
+SELECT
+    p.id,
+    p.plan_no AS plan_no,
+    p.name,
+    CAST(p.rank AS INTEGER) AS rank,
+    p.description,
+    b.id AS plan_benefit_id,
+    b.benefit_code,
+    CAST(b.grant_quantity AS TEXT) AS grant_quantity,
+    b.usage_policy,
+    d.name AS benefit_name,
+    d.benefit_type,
+    d.description AS benefit_description
+FROM membership_plan p
+LEFT JOIN membership_plan_version v
+    ON v.plan_id = p.id
+   AND v.tenant_id = p.tenant_id
+   AND v.lifecycle_status = 'published'
+LEFT JOIN membership_plan_benefit b
+    ON b.plan_version_id = v.id
+   AND b.tenant_id = p.tenant_id
+   AND b.status = 'active'
+LEFT JOIN benefit_definition d
+    ON d.id = b.benefit_id
+   AND d.tenant_id = b.tenant_id
+WHERE p.id = ?1
+  AND p.status = 'active'
 ORDER BY b.sort_weight ASC, b.id ASC
 "#;
 
@@ -566,6 +610,27 @@ impl AppMembershipStore for SqliteCommerceMembershipStore {
         command: FulfillMembershipPurchaseCommand,
     ) -> crate::AppMembershipFulfillmentFuture<'a> {
         Box::pin(async move { fulfill_purchase_by_order(&self.pool, command).await })
+    }
+
+    fn fulfill_paid_purchase<'a>(
+        &'a self,
+        command: FulfillPaidMembershipPurchaseCommand,
+    ) -> crate::AppMembershipFulfillmentFuture<'a> {
+        Box::pin(async move { fulfill_paid_purchase_by_order(&self.pool, command).await })
+    }
+
+    fn grant_coupon_subscription<'a>(
+        &'a self,
+        command: GrantCouponSubscriptionCommand,
+    ) -> crate::CouponSubscriptionFulfillmentFuture<'a> {
+        Box::pin(async move { grant_coupon_subscription(&self.pool, command).await })
+    }
+
+    fn consume_subscription_quota<'a>(
+        &'a self,
+        command: ConsumeSubscriptionQuotaCommand,
+    ) -> crate::SubscriptionQuotaConsumptionFuture<'a> {
+        Box::pin(async move { consume_subscription_quota(&self.pool, command).await })
     }
 }
 
@@ -2478,6 +2543,8 @@ fn map_package(row: &sqlx::sqlite::SqliteRow) -> Option<ParsedMembershipPackage>
         .and_then(|value| decimal_string(&value, "membership package original price").ok());
     map_membership_package_record(
         id,
+        string_cell(row, "package_storage_id"),
+        string_cell(row, "plan_storage_id"),
         string_cell(row, "name"),
         optional_string_cell(row, "description"),
         price,
@@ -2852,12 +2919,24 @@ async fn submit_purchase(
         return Ok(outcome);
     }
 
+    let outcome = reserve_membership_purchase(&mut tx, &command).await?;
+    tx.commit()
+        .await
+        .map_err(|error| store_error("failed to commit membership purchase transaction", error))?;
+
+    Ok(outcome)
+}
+
+async fn reserve_membership_purchase(
+    tx: &mut Transaction<'_, Sqlite>,
+    command: &SubmitMembershipPurchaseCommand,
+) -> AppMembershipResult<AppMembershipPurchaseOutcome> {
     let tenant_id = command.subject.tenant_id;
     let organization_id = command.subject.organization_id;
     let package =
-        load_package_for_purchase(&mut tx, tenant_id, organization_id, command.package_id).await?;
-    let plan = load_plan_for_package(&mut tx, tenant_id, organization_id, &package).await?;
-    let current = load_current_membership_for_validation(&mut *tx, command.subject).await?;
+        load_package_for_purchase(tx, tenant_id, organization_id, command.package_id).await?;
+    let plan = load_plan_for_package(tx, &package).await?;
+    let current = load_current_membership_for_validation(&mut **tx, command.subject).await?;
     let membership_active = current
         .as_ref()
         .map(|item| item.rank > 0 && item.status != "expired")
@@ -2870,7 +2949,7 @@ async fn submit_purchase(
         plan.rank,
     )?;
     let binding = resolve_membership_purchase_binding(
-        &command,
+        command,
         current.as_ref().map(|item| item.snapshot()),
         membership_active,
     );
@@ -2878,22 +2957,16 @@ async fn submit_purchase(
         add_days_to_timestamp(&binding.period_starts_at, package.item.duration_days);
 
     persist_membership_subscription(
-        &mut tx,
-        &command,
+        tx,
+        command,
         &package,
         &plan,
         &binding,
         &membership_expires_at,
     )
     .await?;
-    if binding.persistence_mode != MembershipPurchasePersistenceMode::Renew {
-        insert_entitlements(&mut tx, &command, &plan, &binding, &membership_expires_at).await?;
-    }
-    tx.commit()
-        .await
-        .map_err(|error| store_error("failed to commit membership purchase transaction", error))?;
-
-    Ok(build_purchase_outcome(&command, &package, &plan, "pending"))
+    insert_entitlements(tx, command, &plan, &binding, &membership_expires_at).await?;
+    Ok(build_purchase_outcome(command, &package, &plan, "pending"))
 }
 
 fn build_purchase_outcome(
@@ -2986,8 +3059,7 @@ async fn load_purchase_outcome_by_idempotency(
         command.package_id,
     )
     .await?;
-    let plan =
-        load_plan_for_package_executor(&mut **tx, tenant_id, organization_id, &package).await?;
+    let plan = load_plan_for_package_executor(&mut **tx, &package).await?;
     let subscription_status = string_cell(&row, "subscription_status");
     let status = purchase_status_from_subscription_status(&subscription_status);
 
@@ -3016,6 +3088,8 @@ where
         .bind(tenant_id)
         .bind(organization_id)
         .bind(package_id)
+        .bind(DEFAULT_CATALOG_TENANT_ID)
+        .bind(DEFAULT_CATALOG_ORGANIZATION_ID)
         .fetch_optional(executor)
         .await
         .map_err(|error| store_error("failed to load membership packages", error))?;
@@ -3026,17 +3100,13 @@ where
 
 async fn load_plan_for_package_executor<'e, E>(
     executor: E,
-    tenant_id: i64,
-    organization_id: i64,
     package: &ParsedMembershipPackage,
 ) -> AppMembershipResult<StoredMembershipPlan>
 where
     E: sqlx::Executor<'e, Database = Sqlite>,
 {
-    let rows = sqlx::query(LOAD_MEMBERSHIP_PLAN_BY_RANK)
-        .bind(tenant_id)
-        .bind(organization_id)
-        .bind(package.rank)
+    let rows = sqlx::query(LOAD_MEMBERSHIP_PLAN_BY_STORAGE_ID)
+        .bind(&package.plan_storage_id)
         .fetch_all(executor)
         .await
         .map_err(|error| store_error("failed to load membership plans for purchase", error))?;
@@ -3057,40 +3127,116 @@ async fn load_package_for_purchase(
 
 async fn load_plan_for_package(
     tx: &mut Transaction<'_, Sqlite>,
-    tenant_id: i64,
-    organization_id: i64,
     package: &ParsedMembershipPackage,
 ) -> AppMembershipResult<StoredMembershipPlan> {
-    load_plan_for_package_executor(&mut **tx, tenant_id, organization_id, package).await
+    load_plan_for_package_executor(&mut **tx, package).await
+}
+
+async fn fulfill_paid_purchase_by_order(
+    pool: &SqlitePool,
+    command: FulfillPaidMembershipPurchaseCommand,
+) -> AppMembershipResult<FulfillMembershipPurchaseOutcome> {
+    let purchase = paid_membership_purchase_submit_command(&command)?;
+    let fulfillment = FulfillMembershipPurchaseCommand {
+        subject: command.subject,
+        order_id: command.order_id.trim().to_owned(),
+        request_no: command.request_no.trim().to_owned(),
+        idempotency_key: command.idempotency_key.trim().to_owned(),
+    };
+    let mut tx = pool.begin_with("BEGIN IMMEDIATE").await.map_err(|error| {
+        store_error(
+            "failed to begin paid membership fulfillment transaction",
+            error,
+        )
+    })?;
+
+    if let Some(outcome) = load_fulfillment_outcome_by_idempotency(&mut tx, &fulfillment).await? {
+        tx.rollback().await.map_err(|error| {
+            store_error(
+                "failed to rollback replayed paid membership fulfillment transaction",
+                error,
+            )
+        })?;
+        return Ok(outcome);
+    }
+    let period_exists: bool = sqlx::query_scalar(
+        r#"
+        SELECT EXISTS(
+            SELECT 1
+            FROM membership_period mp
+            JOIN membership_subscription ms
+              ON ms.tenant_id = mp.tenant_id
+             AND ms.id = mp.subscription_id
+            WHERE ms.tenant_id = CAST(?1 AS TEXT)
+              AND (ms.organization_id IS NULL OR ms.organization_id = CAST(?2 AS TEXT))
+              AND ms.owner_user_id = CAST(?3 AS TEXT)
+              AND mp.source_order_id = ?4
+        )
+        "#,
+    )
+    .bind(command.subject.tenant_id)
+    .bind(command.subject.organization_id)
+    .bind(command.subject.user_id)
+    .bind(command.order_id.trim())
+    .fetch_one(&mut *tx)
+    .await
+    .map_err(|error| store_error("failed to inspect paid membership reservation", error))?;
+    if !period_exists {
+        reserve_membership_purchase(&mut tx, &purchase).await?;
+    }
+    let outcome = activate_membership_purchase(&mut tx, &fulfillment).await?;
+    tx.commit().await.map_err(|error| {
+        store_error(
+            "failed to commit paid membership fulfillment transaction",
+            error,
+        )
+    })?;
+    Ok(outcome)
 }
 
 async fn fulfill_purchase_by_order(
     pool: &SqlitePool,
     command: FulfillMembershipPurchaseCommand,
 ) -> AppMembershipResult<FulfillMembershipPurchaseOutcome> {
-    let mut tx = pool.begin().await.map_err(|error| {
+    let mut tx = pool.begin_with("BEGIN IMMEDIATE").await.map_err(|error| {
         store_error("failed to begin membership fulfillment transaction", error)
     })?;
-
-    if let Some(outcome) = load_fulfillment_outcome_by_idempotency(&mut tx, &command).await? {
+    let outcome = activate_membership_purchase(&mut tx, &command).await?;
+    if outcome.replayed {
         tx.rollback().await.map_err(|error| {
             store_error(
-                "failed to rollback membership fulfillment transaction",
+                "failed to rollback replayed membership fulfillment transaction",
                 error,
             )
         })?;
+    } else {
+        tx.commit().await.map_err(|error| {
+            store_error("failed to commit membership fulfillment transaction", error)
+        })?;
+    }
+    Ok(outcome)
+}
+
+async fn activate_membership_purchase(
+    tx: &mut Transaction<'_, Sqlite>,
+    command: &FulfillMembershipPurchaseCommand,
+) -> AppMembershipResult<FulfillMembershipPurchaseOutcome> {
+    if let Some(outcome) = load_fulfillment_outcome_by_idempotency(tx, command).await? {
         return Ok(outcome);
     }
 
     let row = sqlx::query(
         r#"
-        SELECT id, status
-        FROM membership_subscription
-        WHERE tenant_id = CAST(?1 AS TEXT)
-          AND (organization_id IS NULL OR organization_id = CAST(?2 AS TEXT))
-          AND owner_user_id = CAST(?3 AS TEXT)
-          AND source_order_id = ?4
-        ORDER BY created_at DESC
+        SELECT ms.id, ms.status, mp.status AS period_status
+        FROM membership_period mp
+        JOIN membership_subscription ms
+          ON ms.tenant_id = mp.tenant_id
+         AND ms.id = mp.subscription_id
+        WHERE ms.tenant_id = CAST(?1 AS TEXT)
+          AND (ms.organization_id IS NULL OR ms.organization_id = CAST(?2 AS TEXT))
+          AND ms.owner_user_id = CAST(?3 AS TEXT)
+          AND mp.source_order_id = ?4
+        ORDER BY mp.created_at DESC
         LIMIT 1
         "#,
     )
@@ -3098,7 +3244,7 @@ async fn fulfill_purchase_by_order(
     .bind(command.subject.organization_id)
     .bind(command.subject.user_id)
     .bind(&command.order_id)
-    .fetch_optional(&mut *tx)
+    .fetch_optional(&mut **tx)
     .await
     .map_err(|error| {
         store_error(
@@ -3115,20 +3261,19 @@ async fn fulfill_purchase_by_order(
 
     let subscription_id = string_cell(&row, "id");
     let subscription_status = string_cell(&row, "status");
-    if subscription_status == "active" {
-        tx.rollback().await.map_err(|error| {
-            store_error(
-                "failed to rollback membership fulfillment transaction",
-                error,
-            )
-        })?;
+    let period_status = string_cell(&row, "period_status");
+    if subscription_status == "active" && period_status == "active" {
         return Ok(FulfillMembershipPurchaseOutcome {
             accepted: true,
             replayed: true,
             fulfillment_status: "active".to_owned(),
         });
     }
-    if subscription_status != "pending_activation" {
+    if !matches!(
+        subscription_status.as_str(),
+        "pending_activation" | "active"
+    ) || !matches!(period_status.as_str(), "pending_activation" | "active")
+    {
         return Err(CommerceServiceError::conflict(
             "membership subscription is not eligible for fulfillment",
         ));
@@ -3158,7 +3303,7 @@ async fn fulfill_purchase_by_order(
     .bind(&updated_at)
     .bind(&subscription_id)
     .bind(command.subject.tenant_id)
-    .execute(&mut *tx)
+    .execute(&mut **tx)
     .await
     .map_err(|error| store_error("failed to activate membership subscription", error))?;
 
@@ -3169,13 +3314,15 @@ async fn fulfill_purchase_by_order(
             updated_at = ?
         WHERE subscription_id = ?
           AND tenant_id = CAST(? AS TEXT)
+          AND source_order_id = ?
           AND status = 'pending_activation'
         "#,
     )
     .bind(&updated_at)
     .bind(&subscription_id)
     .bind(command.subject.tenant_id)
-    .execute(&mut *tx)
+    .bind(&command.order_id)
+    .execute(&mut **tx)
     .await
     .map_err(|error| store_error("failed to activate membership period", error))?;
 
@@ -3193,7 +3340,7 @@ async fn fulfill_purchase_by_order(
     .bind(&updated_at)
     .bind(&subscription_id)
     .bind(command.subject.tenant_id)
-    .execute(&mut *tx)
+    .execute(&mut **tx)
     .await
     .map_err(|error| store_error("failed to activate entitlement grants", error))?;
 
@@ -3220,13 +3367,9 @@ async fn fulfill_purchase_by_order(
     .bind(command.subject.user_id)
     .bind(&subscription_id)
     .bind(command.subject.tenant_id)
-    .execute(&mut *tx)
+    .execute(&mut **tx)
     .await
     .map_err(|error| store_error("failed to activate entitlement accounts", error))?;
-
-    tx.commit().await.map_err(|error| {
-        store_error("failed to commit membership fulfillment transaction", error)
-    })?;
 
     Ok(FulfillMembershipPurchaseOutcome {
         accepted: true,
@@ -3235,21 +3378,260 @@ async fn fulfill_purchase_by_order(
     })
 }
 
+async fn grant_coupon_subscription(
+    pool: &SqlitePool,
+    command: GrantCouponSubscriptionCommand,
+) -> AppMembershipResult<CouponSubscriptionFulfillmentOutcome> {
+    validate_coupon_subscription_command(&command)?;
+    validate_coupon_package_sqlite(pool, &command).await?;
+
+    let purchase = SubmitMembershipPurchaseCommand {
+        subject: command.subject,
+        package_id: command.package_id,
+        order_uuid: command.order_id.clone(),
+        membership_uuid: command.subscription_id.clone(),
+        order_no: command.request_no.clone(),
+        idempotency_key: format!("{}:subscription", command.idempotency_key),
+        requested_at: command.requested_at.clone(),
+        action: "purchase".to_owned(),
+    };
+    submit_purchase(pool, purchase).await?;
+    apply_coupon_subscription_quota_sqlite(pool, &command).await?;
+    let fulfillment = fulfill_purchase_by_order(
+        pool,
+        FulfillMembershipPurchaseCommand {
+            subject: command.subject,
+            order_id: command.order_id.clone(),
+            request_no: command.request_no.clone(),
+            idempotency_key: command.idempotency_key.clone(),
+        },
+    )
+    .await?;
+
+    let row = sqlx::query(
+        r#"
+        SELECT id, CAST(starts_at AS TEXT) AS starts_at, CAST(expires_at AS TEXT) AS expires_at
+        FROM membership_subscription
+        WHERE tenant_id = CAST(?1 AS TEXT)
+          AND owner_user_id = CAST(?2 AS TEXT)
+          AND source_order_id = ?3
+        ORDER BY created_at DESC
+        LIMIT 1
+        "#,
+    )
+    .bind(command.subject.tenant_id)
+    .bind(command.subject.user_id)
+    .bind(&command.order_id)
+    .fetch_one(pool)
+    .await
+    .map_err(|error| store_error("failed to load coupon subscription outcome", error))?;
+
+    Ok(CouponSubscriptionFulfillmentOutcome {
+        accepted: fulfillment.accepted,
+        replayed: fulfillment.replayed,
+        subscription_id: string_cell(&row, "id"),
+        starts_at: string_cell(&row, "starts_at"),
+        expires_at: string_cell(&row, "expires_at"),
+        fulfillment_status: fulfillment.fulfillment_status,
+    })
+}
+
+fn validate_coupon_subscription_command(
+    command: &GrantCouponSubscriptionCommand,
+) -> AppMembershipResult<()> {
+    if command.product_id.trim().is_empty()
+        || command.sku_id.trim().is_empty()
+        || command.order_id.trim().is_empty()
+        || command.subscription_id.trim().is_empty()
+        || command.request_no.trim().is_empty()
+        || command.idempotency_key.trim().is_empty()
+    {
+        return Err(CommerceServiceError::validation(
+            "coupon subscription identity fields are required",
+        ));
+    }
+    if command.package_id <= 0 {
+        return Err(CommerceServiceError::validation(
+            "coupon subscription package is invalid",
+        ));
+    }
+    validate_coupon_subscription_quota_contract(
+        &command.period,
+        command.duration_days,
+        command.daily_quota,
+        command.total_quota,
+    )?;
+    Ok(())
+}
+
+async fn validate_coupon_package_sqlite(
+    pool: &SqlitePool,
+    command: &GrantCouponSubscriptionCommand,
+) -> AppMembershipResult<()> {
+    let matched = sqlx::query_scalar::<_, i64>(
+        r#"
+        SELECT COUNT(1)
+        FROM membership_package p
+        JOIN commerce_product_sku s
+          ON s.tenant_id = p.tenant_id AND s.id = p.sku_id
+        JOIN commerce_product_spu product
+          ON product.tenant_id = s.tenant_id AND product.id = s.spu_id
+        WHERE (p.tenant_id = CAST(?1 AS TEXT) OR p.tenant_id IS NULL)
+          AND (p.organization_id = CAST(?2 AS TEXT) OR p.organization_id IS NULL)
+          AND p.external_id = ?3
+          AND p.duration_days = ?4
+          AND p.status = 'active'
+          AND s.id = ?5
+          AND s.spu_id = ?6
+          AND s.status = 'active'
+          AND product.status = 'active'
+        "#,
+    )
+    .bind(command.subject.tenant_id)
+    .bind(command.subject.organization_id)
+    .bind(command.package_id)
+    .bind(command.duration_days)
+    .bind(command.sku_id.trim())
+    .bind(command.product_id.trim())
+    .fetch_one(pool)
+    .await
+    .map_err(|error| store_error("failed to validate coupon subscription SKU", error))?;
+    if matched != 1 {
+        return Err(CommerceServiceError::conflict(
+            "coupon subscription package does not match the declared Product and SKU",
+        ));
+    }
+    Ok(())
+}
+
+async fn apply_coupon_subscription_quota_sqlite(
+    pool: &SqlitePool,
+    command: &GrantCouponSubscriptionCommand,
+) -> AppMembershipResult<()> {
+    let mut tx = pool.begin().await.map_err(|error| {
+        store_error(
+            "failed to begin coupon subscription quota transaction",
+            error,
+        )
+    })?;
+    let row = sqlx::query(
+        r#"
+        SELECT g.id AS grant_id, g.benefit_id, CAST(g.granted_quantity AS INTEGER) AS granted_quantity,
+               COALESCE(g.grant_policy, '') AS grant_policy
+        FROM entitlement_grant g
+        JOIN benefit_definition d
+          ON d.tenant_id = g.tenant_id AND d.id = g.benefit_id
+        WHERE g.tenant_id = CAST(?1 AS TEXT)
+          AND g.subject_type = 'user'
+          AND g.subject_id = CAST(?2 AS TEXT)
+          AND g.source_type = 'membership_subscription'
+          AND g.source_id = ?3
+          AND d.benefit_code IN ('ai_quota', 'exclusive_model')
+        ORDER BY g.created_at ASC
+        LIMIT 1
+        "#,
+    )
+    .bind(command.subject.tenant_id)
+    .bind(command.subject.user_id)
+    .bind(&command.subscription_id)
+    .fetch_optional(&mut *tx)
+    .await
+    .map_err(|error| store_error("failed to load coupon quota entitlement grant", error))?
+    .ok_or_else(|| {
+        CommerceServiceError::conflict("subscription SKU does not provide an AI quota benefit")
+    })?;
+    let grant_id = string_cell(&row, "grant_id");
+    let benefit_id = string_cell(&row, "benefit_id");
+    let old_quantity = integer_cell(&row, "granted_quantity").max(0);
+    let old_policy = string_cell(&row, "grant_policy");
+    let policy = serde_json::json!({
+        "kind": "coupon_subscription_quota",
+        "couponOrderId": command.order_id,
+        "period": command.period,
+        "dailyQuota": command.daily_quota,
+        "totalQuota": command.total_quota,
+    })
+    .to_string();
+    if old_policy == policy && old_quantity == command.total_quota {
+        tx.rollback().await.map_err(|error| {
+            store_error(
+                "failed to rollback replayed coupon quota transaction",
+                error,
+            )
+        })?;
+        return Ok(());
+    }
+
+    let delta = command.total_quota - old_quantity;
+    let updated = sqlx::query(
+        r#"
+        UPDATE entitlement_account
+        SET total_granted = CAST(CAST(total_granted AS INTEGER) + ?1 AS TEXT),
+            balance = CAST(CAST(balance AS INTEGER) + ?1 AS TEXT),
+            version = version + 1,
+            updated_at = ?2
+        WHERE tenant_id = CAST(?3 AS TEXT)
+          AND subject_type = 'user'
+          AND subject_id = CAST(?4 AS TEXT)
+          AND benefit_id = ?5
+          AND CAST(balance AS INTEGER) + ?1 >= 0
+        "#,
+    )
+    .bind(delta)
+    .bind(&command.requested_at)
+    .bind(command.subject.tenant_id)
+    .bind(command.subject.user_id)
+    .bind(&benefit_id)
+    .execute(&mut *tx)
+    .await
+    .map_err(|error| store_error("failed to apply coupon quota to entitlement account", error))?;
+    if updated.rows_affected() != 1 {
+        return Err(CommerceServiceError::conflict(
+            "coupon subscription entitlement account is unavailable",
+        ));
+    }
+    sqlx::query(
+        r#"
+        UPDATE entitlement_grant
+        SET granted_quantity = CAST(?1 AS TEXT), grant_policy = ?2, updated_at = ?3
+        WHERE id = ?4 AND tenant_id = CAST(?5 AS TEXT)
+        "#,
+    )
+    .bind(command.total_quota)
+    .bind(policy)
+    .bind(&command.requested_at)
+    .bind(&grant_id)
+    .bind(command.subject.tenant_id)
+    .execute(&mut *tx)
+    .await
+    .map_err(|error| store_error("failed to persist coupon quota grant policy", error))?;
+    tx.commit().await.map_err(|error| {
+        store_error(
+            "failed to commit coupon subscription quota transaction",
+            error,
+        )
+    })?;
+    Ok(())
+}
+
 async fn load_fulfillment_outcome_by_idempotency(
     tx: &mut Transaction<'_, Sqlite>,
     command: &FulfillMembershipPurchaseCommand,
 ) -> AppMembershipResult<Option<FulfillMembershipPurchaseOutcome>> {
     let row = sqlx::query(
         r#"
-        SELECT status
-        FROM membership_subscription
-        WHERE tenant_id = CAST(?1 AS TEXT)
-          AND (organization_id IS NULL OR organization_id = CAST(?2 AS TEXT))
-          AND owner_user_id = CAST(?3 AS TEXT)
-          AND source_order_id = ?4
-          AND idempotency_key = ?5
-          AND status = 'active'
-        ORDER BY updated_at DESC
+        SELECT ms.status
+        FROM membership_period mp
+        JOIN membership_subscription ms
+          ON ms.tenant_id = mp.tenant_id
+         AND ms.id = mp.subscription_id
+        WHERE ms.tenant_id = CAST(?1 AS TEXT)
+          AND (ms.organization_id IS NULL OR ms.organization_id = CAST(?2 AS TEXT))
+          AND ms.owner_user_id = CAST(?3 AS TEXT)
+          AND mp.source_order_id = ?4
+          AND mp.status = 'active'
+          AND ms.status = 'active'
+        ORDER BY mp.updated_at DESC
         LIMIT 1
         "#,
     )
@@ -3257,7 +3639,6 @@ async fn load_fulfillment_outcome_by_idempotency(
     .bind(command.subject.organization_id)
     .bind(command.subject.user_id)
     .bind(&command.order_id)
-    .bind(&command.idempotency_key)
     .fetch_optional(&mut **tx)
     .await
     .map_err(|error| {
@@ -3274,32 +3655,6 @@ async fn load_fulfillment_outcome_by_idempotency(
     }))
 }
 
-async fn membership_package_id_for_storage(
-    tx: &mut Transaction<'_, Sqlite>,
-    external_id: i64,
-) -> AppMembershipResult<String> {
-    let row = sqlx::query(
-        r#"
-        SELECT id
-        FROM membership_package
-        WHERE (tenant_id = CAST(?1 AS TEXT) OR tenant_id IS NULL)
-          AND (organization_id = CAST(?2 AS TEXT) OR organization_id IS NULL)
-          AND external_id = ?3
-          AND status = 'active'
-        ORDER BY id ASC
-        LIMIT 1
-        "#,
-    )
-    .bind(DEFAULT_CATALOG_TENANT_ID)
-    .bind(DEFAULT_CATALOG_ORGANIZATION_ID)
-    .bind(external_id)
-    .fetch_optional(&mut **tx)
-    .await
-    .map_err(|error| store_error("failed to load membership package storage id", error))?
-    .ok_or_else(|| CommerceServiceError::conflict("membership package is unavailable"))?;
-    Ok(string_cell(&row, "id"))
-}
-
 async fn persist_membership_subscription(
     tx: &mut Transaction<'_, Sqlite>,
     command: &SubmitMembershipPurchaseCommand,
@@ -3309,7 +3664,7 @@ async fn persist_membership_subscription(
     expires_at: &str,
 ) -> AppMembershipResult<()> {
     let period_id = membership_period_id(&binding.membership_uuid, &command.order_no);
-    let package_id = membership_package_id_for_storage(tx, package.item.id).await?;
+    let package_id = package.storage_id.clone();
     let plan_storage_id = plan_id_for_storage(plan);
     let plan_version_storage_id = plan_version_id_for_storage(plan);
 
@@ -3357,7 +3712,7 @@ async fn persist_membership_subscription(
                 current_period_id = ?,
                 source_order_id = ?,
                 status = 'pending_activation',
-                starts_at = ?,
+                starts_at = CASE WHEN ? THEN starts_at ELSE ? END,
                 expires_at = ?,
                 request_no = ?,
                 idempotency_key = ?,
@@ -3374,6 +3729,7 @@ async fn persist_membership_subscription(
         .bind(&package_id)
         .bind(&period_id)
         .bind(&command.order_uuid)
+        .bind(binding.persistence_mode == MembershipPurchasePersistenceMode::Renew)
         .bind(&binding.period_starts_at)
         .bind(expires_at)
         .bind(&command.order_no)
@@ -3429,6 +3785,7 @@ async fn insert_entitlements(
     binding: &MembershipPurchaseBinding,
     expires_at: &str,
 ) -> AppMembershipResult<()> {
+    let period_id = membership_period_id(&binding.membership_uuid, &command.order_no);
     for (index, benefit) in plan.benefits.iter().enumerate() {
         let benefit_code = benefit
             .benefit_key
@@ -3438,19 +3795,10 @@ async fn insert_entitlements(
         let quantity = benefit.usage_limit.unwrap_or(0).max(0).to_string();
         let account_id = format!(
             "{}-entitlement-account-{}",
-            binding.membership_uuid,
-            index + 1
+            binding.membership_uuid, benefit_id
         );
-        let grant_id = format!(
-            "{}-entitlement-grant-{}",
-            binding.membership_uuid,
-            index + 1
-        );
-        let ledger_id = format!(
-            "{}-entitlement-ledger-{}",
-            binding.membership_uuid,
-            index + 1
-        );
+        let grant_id = format!("{}-entitlement-grant-{}", period_id, index + 1);
+        let ledger_id = format!("{}-entitlement-ledger-{}", period_id, index + 1);
         sqlx::query(
             r#"
             INSERT INTO entitlement_grant
@@ -3599,6 +3947,307 @@ async fn upsert_entitlement_account(
         account_id: string_cell(&row, "id"),
         balance_after: string_cell(&row, "balance"),
     })
+}
+
+async fn consume_subscription_quota(
+    pool: &SqlitePool,
+    command: ConsumeSubscriptionQuotaCommand,
+) -> AppMembershipResult<SubscriptionQuotaConsumptionOutcome> {
+    if command.subject.tenant_id <= 0
+        || command.subject.user_id <= 0
+        || command.amount <= 0
+        || command.request_no.trim().is_empty()
+        || command.idempotency_key.trim().is_empty()
+        || command.idempotency_key.len() > 160
+    {
+        return Err(CommerceServiceError::validation(
+            "subscription quota consumption command is invalid",
+        ));
+    }
+    let (usage_date, day_start, day_end) = subscription_quota_day_bounds(&command.requested_at)?;
+    let ledger_id = format!(
+        "coupon-quota-{}-{}-{}",
+        command.subject.tenant_id,
+        command.subject.user_id,
+        command.idempotency_key.trim()
+    );
+    let mut tx = pool
+        .begin()
+        .await
+        .map_err(|error| store_error("failed to begin subscription quota transaction", error))?;
+
+    if let Some(row) = sqlx::query(
+        r#"
+        SELECT l.amount, l.grant_id, l.source_id, l.balance_after,
+               d.benefit_code, g.grant_policy,
+               CAST(g.granted_quantity AS INTEGER) AS granted_quantity
+        FROM entitlement_ledger_entry l
+        JOIN entitlement_grant g ON g.id = l.grant_id AND g.tenant_id = l.tenant_id
+        JOIN benefit_definition d ON d.id = l.benefit_id AND d.tenant_id = l.tenant_id
+        WHERE l.id = ?1
+          AND l.tenant_id = CAST(?2 AS TEXT)
+          AND l.subject_type = 'user'
+          AND l.subject_id = CAST(?3 AS TEXT)
+          AND l.business_type = 'coupon_subscription_quota_usage'
+        LIMIT 1
+        "#,
+    )
+    .bind(&ledger_id)
+    .bind(command.subject.tenant_id)
+    .bind(command.subject.user_id)
+    .fetch_optional(&mut *tx)
+    .await
+    .map_err(|error| store_error("failed to load quota consumption replay", error))?
+    {
+        let consumed_amount = parse_points_amount(&string_cell(&row, "amount")).max(0);
+        if consumed_amount != command.amount {
+            return Err(CommerceServiceError::conflict(
+                "idempotency key was already used with a different quota amount",
+            ));
+        }
+        let grant_id = string_cell(&row, "grant_id");
+        let policy = parse_coupon_subscription_quota_policy(&string_cell(&row, "grant_policy"))?;
+        let granted_quantity = integer_cell(&row, "granted_quantity").max(0);
+        let usage = sqlx::query(
+            r#"
+            SELECT
+                COALESCE(SUM(CAST(amount AS INTEGER)), 0) AS total_used,
+                COALESCE(SUM(CASE
+                    WHEN datetime(occurred_at) >= datetime(?2)
+                     AND datetime(occurred_at) < datetime(?3)
+                    THEN CAST(amount AS INTEGER) ELSE 0 END), 0) AS daily_used
+            FROM entitlement_ledger_entry
+            WHERE grant_id = ?1
+              AND direction = 'debit'
+              AND business_type = 'coupon_subscription_quota_usage'
+            "#,
+        )
+        .bind(&grant_id)
+        .bind(&day_start)
+        .bind(&day_end)
+        .fetch_one(&mut *tx)
+        .await
+        .map_err(|error| store_error("failed to load replayed coupon quota usage", error))?;
+        let total_used = integer_cell(&usage, "total_used").max(0);
+        let daily_used = integer_cell(&usage, "daily_used").max(0);
+        let total_quota = policy.total_quota.min(granted_quantity);
+        tx.commit()
+            .await
+            .map_err(|error| store_error("failed to finish quota replay transaction", error))?;
+        return Ok(SubscriptionQuotaConsumptionOutcome {
+            accepted: true,
+            replayed: true,
+            benefit_code: string_cell(&row, "benefit_code"),
+            subscription_id: string_cell(&row, "source_id"),
+            consumed_amount,
+            daily_quota: policy.daily_quota,
+            used_daily_quota: daily_used,
+            remaining_daily_quota: (policy.daily_quota - daily_used).max(0),
+            total_quota,
+            remaining_total_quota: (total_quota - total_used).max(0),
+        });
+    }
+
+    let grants = sqlx::query(
+        r#"
+        SELECT a.id AS account_id, a.balance, g.id AS grant_id, g.source_id,
+               g.grant_policy, CAST(g.granted_quantity AS INTEGER) AS granted_quantity,
+               d.benefit_code
+        FROM entitlement_grant g
+        JOIN entitlement_account a
+          ON a.tenant_id = g.tenant_id
+         AND a.subject_type = g.subject_type
+         AND a.subject_id = g.subject_id
+         AND a.benefit_id = g.benefit_id
+        JOIN benefit_definition d ON d.tenant_id = g.tenant_id AND d.id = g.benefit_id
+        JOIN membership_subscription m ON m.tenant_id = g.tenant_id AND m.id = g.source_id
+        WHERE g.tenant_id = CAST(?1 AS TEXT)
+          AND (g.organization_id IS NULL OR g.organization_id = CAST(?2 AS TEXT))
+          AND g.subject_type = 'user'
+          AND g.subject_id = CAST(?3 AS TEXT)
+          AND g.source_type = 'membership_subscription'
+          AND g.status = 'active'
+          AND a.status = 'active'
+          AND m.status = 'active'
+          AND d.benefit_code IN ('ai_quota', 'exclusive_model')
+          AND COALESCE(g.grant_policy, '') <> ''
+          AND (g.starts_at IS NULL OR datetime(g.starts_at) <= datetime(?4))
+          AND (g.expires_at IS NULL OR datetime(g.expires_at) > datetime(?4))
+          AND (a.expires_at IS NULL OR datetime(a.expires_at) > datetime(?4))
+        ORDER BY COALESCE(g.expires_at, a.expires_at, m.expires_at) ASC, g.created_at ASC, g.id ASC
+        "#,
+    )
+    .bind(command.subject.tenant_id)
+    .bind(command.subject.organization_id)
+    .bind(command.subject.user_id)
+    .bind(&command.requested_at)
+    .fetch_all(&mut *tx)
+    .await
+    .map_err(|error| store_error("failed to load active coupon quota grants", error))?;
+
+    for row in grants {
+        let policy_json = string_cell(&row, "grant_policy");
+        let is_coupon_policy = serde_json::from_str::<serde_json::Value>(&policy_json)
+            .ok()
+            .and_then(|value| {
+                value
+                    .get("kind")
+                    .and_then(|kind| kind.as_str())
+                    .map(str::to_owned)
+            })
+            .as_deref()
+            == Some("coupon_subscription_quota");
+        if !is_coupon_policy {
+            continue;
+        }
+        let policy = parse_coupon_subscription_quota_policy(&policy_json)?;
+        let grant_id = string_cell(&row, "grant_id");
+        let usage = sqlx::query(
+            r#"
+            SELECT
+                COALESCE(SUM(CAST(amount AS INTEGER)), 0) AS total_used,
+                COALESCE(SUM(CASE
+                    WHEN datetime(occurred_at) >= datetime(?2)
+                     AND datetime(occurred_at) < datetime(?3)
+                    THEN CAST(amount AS INTEGER) ELSE 0 END), 0) AS daily_used
+            FROM entitlement_ledger_entry
+            WHERE grant_id = ?1
+              AND direction = 'debit'
+              AND business_type = 'coupon_subscription_quota_usage'
+            "#,
+        )
+        .bind(&grant_id)
+        .bind(&day_start)
+        .bind(&day_end)
+        .fetch_one(&mut *tx)
+        .await
+        .map_err(|error| store_error("failed to calculate coupon quota usage", error))?;
+        let total_used = integer_cell(&usage, "total_used").max(0);
+        let daily_used = integer_cell(&usage, "daily_used").max(0);
+        let granted_quantity = integer_cell(&row, "granted_quantity").max(0);
+        let total_quota = policy.total_quota.min(granted_quantity);
+        let account_balance = parse_points_amount(&string_cell(&row, "balance")).max(0);
+        if total_used.saturating_add(command.amount) > total_quota
+            || daily_used.saturating_add(command.amount) > policy.daily_quota
+            || account_balance < command.amount
+        {
+            continue;
+        }
+
+        let account_id = string_cell(&row, "account_id");
+        let updated = sqlx::query(
+            r#"
+            UPDATE entitlement_account
+            SET total_used = CAST(CAST(total_used AS INTEGER) + ?1 AS TEXT),
+                balance = CAST(CAST(balance AS INTEGER) - ?1 AS TEXT),
+                version = version + 1,
+                updated_at = ?2
+            WHERE id = ?3
+              AND tenant_id = CAST(?4 AS TEXT)
+              AND CAST(balance AS INTEGER) >= ?1
+            "#,
+        )
+        .bind(command.amount)
+        .bind(&command.requested_at)
+        .bind(&account_id)
+        .bind(command.subject.tenant_id)
+        .execute(&mut *tx)
+        .await
+        .map_err(|error| store_error("failed to debit subscription quota account", error))?;
+        if updated.rows_affected() != 1 {
+            continue;
+        }
+
+        let balance_after = account_balance - command.amount;
+        let subscription_id = string_cell(&row, "source_id");
+        let benefit_code = string_cell(&row, "benefit_code");
+        sqlx::query(
+            r#"
+            INSERT INTO entitlement_ledger_entry
+                (id, tenant_id, organization_id, ledger_no, account_id, grant_id, benefit_id,
+                 subject_type, subject_id, direction, amount, balance_after, business_type,
+                 source_type, source_id, request_no, idempotency_key, occurred_at, created_at)
+            SELECT
+                ?1, CAST(?2 AS TEXT), CAST(?3 AS TEXT), ?1, a.id, ?4, a.benefit_id,
+                'user', CAST(?5 AS TEXT), 'debit', CAST(?6 AS TEXT), CAST(?7 AS TEXT),
+                'coupon_subscription_quota_usage', 'membership_subscription', ?8, ?9, ?10, ?11, ?11
+            FROM entitlement_account a
+            WHERE a.id = ?12
+            "#,
+        )
+        .bind(&ledger_id)
+        .bind(command.subject.tenant_id)
+        .bind(command.subject.organization_id)
+        .bind(&grant_id)
+        .bind(command.subject.user_id)
+        .bind(command.amount)
+        .bind(balance_after)
+        .bind(&subscription_id)
+        .bind(command.request_no.trim())
+        .bind(command.idempotency_key.trim())
+        .bind(&command.requested_at)
+        .bind(&account_id)
+        .execute(&mut *tx)
+        .await
+        .map_err(|error| store_error("failed to insert subscription quota ledger entry", error))?;
+
+        let usage_key = format!(
+            "{}:{}:{}:{}",
+            command.subject.tenant_id, command.subject.user_id, benefit_code, usage_date
+        );
+        let usage_id = stable_membership_i64_id(&usage_key);
+        let usage_uuid = format!("coupon-quota-usage-{usage_id}");
+        sqlx::query(
+            r#"
+            INSERT INTO commerce_membership_privilege_usage
+                (id, uuid, tenant_id, organization_id, user_id, benefit_code,
+                 period_start, period_end, used_count, usage_limit, last_used_at, created_at, updated_at)
+            VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?11, ?11)
+            ON CONFLICT (tenant_id, user_id, benefit_code, period_start) DO UPDATE SET
+                used_count = commerce_membership_privilege_usage.used_count + excluded.used_count,
+                usage_limit = MAX(commerce_membership_privilege_usage.usage_limit, excluded.usage_limit),
+                last_used_at = excluded.last_used_at,
+                version = commerce_membership_privilege_usage.version + 1,
+                updated_at = excluded.updated_at
+            "#,
+        )
+        .bind(usage_id)
+        .bind(&usage_uuid)
+        .bind(command.subject.tenant_id)
+        .bind(command.subject.organization_id)
+        .bind(command.subject.user_id)
+        .bind(&benefit_code)
+        .bind(&day_start)
+        .bind(&day_end)
+        .bind(command.amount)
+        .bind(policy.daily_quota)
+        .bind(&command.requested_at)
+        .execute(&mut *tx)
+        .await
+        .map_err(|error| store_error("failed to update daily subscription quota usage", error))?;
+
+        let used_daily_quota = daily_used + command.amount;
+        let used_total_quota = total_used + command.amount;
+        tx.commit().await.map_err(|error| {
+            store_error("failed to commit subscription quota transaction", error)
+        })?;
+        return Ok(SubscriptionQuotaConsumptionOutcome {
+            accepted: true,
+            replayed: false,
+            benefit_code,
+            subscription_id,
+            consumed_amount: command.amount,
+            daily_quota: policy.daily_quota,
+            used_daily_quota,
+            remaining_daily_quota: policy.daily_quota - used_daily_quota,
+            total_quota,
+            remaining_total_quota: total_quota - used_total_quota,
+        });
+    }
+
+    Err(CommerceServiceError::conflict(
+        "subscription coupon daily or total quota is exhausted",
+    ))
 }
 
 async fn consume_speed_up(

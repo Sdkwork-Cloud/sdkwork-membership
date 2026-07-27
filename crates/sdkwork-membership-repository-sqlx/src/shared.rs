@@ -1,12 +1,15 @@
 use std::collections::BTreeSet;
 
-use chrono::{TimeZone, Utc};
+use chrono::{DateTime, Duration, NaiveDateTime, TimeZone, Utc};
 use sdkwork_contract_service::{CommerceMoney, CommerceServiceError};
+use sdkwork_utils_rust::parse_datetime;
+use serde::Deserialize;
 use serde_json::Value;
 
 use crate::{
     AppMembershipBenefitItem, AppMembershipPackageGroupItem, AppMembershipPackageItem,
-    AppMembershipPlanItem, AppMembershipPrivilegeUsageResponse, SubmitMembershipPurchaseCommand,
+    AppMembershipPlanItem, AppMembershipPrivilegeUsageResponse,
+    FulfillPaidMembershipPurchaseCommand, SubmitMembershipPurchaseCommand,
 };
 
 /// Trim and drop empty optional query/header values. Shared by app and admin routers.
@@ -25,6 +28,107 @@ pub fn format_unix_timestamp(seconds: i64) -> String {
         .single()
         .map(|ts| ts.format("%Y-%m-%d %H:%M:%S").to_string())
         .unwrap_or_else(|| format!("{seconds}"))
+}
+
+#[derive(Debug, Clone, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub(crate) struct CouponSubscriptionQuotaPolicy {
+    pub kind: String,
+    pub coupon_order_id: String,
+    pub period: String,
+    pub daily_quota: i64,
+    pub total_quota: i64,
+}
+
+pub(crate) fn parse_coupon_subscription_quota_policy(
+    value: &str,
+) -> Result<CouponSubscriptionQuotaPolicy, CommerceServiceError> {
+    let policy: CouponSubscriptionQuotaPolicy = serde_json::from_str(value).map_err(|_| {
+        CommerceServiceError::conflict("coupon subscription quota policy is invalid")
+    })?;
+    if policy.kind != "coupon_subscription_quota"
+        || policy.coupon_order_id.trim().is_empty()
+        || !matches!(policy.period.as_str(), "day" | "week" | "month" | "year")
+        || policy.daily_quota <= 0
+        || policy.total_quota < policy.daily_quota
+    {
+        return Err(CommerceServiceError::conflict(
+            "coupon subscription quota policy is invalid",
+        ));
+    }
+    Ok(policy)
+}
+
+pub(crate) fn validate_coupon_subscription_quota_contract(
+    period: &str,
+    duration_days: i64,
+    daily_quota: i64,
+    total_quota: i64,
+) -> Result<(), CommerceServiceError> {
+    if duration_days <= 0 || daily_quota <= 0 || total_quota < daily_quota {
+        return Err(CommerceServiceError::validation(
+            "coupon subscription duration and quotas are invalid",
+        ));
+    }
+
+    let duration_matches_period = match period {
+        "day" => duration_days == 1,
+        "week" => duration_days == 7,
+        "month" => (28..=31).contains(&duration_days),
+        "year" => (365..=366).contains(&duration_days),
+        _ => {
+            return Err(CommerceServiceError::validation(
+                "coupon subscription period is invalid",
+            ));
+        }
+    };
+    if !duration_matches_period {
+        return Err(CommerceServiceError::validation(
+            "coupon subscription duration does not match its period",
+        ));
+    }
+    if period == "day" && total_quota != daily_quota {
+        return Err(CommerceServiceError::validation(
+            "daily coupon subscription total quota must equal daily quota",
+        ));
+    }
+    if total_quota > daily_quota.saturating_mul(duration_days) {
+        return Err(CommerceServiceError::validation(
+            "coupon subscription total quota exceeds its consumable limit",
+        ));
+    }
+    Ok(())
+}
+
+pub(crate) fn subscription_quota_day_bounds(
+    requested_at: &str,
+) -> Result<(String, String, String), CommerceServiceError> {
+    let requested_at = requested_at.trim();
+    let timestamp = DateTime::parse_from_rfc3339(requested_at)
+        .map(|value| value.with_timezone(&Utc))
+        .or_else(|_| {
+            NaiveDateTime::parse_from_str(requested_at, "%Y-%m-%d %H:%M:%S")
+                .map(|value| value.and_utc())
+        })
+        .map_err(|_| CommerceServiceError::validation("requested_at must be a UTC timestamp"))?;
+    let date = timestamp.date_naive();
+    let next_date = date
+        .checked_add_signed(Duration::days(1))
+        .ok_or_else(|| CommerceServiceError::validation("requested_at is out of range"))?;
+    Ok((
+        date.format("%Y-%m-%d").to_string(),
+        format!("{} 00:00:00", date.format("%Y-%m-%d")),
+        format!("{} 00:00:00", next_date.format("%Y-%m-%d")),
+    ))
+}
+
+pub(crate) fn stable_membership_i64_id(value: &str) -> i64 {
+    let mut hash = 0xcbf29ce484222325u64;
+    for byte in value.as_bytes() {
+        hash ^= u64::from(*byte);
+        hash = hash.wrapping_mul(0x100000001b3);
+    }
+    (hash & i64::MAX as u64).max(1) as i64
 }
 
 pub(crate) const POINTS_ASSET_CODE: &str = "points";
@@ -120,6 +224,8 @@ pub(crate) fn default_plan_name(rank: i64) -> &'static str {
 #[allow(clippy::too_many_arguments)]
 pub(crate) fn map_membership_package_record(
     id: i64,
+    storage_id: String,
+    plan_storage_id: String,
     name: String,
     description: Option<String>,
     price: String,
@@ -138,7 +244,11 @@ pub(crate) fn map_membership_package_record(
     rank: i64,
     _sku_id: Option<String>,
 ) -> Option<ParsedMembershipPackage> {
-    if id <= 0 || group_external_id <= 0 {
+    if id <= 0
+        || storage_id.trim().is_empty()
+        || plan_storage_id.trim().is_empty()
+        || group_external_id <= 0
+    {
         return None;
     }
     let plan_no = plan_no.unwrap_or_else(|| plan_code_from_rank(rank).to_owned());
@@ -162,7 +272,9 @@ pub(crate) fn map_membership_package_record(
     };
     Some(ParsedMembershipPackage {
         plan_no,
+        plan_storage_id,
         rank,
+        storage_id,
         item,
     })
 }
@@ -170,7 +282,9 @@ pub(crate) fn map_membership_package_record(
 #[derive(Debug, Clone)]
 pub(crate) struct ParsedMembershipPackage {
     pub plan_no: String,
+    pub plan_storage_id: String,
     pub rank: i64,
+    pub storage_id: String,
     pub item: AppMembershipPackageItem,
 }
 
@@ -230,41 +344,85 @@ pub(crate) fn resolve_membership_purchase_binding(
     }
 }
 
+pub(crate) fn paid_membership_purchase_submit_command(
+    command: &FulfillPaidMembershipPurchaseCommand,
+) -> Result<SubmitMembershipPurchaseCommand, CommerceServiceError> {
+    if command.subject.tenant_id <= 0
+        || command.subject.organization_id < 0
+        || command.subject.user_id <= 0
+    {
+        return Err(CommerceServiceError::validation(
+            "membership fulfillment subject identifiers are invalid",
+        ));
+    }
+    if command.package_id <= 0 {
+        return Err(CommerceServiceError::validation(
+            "membership fulfillment package id must be greater than zero",
+        ));
+    }
+    let order_id = required_paid_purchase_text(&command.order_id, "order id")?;
+    let membership_id = required_paid_purchase_text(&command.membership_id, "membership id")?;
+    let order_no = required_paid_purchase_text(&command.order_no, "order number")?;
+    required_paid_purchase_text(&command.request_no, "request number")?;
+    required_paid_purchase_text(&command.idempotency_key, "idempotency key")?;
+    let action = command.action.trim().to_ascii_lowercase();
+    if !matches!(action.as_str(), "purchase" | "renew" | "upgrade") {
+        return Err(CommerceServiceError::validation(
+            "membership fulfillment action is invalid",
+        ));
+    }
+
+    Ok(SubmitMembershipPurchaseCommand {
+        subject: command.subject,
+        package_id: command.package_id,
+        order_uuid: order_id.to_owned(),
+        membership_uuid: membership_id.to_owned(),
+        order_no: order_no.to_owned(),
+        idempotency_key: format!("membership-purchase:reserve:{order_id}"),
+        requested_at: normalize_membership_timestamp(&command.paid_at)?,
+        action,
+    })
+}
+
+fn required_paid_purchase_text<'a>(
+    value: &'a str,
+    name: &str,
+) -> Result<&'a str, CommerceServiceError> {
+    let value = value.trim();
+    if value.is_empty() {
+        return Err(CommerceServiceError::validation(format!(
+            "membership fulfillment {name} is required"
+        )));
+    }
+    Ok(value)
+}
+
+pub(crate) fn normalize_membership_timestamp(value: &str) -> Result<String, CommerceServiceError> {
+    let value = value.trim();
+    let parsed = parse_datetime(value, None).or_else(|| {
+        NaiveDateTime::parse_from_str(value, "%Y-%m-%d %H:%M:%S")
+            .ok()
+            .map(|timestamp| Utc.from_utc_datetime(&timestamp))
+    });
+    parsed
+        .map(|timestamp| timestamp.format("%Y-%m-%d %H:%M:%S").to_string())
+        .ok_or_else(|| {
+            CommerceServiceError::validation(
+                "membership fulfillment paid_at must be a valid timestamp",
+            )
+        })
+}
+
 pub(crate) fn later_membership_timestamp(current: &str, requested_at: &str) -> String {
     match (
-        parse_membership_timestamp_seconds(current),
-        parse_membership_timestamp_seconds(requested_at),
+        normalize_membership_timestamp(current),
+        normalize_membership_timestamp(requested_at),
     ) {
-        (Some(left), Some(right)) if left >= right => current.trim().to_owned(),
-        (Some(_), Some(_)) => requested_at.trim().to_owned(),
-        (Some(_), None) => current.trim().to_owned(),
+        (Ok(left), Ok(right)) if left >= right => left,
+        (Ok(_), Ok(right)) => right,
+        (Ok(left), Err(_)) => left,
         _ => requested_at.trim().to_owned(),
     }
-}
-
-fn parse_membership_timestamp_seconds(timestamp: &str) -> Option<i64> {
-    let (date, time) = timestamp.trim().split_once(' ')?;
-    let mut date_parts = date.split('-');
-    let year = date_parts.next()?.parse::<i64>().ok()?;
-    let month = date_parts.next()?.parse::<i64>().ok()?;
-    let day = date_parts.next()?.parse::<i64>().ok()?;
-    let mut time_parts = time.split(':');
-    let hour = time_parts.next()?.parse::<i64>().ok()?;
-    let minute = time_parts.next()?.parse::<i64>().ok()?;
-    let second = time_parts.next()?.parse::<i64>().ok()?;
-    Some(
-        membership_days_from_civil(year, month, day) * 86_400 + hour * 3_600 + minute * 60 + second,
-    )
-}
-
-fn membership_days_from_civil(year: i64, month: i64, day: i64) -> i64 {
-    let year = year - if month <= 2 { 1 } else { 0 };
-    let era = if year >= 0 { year } else { year - 399 } / 400;
-    let yoe = year - era * 400;
-    let month = month + if month > 2 { -3 } else { 9 };
-    let doy = (153 * month + 2) / 5 + day - 1;
-    let doe = yoe * 365 + yoe / 4 - yoe / 100 + doy;
-    era * 146_097 + doe - 719_468
 }
 
 pub(crate) fn build_package_group_from_packages(
@@ -371,4 +529,47 @@ fn string_array_from_json(value: &str) -> Vec<String> {
                 .collect()
         })
         .unwrap_or_default()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::validate_coupon_subscription_quota_contract;
+
+    #[test]
+    fn coupon_subscription_quota_contract_accepts_supported_periods() {
+        for (period, duration_days) in [("day", 1), ("week", 7), ("month", 30), ("year", 365)] {
+            let daily_quota = 10;
+            let total_quota = if period == "day" {
+                daily_quota
+            } else {
+                daily_quota * duration_days
+            };
+            validate_coupon_subscription_quota_contract(
+                period,
+                duration_days,
+                daily_quota,
+                total_quota,
+            )
+            .expect("supported coupon subscription period");
+        }
+    }
+
+    #[test]
+    fn coupon_subscription_quota_contract_rejects_inconsistent_limits() {
+        for (period, duration_days, daily_quota, total_quota) in [
+            ("day", 2, 10, 10),
+            ("week", 6, 10, 60),
+            ("month", 30, 10, 301),
+            ("year", 364, 10, 3_640),
+            ("day", 1, 10, 9),
+        ] {
+            assert!(validate_coupon_subscription_quota_contract(
+                period,
+                duration_days,
+                daily_quota,
+                total_quota,
+            )
+            .is_err());
+        }
+    }
 }

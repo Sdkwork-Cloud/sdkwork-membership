@@ -39,9 +39,11 @@ use sdkwork_membership_repository_sqlx::{
     AppMembershipPointsHistoryQuery, AppMembershipPrivilegeUsageResponse,
     AppMembershipPurchaseOutcome, AppMembershipReadFuture, AppMembershipResult,
     AppMembershipStatusResponse, AppMembershipStore, AppMembershipSubject,
+    ConsumeSubscriptionQuotaCommand, CouponSubscriptionFulfillmentFuture,
     FulfillMembershipPurchaseCommand, FulfillMembershipPurchaseOutcome,
+    FulfillPaidMembershipPurchaseCommand, GrantCouponSubscriptionCommand,
     PostgresCommerceMembershipStore, SqliteCommerceMembershipStore,
-    SubmitMembershipPurchaseCommand,
+    SubmitMembershipPurchaseCommand, SubscriptionQuotaConsumptionFuture,
 };
 use sdkwork_utils_rust::SdkWorkPageData;
 use sdkwork_web_core::WebRequestContext;
@@ -280,6 +282,39 @@ impl AppMembershipStore for EmptyAppMembershipStore {
             ))
         })
     }
+
+    fn fulfill_paid_purchase<'a>(
+        &'a self,
+        _command: FulfillPaidMembershipPurchaseCommand,
+    ) -> AppMembershipFulfillmentFuture<'a> {
+        Box::pin(async {
+            Err(CommerceServiceError::storage(
+                "membership paid fulfillment store is unavailable without database configuration",
+            ))
+        })
+    }
+
+    fn grant_coupon_subscription<'a>(
+        &'a self,
+        _command: GrantCouponSubscriptionCommand,
+    ) -> CouponSubscriptionFulfillmentFuture<'a> {
+        Box::pin(async {
+            Err(CommerceServiceError::storage(
+                "membership coupon subscription store is unavailable without database configuration",
+            ))
+        })
+    }
+
+    fn consume_subscription_quota<'a>(
+        &'a self,
+        _command: ConsumeSubscriptionQuotaCommand,
+    ) -> SubscriptionQuotaConsumptionFuture<'a> {
+        Box::pin(async {
+            Err(CommerceServiceError::storage(
+                "membership subscription quota store is unavailable without database configuration",
+            ))
+        })
+    }
 }
 
 /// In-memory catalog used only by `app_membership_router_with_builtin_catalog()` for unit tests.
@@ -480,6 +515,39 @@ impl AppMembershipStore for CatalogAppMembershipStore {
             })
         })
     }
+
+    fn fulfill_paid_purchase<'a>(
+        &'a self,
+        _command: FulfillPaidMembershipPurchaseCommand,
+    ) -> AppMembershipFulfillmentFuture<'a> {
+        Box::pin(async {
+            Err(CommerceServiceError::storage(
+                "membership paid fulfillment is unavailable in the builtin catalog",
+            ))
+        })
+    }
+
+    fn grant_coupon_subscription<'a>(
+        &'a self,
+        _command: GrantCouponSubscriptionCommand,
+    ) -> CouponSubscriptionFulfillmentFuture<'a> {
+        Box::pin(async {
+            Err(CommerceServiceError::storage(
+                "membership coupon subscription fulfillment is unavailable in the builtin catalog",
+            ))
+        })
+    }
+
+    fn consume_subscription_quota<'a>(
+        &'a self,
+        _command: ConsumeSubscriptionQuotaCommand,
+    ) -> SubscriptionQuotaConsumptionFuture<'a> {
+        Box::pin(async {
+            Err(CommerceServiceError::storage(
+                "membership subscription quota consumption is unavailable in the builtin catalog",
+            ))
+        })
+    }
 }
 
 #[allow(dead_code)]
@@ -580,6 +648,43 @@ fn app_membership_router_with_state(
             entity_id_generator,
             require_subject,
         })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn paid_purchase_command() -> FulfillPaidMembershipPurchaseCommand {
+        FulfillPaidMembershipPurchaseCommand {
+            subject: AppMembershipSubject {
+                tenant_id: 1,
+                organization_id: 2,
+                user_id: 3,
+            },
+            package_id: 4,
+            order_id: "order-1".to_owned(),
+            membership_id: "membership-1".to_owned(),
+            order_no: "ORDER-1".to_owned(),
+            request_no: "request-1".to_owned(),
+            idempotency_key: "idempotency-1".to_owned(),
+            paid_at: "2026-07-27T00:00:00Z".to_owned(),
+            action: "purchase".to_owned(),
+        }
+    }
+
+    #[tokio::test]
+    async fn non_persistent_stores_reject_paid_fulfillment() {
+        for store in [
+            &EmptyAppMembershipStore as &dyn AppMembershipStore,
+            &CatalogAppMembershipStore as &dyn AppMembershipStore,
+        ] {
+            let error = store
+                .fulfill_paid_purchase(paid_purchase_command())
+                .await
+                .expect_err("non-persistent stores must not acknowledge paid fulfillment");
+            assert!(error.message().contains("paid fulfillment"));
+        }
+    }
 }
 
 async fn fetch_info(

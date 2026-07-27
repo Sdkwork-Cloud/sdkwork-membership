@@ -3,12 +3,12 @@
 Status: active
 Owner: SDKWork maintainers
 Application: membership
-Updated: 2026-07-08
+Updated: 2026-07-26
 Specs: REQUIREMENTS_SPEC.md, DOCUMENTATION_SPEC.md
 
 ## 1. Background And Problem
 
-SDKWork Membership is the commerce-domain membership capability. It provides membership plans, package catalog, subscription reservation, entitlement fulfillment, points projection, daily rewards, and privilege usage tracking as a reusable T1 capability.
+SDKWork Membership is the commerce-domain membership capability. It provides membership plans, package catalog, subscription lifecycle, paid-order fulfillment, entitlement fulfillment, points projection, daily rewards, and privilege usage tracking as a reusable T1 capability.
 
 This capability is not the unified order center and is not the payment system. Token plan purchase, membership package purchase, order creation, order amount management, cashier entry, payment settlement, PSP webhook ingestion, recharge package, and exchange rules are owned by `sdkwork-order` and `sdkwork-payment`.
 
@@ -30,8 +30,8 @@ The product goal is to let host applications embed a complete membership experie
 Goals:
 
 - Provide a production-ready membership catalog and subscription domain.
-- Support purchase, renew, and upgrade reservation by `orderId` and `requestNo`.
-- Fulfill membership after `sdkwork-order` confirms payment settlement.
+- Support purchase, renew, and upgrade through the order-first checkout and immutable paid-order snapshot.
+- Atomically materialize and activate the membership period after `sdkwork-order` confirms payment settlement.
 - Initialize complete membership demo data for frontend flows without initializing order/payment tables.
 - Keep frontend design unchanged while wiring UI -> service class -> composed SDK facade -> generated SDK.
 - Keep API inputs and outputs aligned with `SdkWorkApiResponse`, `ProblemDetail`, standard pagination, and SDKWork SDK generation rules.
@@ -51,11 +51,11 @@ Plans define membership ranks, names, descriptions, status, and published versio
 
 ### 4.2 Benefits
 
-Benefits define grantable membership capabilities such as speed-up quota, priority queue, exclusive model access, and points-like benefits. Benefit grants are created as pending records during reservation and activated during fulfillment.
+Benefits define grantable membership capabilities such as speed-up quota, priority queue, exclusive model access, and points-like benefits. For paid orders, period-scoped grants and ledger entries are created and activated inside the same Membership fulfillment transaction; they do not depend on a pre-payment pending subscription.
 
 ### 4.3 Packages
 
-Packages are the sellable membership catalog units. They include price, currency, duration, points amount, display tags, recommendation state, ordering, and mapping to product SKU metadata. Package purchase orders are created by `sdkwork-order`; membership only validates and reserves the selected package.
+Packages are the sellable membership catalog units. They include price, currency, duration, points amount, display tags, recommendation state, ordering, and mapping to product SKU metadata. Package purchase orders are created by `sdkwork-order`; after payment, Membership validates the immutable Order snapshot against its tenant/platform catalog and atomically materializes the paid period.
 
 ### 4.4 Package Groups
 
@@ -74,29 +74,17 @@ PC membership UI payment choice
   -> order-owned checkout UI and payment-status service
   -> order/payment settlement
   -> order settlement calls membership fulfillment port
-  -> membership activates subscription and entitlements
+  -> membership atomically reserves and activates subscription, period, and entitlements
 ```
-
-Membership reservation response contains only membership reservation data:
-
-- `requestNo`
-- `orderId`
-- `packageId`
-- `packageName`
-- `amount`
-- `durationDays`
-- `targetPlanRank`
-- `targetPlanName`
-- `status`
-
-It must not include payment method, provider, payment id, cashier URL, QR payload, next action, or request-payment payload. Those fields are order/payment concerns.
 
 Action semantics:
 
-- **purchase** creates a new `membership_subscription`, first `membership_period`, and pending entitlement records.
-- **renew** reuses the existing subscription and appends a pending period from the current expiration boundary.
-- **upgrade** changes the target plan/package and creates upgraded pending entitlement records.
-- **fulfillment** is invoked by `sdkwork-order` after payment settlement and activates pending subscription period and entitlement records.
+- **purchase** atomically creates and activates a new `membership_subscription`, first `membership_period`, and period-scoped entitlement records after payment settlement.
+- **renew** preserves the original subscription start, appends an active period from the current expiration boundary, and extends entitlement-account expiration.
+- **upgrade** applies the paid target plan/package snapshot and activates the upgraded period-scoped entitlements.
+- **replay** resolves through `membership_period.source_order_id` and returns the existing result without duplicate grants, ledgers, periods, or entitlement accounts.
+
+Order responses own `requestNo`, `orderId`, amount, cashier, provider, payment parameters, and payment status. Membership fulfillment accepts only the immutable settlement snapshot and returns the membership activation outcome.
 
 ### 4.6 Points
 
@@ -116,7 +104,7 @@ Privilege usage reads quota from entitlement accounts and records per-period usa
 | --- | --- | --- |
 | Order | `sdkwork-order` | Unified order creation for token plans and membership packages, order amount breakdown, `orders.payments.create`, payment settlement, fulfillment saga |
 | Payment | `sdkwork-payment` | Payment execution, intents, attempts, provider channels, refunds, PSP integration behind order/payment ports |
-| Membership | `sdkwork-membership` | Catalog, reservation by `orderId/requestNo`, subscription state, entitlement records, fulfillment after settlement |
+| Membership | `sdkwork-membership` | Catalog, subscription state, entitlement records, and atomic paid-order fulfillment after settlement |
 
 Allowed dependency direction:
 
@@ -147,10 +135,10 @@ Authority:
 ## 6. Success Metrics
 
 - Membership catalog page read latency P99 under 200 ms in normal deployment.
-- Purchase/renew/upgrade reservation success rate above 99.5% excluding order/payment upstream failures.
+- Purchase/renew/upgrade fulfillment success rate above 99.5% excluding order/payment upstream failures.
 - Fulfillment idempotency prevents duplicate entitlement grants for repeated settlement events.
 - Database initialization remains limited to 18 membership capability tables.
-- Static standards checks report no membership-owned order/payment table creation or payment/cashier fields in membership reservation APIs.
+- Static standards checks report no membership-owned order/payment table creation and no payment/cashier fields in Membership fulfillment contracts.
 
 ## 7. Phases
 
@@ -164,14 +152,14 @@ Authority:
 ### Phase 2: Order-Led Checkout And Fulfillment
 
 - `sdkwork-order` owns membership package and token plan order creation through unified order management.
-- Membership app-api reserves subscription by `orderId` and `requestNo`.
+- Order settlement supplies action, package, order number, subject, and paid timestamp through `MembershipPurchaseFulfillmentPort`; a pre-payment Membership reservation is not required.
 - Product application roots compose the order-owned checkout service/UI with the membership checkout port.
 - The PC subscription dashboard uses membership-owned default payment-method options for order checkout selection and does not depend on `sdkwork-payment` frontend or service packages.
 - The standalone membership PC runtime configures only `VITE_SDKWORK_MEMBERSHIP_PC_APP_API_BASE_URL`.
 - `apps/sdkwork-membership-pc/sdkwork.app.config.json` `envBindings` is the source of truth for the membership SDK base URL key.
 - Order runtime configuration belongs to the product application composition root, not the membership application.
 - `orders.payments.create` returns cashier/payment parameters from order/payment.
-- Order settlement calls membership fulfillment port to activate subscription and entitlements.
+- Order settlement calls Membership once; Membership reserves and activates the paid period and entitlements atomically and replays by source order without duplicate effects.
 - Membership database initialization excludes order/payment/recharge/exchange tables.
 
 ### Phase 3: Commercial Operations

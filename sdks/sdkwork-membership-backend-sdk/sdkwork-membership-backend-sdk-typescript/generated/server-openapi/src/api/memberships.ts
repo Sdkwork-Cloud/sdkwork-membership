@@ -1,5 +1,5 @@
 import { backendApiPath } from './paths';
-import type { HttpClient } from '../http/client';
+import type { ApiRequestOptions, HttpClient } from '../http/client';
 
 import type { AdminMembershipEntitlementItem, AdminMembershipMemberItem, AdminMembershipMemberStatusUpdate, AdminMembershipPackageGroupItem, AdminMembershipPackageGroupMutation, AdminMembershipPackageItem, AdminMembershipPackageMutation, AdminMembershipPlanItem, AdminMembershipPlanMutation, PageInfo } from '../types';
 
@@ -21,7 +21,7 @@ export class MembershipsEntitlementsApi {
 
 
 /** Membership entitlements list. */
-  async list(params?: MembershipsEntitlementsListParams): Promise<Record<string, unknown>> {
+  async list(params?: MembershipsEntitlementsListParams, requestOptions?: ApiRequestOptions): Promise<{ items: AdminMembershipEntitlementItem[]; pageInfo: PageInfo; }> {
     const query = buildQueryString([
       { name: 'plan_id', value: params?.planId, style: 'form', explode: true, allowReserved: false },
       { name: 'membership_id', value: params?.membershipId, style: 'form', explode: true, allowReserved: false },
@@ -29,7 +29,7 @@ export class MembershipsEntitlementsApi {
       { name: 'page', value: params?.page, style: 'form', explode: true, allowReserved: false },
       { name: 'page_size', value: params?.pageSize, style: 'form', explode: true, allowReserved: false },
     ]);
-    return this.client.get<Record<string, unknown>>(appendQueryString(backendApiPath(`/memberships/entitlements`), query));
+    return this.client.request<{ items: AdminMembershipEntitlementItem[]; pageInfo: PageInfo; }>(appendQueryString(backendApiPath(`/memberships/entitlements`), query), { signal: requestOptions?.signal, timeout: requestOptions?.timeout, method: 'GET' as any });
   }
 }
 
@@ -42,8 +42,8 @@ export class MembershipsMembersStatusApi {
 
 
 /** Membership member status update. */
-  async update(id: string, body: AdminMembershipMemberStatusUpdate): Promise<AdminMembershipMemberItem> {
-    return this.client.patch<AdminMembershipMemberItem>(backendApiPath(`/memberships/members/${serializePathParameter(id, { name: 'id', style: 'simple', explode: false })}/status`), body, undefined, undefined, 'application/json');
+  async update(id: string, body: AdminMembershipMemberStatusUpdate, requestOptions?: ApiRequestOptions): Promise<AdminMembershipMemberItem> {
+    return this.client.request<AdminMembershipMemberItem>(backendApiPath(`/memberships/members/${serializePathParameter(id, { name: 'id', style: 'simple', explode: false })}/status`), { signal: requestOptions?.signal, timeout: requestOptions?.timeout, method: 'PATCH' as any, body, contentType: 'application/json' });
   }
 }
 
@@ -66,7 +66,7 @@ export class MembershipsMembersApi {
 
 
 /** Membership members list. */
-  async list(params?: MembershipsMembersListParams): Promise<Record<string, unknown>> {
+  async list(params?: MembershipsMembersListParams, requestOptions?: ApiRequestOptions): Promise<{ items: AdminMembershipMemberItem[]; pageInfo: PageInfo; }> {
     const query = buildQueryString([
       { name: 'user_id', value: params?.userId, style: 'form', explode: true, allowReserved: false },
       { name: 'plan_id', value: params?.planId, style: 'form', explode: true, allowReserved: false },
@@ -74,12 +74,12 @@ export class MembershipsMembersApi {
       { name: 'page', value: params?.page, style: 'form', explode: true, allowReserved: false },
       { name: 'page_size', value: params?.pageSize, style: 'form', explode: true, allowReserved: false },
     ]);
-    return this.client.get<Record<string, unknown>>(appendQueryString(backendApiPath(`/memberships/members`), query));
+    return this.client.request<{ items: AdminMembershipMemberItem[]; pageInfo: PageInfo; }>(appendQueryString(backendApiPath(`/memberships/members`), query), { signal: requestOptions?.signal, timeout: requestOptions?.timeout, method: 'GET' as any });
   }
 
 /** Membership member detail. */
-  async retrieve(id: string): Promise<AdminMembershipMemberItem> {
-    return this.client.get<AdminMembershipMemberItem>(backendApiPath(`/memberships/members/${serializePathParameter(id, { name: 'id', style: 'simple', explode: false })}`));
+  async retrieve(id: string, requestOptions?: ApiRequestOptions): Promise<AdminMembershipMemberItem> {
+    return this.client.request<AdminMembershipMemberItem>(backendApiPath(`/memberships/members/${serializePathParameter(id, { name: 'id', style: 'simple', explode: false })}`), { signal: requestOptions?.signal, timeout: requestOptions?.timeout, method: 'GET' as any });
   }
 }
 
@@ -100,7 +100,7 @@ export class MembershipsPackagesApi {
 
 
 /** Membership packages list. */
-  async list(params?: MembershipsPackagesListParams): Promise<Record<string, unknown>> {
+  async list(params?: MembershipsPackagesListParams, requestOptions?: ApiRequestOptions): Promise<{ items: AdminMembershipPackageItem[]; pageInfo: PageInfo; }> {
     const query = buildQueryString([
       { name: 'package_group_id', value: params?.packageGroupId, style: 'form', explode: true, allowReserved: false },
       { name: 'plan_id', value: params?.planId, style: 'form', explode: true, allowReserved: false },
@@ -108,22 +108,22 @@ export class MembershipsPackagesApi {
       { name: 'page', value: params?.page, style: 'form', explode: true, allowReserved: false },
       { name: 'page_size', value: params?.pageSize, style: 'form', explode: true, allowReserved: false },
     ]);
-    return this.client.get<Record<string, unknown>>(appendQueryString(backendApiPath(`/memberships/packages`), query));
+    return this.client.request<{ items: AdminMembershipPackageItem[]; pageInfo: PageInfo; }>(appendQueryString(backendApiPath(`/memberships/packages`), query), { signal: requestOptions?.signal, timeout: requestOptions?.timeout, method: 'GET' as any });
   }
 
 /** Membership package create. */
-  async create(body: AdminMembershipPackageMutation): Promise<AdminMembershipPackageItem> {
-    return this.client.post<AdminMembershipPackageItem>(backendApiPath(`/memberships/packages`), body, undefined, undefined, 'application/json');
+  async create(body: AdminMembershipPackageMutation, requestOptions?: ApiRequestOptions): Promise<AdminMembershipPackageItem> {
+    return this.client.request<AdminMembershipPackageItem>(backendApiPath(`/memberships/packages`), { signal: requestOptions?.signal, timeout: requestOptions?.timeout, method: 'POST' as any, body, contentType: 'application/json' });
   }
 
 /** Membership package update. */
-  async update(id: string, body: AdminMembershipPackageMutation): Promise<AdminMembershipPackageItem> {
-    return this.client.put<AdminMembershipPackageItem>(backendApiPath(`/memberships/packages/${serializePathParameter(id, { name: 'id', style: 'simple', explode: false })}`), body, undefined, undefined, 'application/json');
+  async update(id: string, body: AdminMembershipPackageMutation, requestOptions?: ApiRequestOptions): Promise<AdminMembershipPackageItem> {
+    return this.client.request<AdminMembershipPackageItem>(backendApiPath(`/memberships/packages/${serializePathParameter(id, { name: 'id', style: 'simple', explode: false })}`), { signal: requestOptions?.signal, timeout: requestOptions?.timeout, method: 'PUT' as any, body, contentType: 'application/json' });
   }
 
 /** Membership package delete. */
-  async delete(id: string): Promise<void> {
-    return this.client.delete<void>(backendApiPath(`/memberships/packages/${serializePathParameter(id, { name: 'id', style: 'simple', explode: false })}`));
+  async delete(id: string, requestOptions?: ApiRequestOptions): Promise<void> {
+    return this.client.request<void>(backendApiPath(`/memberships/packages/${serializePathParameter(id, { name: 'id', style: 'simple', explode: false })}`), { signal: requestOptions?.signal, timeout: requestOptions?.timeout, method: 'DELETE' as any });
   }
 }
 
@@ -142,28 +142,28 @@ export class MembershipsPackageGroupsApi {
 
 
 /** Membership package groups list. */
-  async list(params?: MembershipsPackageGroupsListParams): Promise<Record<string, unknown>> {
+  async list(params?: MembershipsPackageGroupsListParams, requestOptions?: ApiRequestOptions): Promise<{ items: AdminMembershipPackageGroupItem[]; pageInfo: PageInfo; }> {
     const query = buildQueryString([
       { name: 'status', value: params?.status, style: 'form', explode: true, allowReserved: false },
       { name: 'page', value: params?.page, style: 'form', explode: true, allowReserved: false },
       { name: 'page_size', value: params?.pageSize, style: 'form', explode: true, allowReserved: false },
     ]);
-    return this.client.get<Record<string, unknown>>(appendQueryString(backendApiPath(`/memberships/package_groups`), query));
+    return this.client.request<{ items: AdminMembershipPackageGroupItem[]; pageInfo: PageInfo; }>(appendQueryString(backendApiPath(`/memberships/package_groups`), query), { signal: requestOptions?.signal, timeout: requestOptions?.timeout, method: 'GET' as any });
   }
 
 /** Membership package group create. */
-  async create(body: AdminMembershipPackageGroupMutation): Promise<AdminMembershipPackageGroupItem> {
-    return this.client.post<AdminMembershipPackageGroupItem>(backendApiPath(`/memberships/package_groups`), body, undefined, undefined, 'application/json');
+  async create(body: AdminMembershipPackageGroupMutation, requestOptions?: ApiRequestOptions): Promise<AdminMembershipPackageGroupItem> {
+    return this.client.request<AdminMembershipPackageGroupItem>(backendApiPath(`/memberships/package_groups`), { signal: requestOptions?.signal, timeout: requestOptions?.timeout, method: 'POST' as any, body, contentType: 'application/json' });
   }
 
 /** Membership package group update. */
-  async update(id: string, body: AdminMembershipPackageGroupMutation): Promise<AdminMembershipPackageGroupItem> {
-    return this.client.put<AdminMembershipPackageGroupItem>(backendApiPath(`/memberships/package_groups/${serializePathParameter(id, { name: 'id', style: 'simple', explode: false })}`), body, undefined, undefined, 'application/json');
+  async update(id: string, body: AdminMembershipPackageGroupMutation, requestOptions?: ApiRequestOptions): Promise<AdminMembershipPackageGroupItem> {
+    return this.client.request<AdminMembershipPackageGroupItem>(backendApiPath(`/memberships/package_groups/${serializePathParameter(id, { name: 'id', style: 'simple', explode: false })}`), { signal: requestOptions?.signal, timeout: requestOptions?.timeout, method: 'PUT' as any, body, contentType: 'application/json' });
   }
 
 /** Membership package group delete. */
-  async delete(id: string): Promise<void> {
-    return this.client.delete<void>(backendApiPath(`/memberships/package_groups/${serializePathParameter(id, { name: 'id', style: 'simple', explode: false })}`));
+  async delete(id: string, requestOptions?: ApiRequestOptions): Promise<void> {
+    return this.client.request<void>(backendApiPath(`/memberships/package_groups/${serializePathParameter(id, { name: 'id', style: 'simple', explode: false })}`), { signal: requestOptions?.signal, timeout: requestOptions?.timeout, method: 'DELETE' as any });
   }
 }
 
@@ -182,28 +182,28 @@ export class MembershipsPlansApi {
 
 
 /** Membership plans list. */
-  async list(params?: MembershipsPlansListParams): Promise<Record<string, unknown>> {
+  async list(params?: MembershipsPlansListParams, requestOptions?: ApiRequestOptions): Promise<{ items: AdminMembershipPlanItem[]; pageInfo: PageInfo; }> {
     const query = buildQueryString([
       { name: 'status', value: params?.status, style: 'form', explode: true, allowReserved: false },
       { name: 'page', value: params?.page, style: 'form', explode: true, allowReserved: false },
       { name: 'page_size', value: params?.pageSize, style: 'form', explode: true, allowReserved: false },
     ]);
-    return this.client.get<Record<string, unknown>>(appendQueryString(backendApiPath(`/memberships/plans`), query));
+    return this.client.request<{ items: AdminMembershipPlanItem[]; pageInfo: PageInfo; }>(appendQueryString(backendApiPath(`/memberships/plans`), query), { signal: requestOptions?.signal, timeout: requestOptions?.timeout, method: 'GET' as any });
   }
 
 /** Membership plan create. */
-  async create(body: AdminMembershipPlanMutation): Promise<AdminMembershipPlanItem> {
-    return this.client.post<AdminMembershipPlanItem>(backendApiPath(`/memberships/plans`), body, undefined, undefined, 'application/json');
+  async create(body: AdminMembershipPlanMutation, requestOptions?: ApiRequestOptions): Promise<AdminMembershipPlanItem> {
+    return this.client.request<AdminMembershipPlanItem>(backendApiPath(`/memberships/plans`), { signal: requestOptions?.signal, timeout: requestOptions?.timeout, method: 'POST' as any, body, contentType: 'application/json' });
   }
 
 /** Membership plan update. */
-  async update(id: string, body: AdminMembershipPlanMutation): Promise<AdminMembershipPlanItem> {
-    return this.client.put<AdminMembershipPlanItem>(backendApiPath(`/memberships/plans/${serializePathParameter(id, { name: 'id', style: 'simple', explode: false })}`), body, undefined, undefined, 'application/json');
+  async update(id: string, body: AdminMembershipPlanMutation, requestOptions?: ApiRequestOptions): Promise<AdminMembershipPlanItem> {
+    return this.client.request<AdminMembershipPlanItem>(backendApiPath(`/memberships/plans/${serializePathParameter(id, { name: 'id', style: 'simple', explode: false })}`), { signal: requestOptions?.signal, timeout: requestOptions?.timeout, method: 'PUT' as any, body, contentType: 'application/json' });
   }
 
 /** Membership plan delete. */
-  async delete(id: string): Promise<void> {
-    return this.client.delete<void>(backendApiPath(`/memberships/plans/${serializePathParameter(id, { name: 'id', style: 'simple', explode: false })}`));
+  async delete(id: string, requestOptions?: ApiRequestOptions): Promise<void> {
+    return this.client.request<void>(backendApiPath(`/memberships/plans/${serializePathParameter(id, { name: 'id', style: 'simple', explode: false })}`), { signal: requestOptions?.signal, timeout: requestOptions?.timeout, method: 'DELETE' as any });
   }
 }
 

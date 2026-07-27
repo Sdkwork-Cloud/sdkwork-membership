@@ -16,6 +16,12 @@ pub type AppMembershipCommandFuture<'a> =
 pub type AppMembershipFulfillmentFuture<'a> = Pin<
     Box<dyn Future<Output = AppMembershipResult<FulfillMembershipPurchaseOutcome>> + Send + 'a>,
 >;
+pub type CouponSubscriptionFulfillmentFuture<'a> = Pin<
+    Box<dyn Future<Output = AppMembershipResult<CouponSubscriptionFulfillmentOutcome>> + Send + 'a>,
+>;
+pub type SubscriptionQuotaConsumptionFuture<'a> = Pin<
+    Box<dyn Future<Output = AppMembershipResult<SubscriptionQuotaConsumptionOutcome>> + Send + 'a>,
+>;
 pub type AdminMembershipFuture<'a, T> =
     Pin<Box<dyn Future<Output = AppMembershipResult<T>> + Send + 'a>>;
 
@@ -210,6 +216,19 @@ pub struct FulfillMembershipPurchaseCommand {
     pub idempotency_key: String,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct FulfillPaidMembershipPurchaseCommand {
+    pub subject: AppMembershipSubject,
+    pub package_id: i64,
+    pub order_id: String,
+    pub membership_id: String,
+    pub order_no: String,
+    pub request_no: String,
+    pub idempotency_key: String,
+    pub paid_at: String,
+    pub action: String,
+}
+
 #[derive(Debug, Clone, Default, Serialize, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
 pub struct FulfillMembershipPurchaseOutcome {
@@ -330,6 +349,58 @@ pub struct ListAdminMembershipMembersQuery {
     pub page: Option<i64>,
     pub page_size: Option<i64>,
     pub cursor: Option<String>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct GrantCouponSubscriptionCommand {
+    pub subject: AppMembershipSubject,
+    pub product_id: String,
+    pub sku_id: String,
+    pub package_id: i64,
+    pub order_id: String,
+    pub subscription_id: String,
+    pub request_no: String,
+    pub idempotency_key: String,
+    pub requested_at: String,
+    pub period: String,
+    pub duration_days: i64,
+    pub daily_quota: i64,
+    pub total_quota: i64,
+}
+
+#[derive(Debug, Clone, Default, Serialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct CouponSubscriptionFulfillmentOutcome {
+    pub accepted: bool,
+    pub replayed: bool,
+    pub subscription_id: String,
+    pub starts_at: String,
+    pub expires_at: String,
+    pub fulfillment_status: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ConsumeSubscriptionQuotaCommand {
+    pub subject: AppMembershipSubject,
+    pub amount: i64,
+    pub request_no: String,
+    pub idempotency_key: String,
+    pub requested_at: String,
+}
+
+#[derive(Debug, Clone, Serialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct SubscriptionQuotaConsumptionOutcome {
+    pub accepted: bool,
+    pub replayed: bool,
+    pub benefit_code: String,
+    pub subscription_id: String,
+    pub consumed_amount: i64,
+    pub daily_quota: i64,
+    pub used_daily_quota: i64,
+    pub remaining_daily_quota: i64,
+    pub total_quota: i64,
+    pub remaining_total_quota: i64,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -562,6 +633,21 @@ pub trait AppMembershipStore {
         &'a self,
         command: FulfillMembershipPurchaseCommand,
     ) -> AppMembershipFulfillmentFuture<'a>;
+
+    fn fulfill_paid_purchase<'a>(
+        &'a self,
+        command: FulfillPaidMembershipPurchaseCommand,
+    ) -> AppMembershipFulfillmentFuture<'a>;
+
+    fn grant_coupon_subscription<'a>(
+        &'a self,
+        command: GrantCouponSubscriptionCommand,
+    ) -> CouponSubscriptionFulfillmentFuture<'a>;
+
+    fn consume_subscription_quota<'a>(
+        &'a self,
+        command: ConsumeSubscriptionQuotaCommand,
+    ) -> SubscriptionQuotaConsumptionFuture<'a>;
 }
 
 pub trait AdminMembershipStore {

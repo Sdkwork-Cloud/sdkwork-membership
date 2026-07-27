@@ -2,12 +2,12 @@
 
 Status: active
 Owner: SDKWork maintainers
-Updated: 2026-07-08
+Updated: 2026-07-26
 Specs: ARCHITECTURE_DECISION_SPEC.md, RUST_CODE_SPEC.md, API_SPEC.md, SDK_SPEC.md, WEB_FRAMEWORK_SPEC.md, WEB_BACKEND_SPEC.md, DATABASE_FRAMEWORK_SPEC.md, APP_SDK_INTEGRATION_SPEC.md, DOCUMENTATION_SPEC.md
 
 ## 1. Architecture Overview
 
-`sdkwork-membership` is a commerce-domain T1 capability repository. It owns membership catalog, subscription reservation, entitlement fulfillment, membership points projection, daily rewards, privilege usage, HTTP API routes, SQLx persistence, database lifecycle assets, generated SDK surfaces, and an embeddable PC application.
+`sdkwork-membership` is a commerce-domain T1 capability repository. It owns membership catalog, subscription lifecycle, paid-order fulfillment, entitlement fulfillment, membership points projection, daily rewards, privilege usage, HTTP API routes, SQLx persistence, database lifecycle assets, generated SDK surfaces, and an embeddable PC application.
 
 It does not own unified order creation or payment settlement. Token plan purchase orders and membership package purchase orders are created by `sdkwork-order`. Payment intents, attempts, cashier parameters, PSP webhooks, refunds, and settlement execution are owned by `sdkwork-order` and `sdkwork-payment`. Membership fulfills only after order settlement calls the membership fulfillment port.
 
@@ -78,9 +78,9 @@ Membership app-api owns membership resources only:
 - points
 - daily rewards
 - privilege usage
-- purchase/renew/upgrade reservation
+- direct subscription reservation commands for non-checkout domain orchestration
 
-Purchase/renew/upgrade request bodies accept membership reservation inputs such as `packageId`, `orderId`, `requestNo`, and optional `couponId`. They do not accept `paymentMethod`.
+The direct reservation commands accept `packageId`, `orderId`, `requestNo`, and optional `couponId`. They do not accept `paymentMethod`, are not used by the production paid checkout, and must not be inserted between Order creation and payment.
 
 Purchase/renew/upgrade responses return membership reservation data only:
 
@@ -94,7 +94,7 @@ Purchase/renew/upgrade responses return membership reservation data only:
 - `targetPlanName`
 - `status`
 
-They do not return payment provider, payment method, payment id, next action, cashier URL, QR payload, QR image, or request-payment payload.
+They do not return payment provider, payment method, payment id, next action, cashier URL, QR payload, QR image, or request-payment payload. The canonical paid flow uses the host-injected checkout port and Order APIs, then calls Membership fulfillment only after settlement.
 
 ### 5.2 SDK Family
 
@@ -120,12 +120,11 @@ The PC UI keeps its existing visual design. The service layer composes the check
 membership UI
   -> membership service class
   -> orderAppService.memberships.orders.create({ packageId, paymentMethod })
-  -> membershipAppService.memberships.purchases.create|renew|upgrade({ packageId, orderId, requestNo, couponId? })
   -> orderAppService.orders.payments.create(orderId, { paymentMethod })
   -> order paymentParams supply cashierUrl/qrCode to the UI state
 ```
 
-The membership service may pass `paymentMethod` to order SDK methods. It must not pass `paymentMethod` to membership reservation SDK methods.
+The membership service may pass `paymentMethod` to order SDK methods. The canonical paid-order flow does not create a Membership reservation before payment; settlement invokes the backend fulfillment port with the immutable paid-order snapshot.
 
 `@sdkwork/membership-pc-subscription` does not import `@sdkwork/payment-pc-payment` or `@sdkwork/payment-service`; payment-method UI choices are local order checkout inputs and payment execution remains behind `sdkwork-order` / `sdkwork-payment` ports.
 
@@ -140,6 +139,10 @@ The membership database lifecycle initializes 18 membership capability tables:
 | Entitlements | `entitlement_account`, `entitlement_grant`, `entitlement_ledger_entry` |
 | Points projection | `commerce_account`, `commerce_account_ledger` |
 | Membership extensions | `commerce_membership_daily_reward`, `commerce_membership_privilege_usage`, `commerce_membership_change_log` |
+
+The module-owned `database/database.manifest.json` enables the standard catalog seed profile. A standalone host bootstraps it through `sdkwork-membership-database-host`; a composed host registers the same module in `DatabaseModuleRegistry` and runs `RegistryLifecycleOrchestrator` on its shared pool before serving Membership routes. The seeded package external IDs are API data, not application constants. Product hosts must not copy the package catalog into local migrations, fallback arrays, or frontend mocks.
+
+The built-in in-memory catalog is limited to catalog-level unit tests. It has no entitlement persistence authority and must reject paid-purchase fulfillment; production and commerce-composition hosts fulfill paid Orders only through the SQLite or PostgreSQL `AppMembershipStore` implementations.
 
 The baseline and seeds must not initialize:
 
@@ -159,23 +162,24 @@ The production checkout model is order-first:
 sequenceDiagram
     participant Client as PC service
     participant Order as sdkwork-order app-api
-    participant Membership as membership app-api
+    participant Membership as membership fulfillment
     participant Payment as sdkwork-payment port
     participant Cashier as Cashier UI
 
     Client->>Order: memberships.orders.create(packageId, paymentMethod)
     Order-->>Client: orderId, requestNo
-    Client->>Membership: purchases.create|renew|upgrade(packageId, orderId, requestNo)
-    Membership-->>Client: pending membership reservation
     Client->>Order: orders.payments.create(orderId, paymentMethod)
     Order->>Payment: execute payment
     Payment-->>Order: paymentParams
     Order-->>Client: cashierUrl / qrCode
     Client->>Cashier: open cashier
     Order->>Order: settle payment success
-    Order->>Membership: fulfillment port(orderId, requestNo)
-    Membership->>Membership: activate subscription and entitlements
+    Order->>Membership: fulfillment port(action, orderNo, packageId, subject, paidAt)
+    Membership->>Membership: atomic reserve + activate + entitlement grant
+    Membership-->>Order: active or idempotent replay
 ```
+
+The fulfillment transaction serializes by Membership subject, resolves tenant catalog entries with platform fallback, creates the subscription/period only when absent, activates period-scoped grants and ledger entries, and extends benefit-scoped entitlement accounts. Historical replay is resolved through `membership_period.source_order_id`, so renew and upgrade never erase prior Order fulfillment identity. SQLite uses `BEGIN IMMEDIATE`; PostgreSQL uses a transaction-scoped advisory lock.
 
 Dependency rules:
 

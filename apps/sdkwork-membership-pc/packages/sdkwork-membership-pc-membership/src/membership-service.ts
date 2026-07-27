@@ -90,6 +90,7 @@ export interface SdkworkMembershipPurchaseResult {
   amountCny: number | null;
   cashierUrl?: string;
   durationDays: number | null;
+  expiresAt?: string;
   orderId?: string;
   packageId: number | null;
   packageName?: string;

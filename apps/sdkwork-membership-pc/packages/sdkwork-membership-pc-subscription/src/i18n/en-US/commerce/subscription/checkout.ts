@@ -9,6 +9,11 @@ export const sdkworkSubscriptionCheckoutEnUsResource = {
         close: "Close",
         completed: "Payment completed",
         creatingPayment: "Creating payment QR code...",
+        expired: {
+          description: "This order has expired. Create a new order to continue.",
+          title: "Order expired",
+        },
+        expiresIn: "Order expires in",
         payByQr: "Scan to pay",
         paymentUnavailable: {
           description: "The payment QR code is unavailable. Please try again.",
@@ -22,6 +27,7 @@ export const sdkworkSubscriptionCheckoutEnUsResource = {
           title: "Secure checkout",
         },
         selectedPlan: "Selected plan",
+        title: "Purchase plan",
       },
       dialogs: {
         close: "Close",

@@ -3,7 +3,7 @@
 Status: active
 Owner: SDKWork maintainers
 Capability: `commerce.membership`
-Updated: 2026-07-17
+Updated: 2026-07-26
 Machine contract: `specs/commerce-order-membership-boundary.spec.json`
 
 ## 1. Purpose
@@ -53,8 +53,11 @@ The standalone membership application intentionally has no default ordering capa
 2. The order-owned checkout service calls `memberships.orders.create` and returns normalized payment data.
 3. The order-owned checkout UI renders payment state and polls `orders.paymentSuccess.retrieve` through the same order-owned service.
 4. Order settles payment through payment ports.
-5. Order calls the membership fulfillment port after successful settlement.
-6. Membership activates the subscription and grants entitlements idempotently.
+5. Order calls the membership fulfillment port after successful settlement with the immutable paid-order snapshot: action, order id/number, package id, subject, and provider-paid timestamp.
+6. Membership validates the snapshot and atomically reserves and activates the subscription, period, grants, ledger entries, and entitlement accounts in one Membership transaction.
+7. Replay resolves by the Membership period's source order id and returns the existing active result without duplicate periods, grants, ledger entries, or account credit.
+
+No pending Membership subscription is required before payment. Order does not query Membership state during settlement, and Membership does not query Order tables during fulfillment.
 
 ## 6. Verification
 

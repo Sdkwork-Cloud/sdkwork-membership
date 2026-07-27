@@ -20,5 +20,6 @@ sdkwork-utils-rust.workspace = true
 
 [dev-dependencies]
 http-body-util = "0.1"
+sdkwork-database-history.workspace = true
 tokio = { workspace = true }
 tower = { workspace = true, features = ["util"] }

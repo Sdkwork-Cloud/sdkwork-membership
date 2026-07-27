@@ -42,6 +42,30 @@
     "application composition root -> membership and order public packages",
     "application composition root -> inject order-owned checkout port and checkout UI into membership"
   ],
+  "paidOrderFulfillment": {
+    "requestSnapshot": [
+      "action",
+      "tenantId",
+      "organizationId",
+      "ownerUserId",
+      "packageId",
+      "orderId",
+      "membershipId",
+      "orderNo",
+      "paidAt",
+      "requestNo",
+      "idempotencyKey"
+    ],
+    "transactionOwner": "sdkwork-membership",
+    "atomicEffects": [
+      "reserve membership subscription and period when absent",
+      "activate subscription and period",
+      "create period-scoped entitlement grants and ledger entries",
+      "create or extend benefit-scoped entitlement accounts"
+    ],
+    "replayKey": "membership_period.source_order_id within tenant and subject",
+    "prePaymentMembershipReservationRequired": false
+  },
   "forbiddenDependencies": [
     {
       "from": "sdkwork-membership",
@@ -78,8 +102,9 @@
     "order-owned service creates membership-subject order",
     "order-owned checkout UI renders and polls payment status",
     "order settles payment through payment ports",
-    "order calls membership fulfillment port",
-    "membership activates subscription and grants entitlements idempotently"
+    "order calls membership fulfillment port with the immutable paid-order snapshot",
+    "membership atomically reserves and activates the subscription period and entitlements",
+    "replay by source order returns the active result without duplicate effects"
   ],
   "crossReferences": [
     "../sdkwork-order/specs/commerce-checkout-topology.spec.json",

@@ -2852,34 +2852,81 @@
         "type": "object",
         "additionalProperties": false,
         "required": [
+          "action",
           "tenantId",
-          "organizationId",
           "ownerUserId",
+          "packageId",
           "orderId",
+          "membershipId",
+          "orderNo",
+          "paidAt",
           "requestNo",
           "idempotencyKey"
         ],
         "properties": {
+          "action": {
+            "type": "string",
+            "enum": [
+              "purchase",
+              "renew",
+              "upgrade"
+            ]
+          },
           "tenantId": {
-            "type": "integer",
-            "format": "int64"
+            "type": "string",
+            "format": "int64",
+            "pattern": "^[1-9][0-9]*$",
+            "x-sdkwork-int64-string": true,
+            "x-sdkwork-rust-type": "i64"
           },
           "organizationId": {
-            "type": "integer",
-            "format": "int64"
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "int64",
+            "pattern": "^(0|[1-9][0-9]*)$",
+            "x-sdkwork-int64-string": true,
+            "x-sdkwork-rust-type": "i64"
           },
           "ownerUserId": {
-            "type": "integer",
-            "format": "int64"
+            "type": "string",
+            "format": "int64",
+            "pattern": "^[1-9][0-9]*$",
+            "x-sdkwork-int64-string": true,
+            "x-sdkwork-rust-type": "i64"
+          },
+          "packageId": {
+            "type": "string",
+            "format": "int64",
+            "pattern": "^[1-9][0-9]*$",
+            "x-sdkwork-int64-string": true,
+            "x-sdkwork-rust-type": "i64"
           },
           "orderId": {
-            "type": "string"
+            "type": "string",
+            "minLength": 1
+          },
+          "membershipId": {
+            "type": "string",
+            "minLength": 1
+          },
+          "orderNo": {
+            "type": "string",
+            "minLength": 1
+          },
+          "paidAt": {
+            "type": "string",
+            "format": "date-time"
           },
           "requestNo": {
-            "type": "string"
+            "type": "string",
+            "minLength": 1
           },
           "idempotencyKey": {
-            "type": "string"
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 160
           }
         }
       },

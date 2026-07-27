@@ -22,6 +22,7 @@ export interface SdkworkSubscriptionCatalogCheckoutPlan {
 
 export interface SdkworkSubscriptionCatalogCheckoutPayment {
   amountCny?: number | null;
+  expiresAt?: string;
   orderId?: string;
   qrCode?: string;
   status: "completed" | "failed" | "pending";
