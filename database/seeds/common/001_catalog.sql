@@ -12,7 +12,7 @@
 -- after seed file corrections will overwrite existing rows, including
 -- previously garbled data from older seed versions.
 
-INSERT INTO commerce_product_spu (
+INSERT INTO membership_product_spu (
   id, tenant_id, organization_id, spu_no, name, title, status, created_at, updated_at
 ) VALUES (
   'seed-product-membership', '100001', '0', 'membership-catalog', 'Membership Catalog', 'Membership Catalog', 'active', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
@@ -55,7 +55,7 @@ INSERT INTO membership_plan_version (
 -- for numeric/boolean cells (usage_limit).
 -- Benefit names/descriptions are English here; locale files override display text.
 -- =============================================================================
-INSERT INTO benefit_definition (
+INSERT INTO membership_benefit_definition (
   id, tenant_id, organization_id, benefit_code, name, benefit_type, value_unit, measurement_type, description, status, created_at, updated_at
 ) VALUES
   ('benefit-platform-free-points', '100001', '0', 'platform_free_points', 'Platform free compute credits', 'points', 'text', 'text', 'Daily login free compute credits.', 'active', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
@@ -83,7 +83,7 @@ INSERT INTO benefit_definition (
   updated_at = EXCLUDED.updated_at;
 
 -- Benefit definitions: privilege benefits (runtime quota, not shown in comparison table)
-INSERT INTO benefit_definition (
+INSERT INTO membership_benefit_definition (
   id, tenant_id, organization_id, benefit_code, name, benefit_type, value_unit, measurement_type, description, status, created_at, updated_at
 ) VALUES
   ('seed-benefit-priority-speed-up', '100001', '0', 'priority_speed_up', 'Priority speed-up', 'quota', 'count', 'counter', 'Manual acceleration quota for generation jobs.', 'active', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
@@ -202,7 +202,7 @@ INSERT INTO membership_package_group (
   updated_at = EXCLUDED.updated_at;
 
 -- SKUs with spec_json tags (English defaults, locale files override tags)
-INSERT INTO commerce_product_sku (
+INSERT INTO membership_product_sku (
   id, tenant_id, organization_id, spu_id, sku_no, name, title, price_amount, original_price_amount, currency_code, fulfillment_type, inventory_tracking, status, spec_json, created_at, updated_at
 ) VALUES
   ('sku-basic-annual', '100001', '0', 'seed-product-membership', 'basic-annual', 'Basic Annual', 'Basic Annual', '640', '660', 'CNY', 'membership_activation', 'untracked', 'active', '{"tags":["3% off","18 credits/day"]}', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),

@@ -1,4 +1,4 @@
-﻿{
+{
   "license": "AGPL-3.0-or-later",
   "name": "sdkwork-membership-workspace",
   "private": true,
@@ -15,16 +15,17 @@
     "test:vitest": "vitest run --config vitest.config.ts --configLoader native --pool vmThreads --maxWorkers=1",
     "typecheck": "tsc --noEmit",
     "verify": "pnpm typecheck && pnpm test:vitest && cargo test --workspace && pnpm run check:app-composition",
-    "format": "cargo fmt --all",
-    "format:rust:check": "cargo fmt --all -- --check",
+    "format": "cargo fmt",
+    "format:rust:check": "cargo fmt -- --check",
     "clean": "node -e \"require('fs').rmSync('apps/sdkwork-membership-pc/dist',{recursive:true,force:true}); require('fs').rmSync('.runtime/dev-sites',{recursive:true,force:true})\"",
     "api:assembly:materialize": "node ../sdkwork-specs/tools/materialize-api-assembly.mjs --root .",
     "api:assembly:validate": "node ../sdkwork-specs/tools/validate-api-assembly.mjs --root .",
+    "sdk:openapi:materialize": "node scripts/materialize-membership-sdk-openapi.mjs",
     "sdk:generate": "node sdks/sdkwork-membership-app-sdk/bin/generate-sdk.mjs",
     "sdk:generate:backend": "node sdks/sdkwork-membership-backend-sdk/bin/generate-sdk.mjs",
     "check": "pnpm run check:app-composition && pnpm db:validate && pnpm api:assembly:validate && pnpm typecheck",
     "db:validate": "node ../sdkwork-specs/tools/check-database-framework-standard.mjs --root .",
-    "db:materialize:contract": "node ../sdkwork-specs/tools/materialize-database-contract-from-baseline.mjs --root . --baseline database/ddl/baseline/postgres/0001_membership_baseline.sql --module-id membership --owner sdkwork-membership --prefixes commerce_ --engines postgres,sqlite",
+    "db:materialize:contract": "node ../sdkwork-specs/tools/materialize-database-contract-from-baseline.mjs --root . --baseline database/ddl/baseline/postgres/0001_membership_baseline.sql --module-id membership --owner sdkwork-membership --prefixes membership_ --engines postgres",
     "db:plan": "cargo run --manifest-path ../sdkwork-database/Cargo.toml -p sdkwork-database-cli -- --app-root . plan",
     "db:init": "cargo run --manifest-path ../sdkwork-database/Cargo.toml -p sdkwork-database-cli -- --app-root . init",
     "db:migrate": "cargo run --manifest-path ../sdkwork-database/Cargo.toml -p sdkwork-database-cli -- --app-root . migrate",
@@ -33,6 +34,9 @@
     "db:drift": "cargo run --manifest-path ../sdkwork-database/Cargo.toml -p sdkwork-database-cli -- --app-root . drift",
     "db:drift:check": "cargo run --manifest-path ../sdkwork-database/Cargo.toml -p sdkwork-database-cli -- --app-root . drift-check",
     "db:bootstrap": "cargo run --manifest-path ../sdkwork-database/Cargo.toml -p sdkwork-database-cli -- --app-root . bootstrap",
+    "db:postgres:plan": "pnpm db:plan",
+    "db:postgres:init": "pnpm db:init",
+    "db:postgres:migrate": "pnpm db:migrate",
     "check:app-composition": "node ../sdkwork-specs/tools/verify-repo.mjs --root ."
   },
   "devDependencies": {

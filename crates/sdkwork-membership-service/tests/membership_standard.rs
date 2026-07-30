@@ -138,7 +138,7 @@ fn membership_activation_requires_paid_order_and_idempotency() {
 }
 
 #[test]
-fn entitlement_grants_are_bound_to_membership_and_quota() {
+fn membership_entitlement_grants_are_bound_to_membership_and_quota() {
     let grant = EntitlementGrantDraft::new("100001", "membership-1", "model-quota", 1000).unwrap();
 
     assert_eq!(grant.entitlement_code, "model-quota");

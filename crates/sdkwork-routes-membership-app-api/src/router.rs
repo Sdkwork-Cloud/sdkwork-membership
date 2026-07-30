@@ -14,7 +14,7 @@ use axum::routing::{get, post};
 use axum::{Json, Router};
 use sdkwork_contract_service::CommerceServiceError;
 use serde::Deserialize;
-use sqlx::{PgPool, SqlitePool};
+use sqlx::PgPool;
 
 use crate::response::{
     command_accepted, finish_api_created, finish_api_json, item_envelope, ApiProblem, ApiResult,
@@ -42,8 +42,8 @@ use sdkwork_membership_repository_sqlx::{
     ConsumeSubscriptionQuotaCommand, CouponSubscriptionFulfillmentFuture,
     FulfillMembershipPurchaseCommand, FulfillMembershipPurchaseOutcome,
     FulfillPaidMembershipPurchaseCommand, GrantCouponSubscriptionCommand,
-    PostgresCommerceMembershipStore, SqliteCommerceMembershipStore,
-    SubmitMembershipPurchaseCommand, SubscriptionQuotaConsumptionFuture,
+    PostgresCommerceMembershipStore, SubmitMembershipPurchaseCommand,
+    SubscriptionQuotaConsumptionFuture,
 };
 use sdkwork_utils_rust::SdkWorkPageData;
 use sdkwork_web_core::WebRequestContext;
@@ -565,13 +565,6 @@ pub fn app_membership_router_with_builtin_catalog() -> Router {
         Arc::new(CatalogAppMembershipStore),
         Arc::new(TimestampMembershipEntityIdGenerator::default()),
         false,
-    )
-}
-
-pub fn app_membership_router_with_sqlite_pool(pool: SqlitePool) -> Router {
-    app_membership_router_with_store(
-        Arc::new(SqliteCommerceMembershipStore::new(pool)),
-        Arc::new(TimestampMembershipEntityIdGenerator::default()),
     )
 }
 

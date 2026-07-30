@@ -3,13 +3,13 @@
   "kind": "sdkwork.database.table-registry",
   "tables": [
     {
-      "table_name": "commerce_product_spu",
+      "table_name": "membership_product_spu",
       "owner": "sdkwork-membership",
       "compliance_level": "L2",
       "lifecycle_status": "active"
     },
     {
-      "table_name": "commerce_product_sku",
+      "table_name": "membership_product_sku",
       "owner": "sdkwork-membership",
       "compliance_level": "L2",
       "lifecycle_status": "active"
@@ -27,7 +27,7 @@
       "lifecycle_status": "active"
     },
     {
-      "table_name": "benefit_definition",
+      "table_name": "membership_benefit_definition",
       "owner": "sdkwork-membership",
       "compliance_level": "L2",
       "lifecycle_status": "active"
@@ -63,49 +63,49 @@
       "lifecycle_status": "active"
     },
     {
-      "table_name": "entitlement_account",
+      "table_name": "membership_entitlement_account",
       "owner": "sdkwork-membership",
       "compliance_level": "L2",
       "lifecycle_status": "active"
     },
     {
-      "table_name": "entitlement_grant",
+      "table_name": "membership_entitlement_grant",
       "owner": "sdkwork-membership",
       "compliance_level": "L2",
       "lifecycle_status": "active"
     },
     {
-      "table_name": "entitlement_ledger_entry",
+      "table_name": "membership_entitlement_ledger_entry",
       "owner": "sdkwork-membership",
       "compliance_level": "L2",
       "lifecycle_status": "active"
     },
     {
-      "table_name": "commerce_account",
+      "table_name": "membership_points_account",
       "owner": "sdkwork-membership",
       "compliance_level": "L2",
       "lifecycle_status": "active"
     },
     {
-      "table_name": "commerce_account_ledger",
+      "table_name": "membership_points_ledger",
       "owner": "sdkwork-membership",
       "compliance_level": "L2",
       "lifecycle_status": "active"
     },
     {
-      "table_name": "commerce_membership_daily_reward",
+      "table_name": "membership_daily_reward",
       "owner": "sdkwork-membership",
       "compliance_level": "L2",
       "lifecycle_status": "active"
     },
     {
-      "table_name": "commerce_membership_privilege_usage",
+      "table_name": "membership_privilege_usage",
       "owner": "sdkwork-membership",
       "compliance_level": "L2",
       "lifecycle_status": "active"
     },
     {
-      "table_name": "commerce_membership_change_log",
+      "table_name": "membership_change_log",
       "owner": "sdkwork-membership",
       "compliance_level": "L2",
       "lifecycle_status": "active"

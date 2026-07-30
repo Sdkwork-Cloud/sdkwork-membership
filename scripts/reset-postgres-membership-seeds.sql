@@ -52,24 +52,24 @@ WHERE module_id = 'membership';
 -- The DDL baseline will NOT be re-applied (tables remain), but all rows
 -- will be deleted. Seeds will re-insert the catalog and dev demo data.
 -- ---------------------------------------------------------------------------
--- TRUNCATE TABLE commerce_membership_change_log CASCADE;
--- TRUNCATE TABLE commerce_membership_daily_reward CASCADE;
--- TRUNCATE TABLE commerce_membership_privilege_usage CASCADE;
--- TRUNCATE TABLE entitlement_ledger_entry CASCADE;
--- TRUNCATE TABLE entitlement_grant CASCADE;
--- TRUNCATE TABLE entitlement_account CASCADE;
--- TRUNCATE TABLE commerce_account_ledger CASCADE;
--- TRUNCATE TABLE commerce_account CASCADE;
+-- TRUNCATE TABLE membership_change_log CASCADE;
+-- TRUNCATE TABLE membership_daily_reward CASCADE;
+-- TRUNCATE TABLE membership_privilege_usage CASCADE;
+-- TRUNCATE TABLE membership_entitlement_ledger_entry CASCADE;
+-- TRUNCATE TABLE membership_entitlement_grant CASCADE;
+-- TRUNCATE TABLE membership_entitlement_account CASCADE;
+-- TRUNCATE TABLE membership_points_ledger CASCADE;
+-- TRUNCATE TABLE membership_points_account CASCADE;
 -- TRUNCATE TABLE membership_period CASCADE;
 -- TRUNCATE TABLE membership_subscription CASCADE;
 -- TRUNCATE TABLE membership_package CASCADE;
 -- TRUNCATE TABLE membership_package_group CASCADE;
 -- TRUNCATE TABLE membership_plan_benefit CASCADE;
--- TRUNCATE TABLE benefit_definition CASCADE;
+-- TRUNCATE TABLE membership_benefit_definition CASCADE;
 -- TRUNCATE TABLE membership_plan_version CASCADE;
 -- TRUNCATE TABLE membership_plan CASCADE;
--- TRUNCATE TABLE commerce_product_sku CASCADE;
--- TRUNCATE TABLE commerce_product_spu CASCADE;
+-- TRUNCATE TABLE membership_product_sku CASCADE;
+-- TRUNCATE TABLE membership_product_spu CASCADE;
 
 -- ---------------------------------------------------------------------------
 -- Verification: Check remaining seed history for membership.

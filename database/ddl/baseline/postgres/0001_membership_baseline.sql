@@ -10,7 +10,7 @@
 
 -- 0. Local support tables required by membership catalog, entitlement, and
 -- authenticated frontend flows.
-CREATE TABLE IF NOT EXISTS commerce_product_spu (
+CREATE TABLE IF NOT EXISTS membership_product_spu (
     id              TEXT NOT NULL,
     tenant_id       TEXT NOT NULL,
     organization_id TEXT NOT NULL DEFAULT '0',
@@ -21,11 +21,11 @@ CREATE TABLE IF NOT EXISTS commerce_product_spu (
     status          TEXT NOT NULL DEFAULT 'active',
     created_at      TIMESTAMPTZ NOT NULL,
     updated_at      TIMESTAMPTZ NOT NULL,
-    CONSTRAINT pk_commerce_product_spu PRIMARY KEY (id),
-    CONSTRAINT uk_commerce_product_spu_tenant_no UNIQUE (tenant_id, organization_id, spu_no)
+    CONSTRAINT pk_membership_product_spu PRIMARY KEY (id),
+    CONSTRAINT uk_membership_product_spu_tenant_no UNIQUE (tenant_id, organization_id, spu_no)
 );
 
-CREATE TABLE IF NOT EXISTS commerce_product_sku (
+CREATE TABLE IF NOT EXISTS membership_product_sku (
     id                    TEXT NOT NULL,
     tenant_id             TEXT NOT NULL,
     organization_id       TEXT NOT NULL DEFAULT '0',
@@ -43,12 +43,12 @@ CREATE TABLE IF NOT EXISTS commerce_product_sku (
     spec_json             TEXT NOT NULL DEFAULT '{}',
     created_at            TIMESTAMPTZ NOT NULL,
     updated_at            TIMESTAMPTZ NOT NULL,
-    CONSTRAINT pk_commerce_product_sku PRIMARY KEY (id),
-    CONSTRAINT uk_commerce_product_sku_tenant_no UNIQUE (tenant_id, organization_id, sku_no)
+    CONSTRAINT pk_membership_product_sku PRIMARY KEY (id),
+    CONSTRAINT uk_membership_product_sku_tenant_no UNIQUE (tenant_id, organization_id, sku_no)
 );
 
-CREATE INDEX IF NOT EXISTS idx_commerce_product_sku_spu
-    ON commerce_product_sku (tenant_id, spu_id, status);
+CREATE INDEX IF NOT EXISTS idx_membership_product_sku_spu
+    ON membership_product_sku (tenant_id, spu_id, status);
 
 CREATE TABLE IF NOT EXISTS membership_plan (
     id              TEXT NOT NULL,
@@ -97,7 +97,7 @@ CREATE UNIQUE INDEX IF NOT EXISTS uk_membership_plan_version_uuid
 CREATE INDEX IF NOT EXISTS idx_membership_plan_version_published
     ON membership_plan_version (tenant_id, plan_id, lifecycle_status, version_no);
 
-CREATE TABLE IF NOT EXISTS benefit_definition (
+CREATE TABLE IF NOT EXISTS membership_benefit_definition (
     id               TEXT NOT NULL,
     uuid             VARCHAR(64),
     tenant_id        TEXT NOT NULL,
@@ -112,12 +112,12 @@ CREATE TABLE IF NOT EXISTS benefit_definition (
     version          BIGINT NOT NULL DEFAULT 0,
     created_at       TIMESTAMPTZ NOT NULL,
     updated_at       TIMESTAMPTZ NOT NULL,
-    CONSTRAINT pk_benefit_definition PRIMARY KEY (id),
-    CONSTRAINT uk_benefit_definition_tenant_code UNIQUE (tenant_id, organization_id, benefit_code)
+    CONSTRAINT pk_membership_benefit_definition PRIMARY KEY (id),
+    CONSTRAINT uk_membership_benefit_definition_tenant_code UNIQUE (tenant_id, organization_id, benefit_code)
 );
 
-CREATE UNIQUE INDEX IF NOT EXISTS uk_benefit_definition_uuid
-    ON benefit_definition (uuid);
+CREATE UNIQUE INDEX IF NOT EXISTS uk_membership_benefit_definition_uuid
+    ON membership_benefit_definition (uuid);
 
 CREATE TABLE IF NOT EXISTS membership_plan_benefit (
     id              TEXT NOT NULL,
@@ -267,7 +267,7 @@ CREATE UNIQUE INDEX IF NOT EXISTS uk_membership_period_uuid
 CREATE INDEX IF NOT EXISTS idx_membership_period_subscription
     ON membership_period (tenant_id, subscription_id, starts_at);
 
-CREATE TABLE IF NOT EXISTS entitlement_account (
+CREATE TABLE IF NOT EXISTS membership_entitlement_account (
     id              TEXT NOT NULL,
     uuid            VARCHAR(64),
     tenant_id       TEXT NOT NULL,
@@ -284,14 +284,14 @@ CREATE TABLE IF NOT EXISTS entitlement_account (
     version         BIGINT NOT NULL DEFAULT 0,
     created_at      TIMESTAMPTZ NOT NULL,
     updated_at      TIMESTAMPTZ NOT NULL,
-    CONSTRAINT pk_entitlement_account PRIMARY KEY (id),
-    CONSTRAINT uk_entitlement_account_subject_benefit UNIQUE (tenant_id, subject_type, subject_id, benefit_id)
+    CONSTRAINT pk_membership_entitlement_account PRIMARY KEY (id),
+    CONSTRAINT uk_membership_entitlement_account_subject_benefit UNIQUE (tenant_id, subject_type, subject_id, benefit_id)
 );
 
-CREATE UNIQUE INDEX IF NOT EXISTS uk_entitlement_account_uuid
-    ON entitlement_account (uuid);
+CREATE UNIQUE INDEX IF NOT EXISTS uk_membership_entitlement_account_uuid
+    ON membership_entitlement_account (uuid);
 
-CREATE TABLE IF NOT EXISTS entitlement_grant (
+CREATE TABLE IF NOT EXISTS membership_entitlement_grant (
     id               TEXT NOT NULL,
     uuid             VARCHAR(64),
     tenant_id        TEXT NOT NULL,
@@ -311,13 +311,13 @@ CREATE TABLE IF NOT EXISTS entitlement_grant (
     idempotency_key  TEXT,
     created_at       TIMESTAMPTZ NOT NULL,
     updated_at       TIMESTAMPTZ NOT NULL,
-    CONSTRAINT pk_entitlement_grant PRIMARY KEY (id)
+    CONSTRAINT pk_membership_entitlement_grant PRIMARY KEY (id)
 );
 
-CREATE UNIQUE INDEX IF NOT EXISTS uk_entitlement_grant_uuid
-    ON entitlement_grant (uuid);
+CREATE UNIQUE INDEX IF NOT EXISTS uk_membership_entitlement_grant_uuid
+    ON membership_entitlement_grant (uuid);
 
-CREATE TABLE IF NOT EXISTS entitlement_ledger_entry (
+CREATE TABLE IF NOT EXISTS membership_entitlement_ledger_entry (
     id              TEXT NOT NULL,
     uuid            VARCHAR(64),
     tenant_id       TEXT NOT NULL,
@@ -338,13 +338,13 @@ CREATE TABLE IF NOT EXISTS entitlement_ledger_entry (
     idempotency_key TEXT,
     occurred_at     TIMESTAMPTZ NOT NULL,
     created_at      TIMESTAMPTZ NOT NULL,
-    CONSTRAINT pk_entitlement_ledger_entry PRIMARY KEY (id)
+    CONSTRAINT pk_membership_entitlement_ledger_entry PRIMARY KEY (id)
 );
 
 CREATE UNIQUE INDEX IF NOT EXISTS uk_entitlement_ledger_uuid
-    ON entitlement_ledger_entry (uuid);
+    ON membership_entitlement_ledger_entry (uuid);
 
-CREATE TABLE IF NOT EXISTS commerce_account (
+CREATE TABLE IF NOT EXISTS membership_points_account (
     id               BIGINT NOT NULL,
     uuid             VARCHAR(64) NOT NULL,
     tenant_id        BIGINT NOT NULL,
@@ -362,25 +362,25 @@ CREATE TABLE IF NOT EXISTS commerce_account (
     closed_at        TIMESTAMPTZ,
     created_at       TIMESTAMPTZ NOT NULL,
     updated_at       TIMESTAMPTZ NOT NULL,
-    CONSTRAINT pk_commerce_account PRIMARY KEY (id),
-    CONSTRAINT uk_commerce_account_uuid UNIQUE (uuid),
-    CONSTRAINT uk_commerce_account_owner_asset UNIQUE (
+    CONSTRAINT pk_membership_points_account PRIMARY KEY (id),
+    CONSTRAINT uk_membership_points_account_uuid UNIQUE (uuid),
+    CONSTRAINT uk_membership_points_account_owner_asset UNIQUE (
         tenant_id, organization_id, owner_type, owner_id,
         asset_code, currency_code, account_purpose
     )
 );
 
-CREATE INDEX IF NOT EXISTS idx_commerce_account_tenant_owner
-    ON commerce_account (tenant_id, organization_id, owner_type, owner_id, asset_code);
+CREATE INDEX IF NOT EXISTS idx_membership_points_account_tenant_owner
+    ON membership_points_account (tenant_id, organization_id, owner_type, owner_id, asset_code);
 
--- Ensure all commerce_account columns exist on tables created by older baseline revisions.
-ALTER TABLE commerce_account ADD COLUMN IF NOT EXISTS uuid VARCHAR(64);
-ALTER TABLE commerce_account ADD COLUMN IF NOT EXISTS owner_type VARCHAR(32) NOT NULL DEFAULT 'USER';
-ALTER TABLE commerce_account ADD COLUMN IF NOT EXISTS account_purpose VARCHAR(32) NOT NULL DEFAULT 'GENERAL';
-ALTER TABLE commerce_account ADD COLUMN IF NOT EXISTS pending_amount BIGINT NOT NULL DEFAULT 0;
-ALTER TABLE commerce_account ADD COLUMN IF NOT EXISTS closed_at TIMESTAMPTZ;
+-- Ensure all membership_points_account columns exist on tables created by older baseline revisions.
+ALTER TABLE membership_points_account ADD COLUMN IF NOT EXISTS uuid VARCHAR(64);
+ALTER TABLE membership_points_account ADD COLUMN IF NOT EXISTS owner_type VARCHAR(32) NOT NULL DEFAULT 'USER';
+ALTER TABLE membership_points_account ADD COLUMN IF NOT EXISTS account_purpose VARCHAR(32) NOT NULL DEFAULT 'GENERAL';
+ALTER TABLE membership_points_account ADD COLUMN IF NOT EXISTS pending_amount BIGINT NOT NULL DEFAULT 0;
+ALTER TABLE membership_points_account ADD COLUMN IF NOT EXISTS closed_at TIMESTAMPTZ;
 
-CREATE TABLE IF NOT EXISTS commerce_account_ledger (
+CREATE TABLE IF NOT EXISTS membership_points_ledger (
     id                     BIGINT NOT NULL,
     uuid                   VARCHAR(64) NOT NULL,
     tenant_id              BIGINT NOT NULL,
@@ -413,33 +413,33 @@ CREATE TABLE IF NOT EXISTS commerce_account_ledger (
     metadata_json          JSONB NOT NULL DEFAULT '{}'::jsonb,
     trace_id               VARCHAR(128) NOT NULL,
     created_at             TIMESTAMPTZ NOT NULL,
-    CONSTRAINT pk_commerce_account_ledger PRIMARY KEY (id),
-    CONSTRAINT uk_commerce_account_ledger_uuid UNIQUE (uuid),
-    CONSTRAINT uk_commerce_account_ledger_business_no UNIQUE (tenant_id, business_no),
-    CONSTRAINT uk_commerce_account_ledger_idempotency UNIQUE (tenant_id, idempotency_key)
+    CONSTRAINT pk_membership_points_ledger PRIMARY KEY (id),
+    CONSTRAINT uk_membership_points_ledger_uuid UNIQUE (uuid),
+    CONSTRAINT uk_membership_points_ledger_business_no UNIQUE (tenant_id, business_no),
+    CONSTRAINT uk_membership_points_ledger_idempotency UNIQUE (tenant_id, idempotency_key)
 );
 
-CREATE INDEX IF NOT EXISTS idx_commerce_account_ledger_account_created
-    ON commerce_account_ledger (tenant_id, account_id, created_at DESC);
-CREATE INDEX IF NOT EXISTS idx_commerce_account_ledger_owner_created
-    ON commerce_account_ledger (tenant_id, organization_id, owner_type, owner_id, asset_code, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_membership_points_ledger_account_created
+    ON membership_points_ledger (tenant_id, account_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_membership_points_ledger_owner_created
+    ON membership_points_ledger (tenant_id, organization_id, owner_type, owner_id, asset_code, created_at DESC);
 
--- Ensure all commerce_account_ledger columns exist on tables created by older baseline revisions.
--- CREATE TABLE IF NOT EXISTS does not modify an existing table, so columns added in later
+-- Ensure all membership_points_ledger columns exist on tables created by older baseline revisions.
+-- PostgreSQL idempotent table creation does not modify an existing table, so columns added in later
 -- revisions must be back-filled with ALTER TABLE ADD COLUMN IF NOT EXISTS.
-ALTER TABLE commerce_account_ledger ADD COLUMN IF NOT EXISTS journal_id BIGINT;
-ALTER TABLE commerce_account_ledger ADD COLUMN IF NOT EXISTS ledger_type VARCHAR(32) NOT NULL DEFAULT 'AVAILABLE';
-ALTER TABLE commerce_account_ledger ADD COLUMN IF NOT EXISTS hold_id BIGINT;
-ALTER TABLE commerce_account_ledger ADD COLUMN IF NOT EXISTS transfer_id BIGINT;
-ALTER TABLE commerce_account_ledger ADD COLUMN IF NOT EXISTS exchange_snapshot_id BIGINT;
-ALTER TABLE commerce_account_ledger ADD COLUMN IF NOT EXISTS settlement_snapshot_id BIGINT;
-ALTER TABLE commerce_account_ledger ADD COLUMN IF NOT EXISTS reversed_ledger_id BIGINT;
-ALTER TABLE commerce_account_ledger ADD COLUMN IF NOT EXISTS reference_no VARCHAR(128);
-ALTER TABLE commerce_account_ledger ADD COLUMN IF NOT EXISTS metadata_json JSONB NOT NULL DEFAULT '{}'::jsonb;
-ALTER TABLE commerce_account_ledger ADD COLUMN IF NOT EXISTS trace_id VARCHAR(128) NOT NULL DEFAULT '';
+ALTER TABLE membership_points_ledger ADD COLUMN IF NOT EXISTS journal_id BIGINT;
+ALTER TABLE membership_points_ledger ADD COLUMN IF NOT EXISTS ledger_type VARCHAR(32) NOT NULL DEFAULT 'AVAILABLE';
+ALTER TABLE membership_points_ledger ADD COLUMN IF NOT EXISTS hold_id BIGINT;
+ALTER TABLE membership_points_ledger ADD COLUMN IF NOT EXISTS transfer_id BIGINT;
+ALTER TABLE membership_points_ledger ADD COLUMN IF NOT EXISTS exchange_snapshot_id BIGINT;
+ALTER TABLE membership_points_ledger ADD COLUMN IF NOT EXISTS settlement_snapshot_id BIGINT;
+ALTER TABLE membership_points_ledger ADD COLUMN IF NOT EXISTS reversed_ledger_id BIGINT;
+ALTER TABLE membership_points_ledger ADD COLUMN IF NOT EXISTS reference_no VARCHAR(128);
+ALTER TABLE membership_points_ledger ADD COLUMN IF NOT EXISTS metadata_json JSONB NOT NULL DEFAULT '{}'::jsonb;
+ALTER TABLE membership_points_ledger ADD COLUMN IF NOT EXISTS trace_id VARCHAR(128) NOT NULL DEFAULT '';
 
 -- 1. Daily reward tracking table
-CREATE TABLE IF NOT EXISTS commerce_membership_daily_reward (
+CREATE TABLE IF NOT EXISTS membership_daily_reward (
     id              BIGINT       NOT NULL,
     uuid            VARCHAR(64)  NOT NULL,
     tenant_id       BIGINT       NOT NULL,
@@ -454,24 +454,24 @@ CREATE TABLE IF NOT EXISTS commerce_membership_daily_reward (
     created_at      TIMESTAMPTZ  NOT NULL DEFAULT NOW(),
     version         BIGINT       NOT NULL DEFAULT 0,
     updated_at      TIMESTAMPTZ  NOT NULL DEFAULT NOW(),
-    CONSTRAINT pk_commerce_membership_daily_reward PRIMARY KEY (id),
-    CONSTRAINT uk_commerce_membership_daily_reward_uuid UNIQUE (uuid),
-    CONSTRAINT uk_commerce_membership_daily_reward_user_date UNIQUE (tenant_id, user_id, reward_date),
-    CONSTRAINT uk_commerce_membership_daily_reward_idempotency UNIQUE (idempotency_key),
+    CONSTRAINT pk_membership_daily_reward PRIMARY KEY (id),
+    CONSTRAINT uk_membership_daily_reward_uuid UNIQUE (uuid),
+    CONSTRAINT uk_membership_daily_reward_user_date UNIQUE (tenant_id, user_id, reward_date),
+    CONSTRAINT uk_membership_daily_reward_idempotency UNIQUE (idempotency_key),
     CONSTRAINT chk_daily_reward_points CHECK (reward_points >= 0),
     CONSTRAINT chk_daily_reward_consecutive CHECK (consecutive_days >= 1),
     CONSTRAINT chk_daily_reward_status CHECK (status IN ('claimed', 'revoked'))
 );
 
 CREATE INDEX IF NOT EXISTS idx_daily_reward_user_recent
-    ON commerce_membership_daily_reward (tenant_id, user_id, reward_date DESC, id DESC);
+    ON membership_daily_reward (tenant_id, user_id, reward_date DESC, id DESC);
 
 -- Ensure daily_reward columns added in later baseline revisions exist on older tables.
-ALTER TABLE commerce_membership_daily_reward ADD COLUMN IF NOT EXISTS version BIGINT NOT NULL DEFAULT 0;
-ALTER TABLE commerce_membership_daily_reward ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW();
+ALTER TABLE membership_daily_reward ADD COLUMN IF NOT EXISTS version BIGINT NOT NULL DEFAULT 0;
+ALTER TABLE membership_daily_reward ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW();
 
 -- 2. Privilege usage tracking table
-CREATE TABLE IF NOT EXISTS commerce_membership_privilege_usage (
+CREATE TABLE IF NOT EXISTS membership_privilege_usage (
     id              BIGINT       NOT NULL,
     uuid            VARCHAR(64)  NOT NULL,
     tenant_id       BIGINT       NOT NULL,
@@ -487,21 +487,21 @@ CREATE TABLE IF NOT EXISTS commerce_membership_privilege_usage (
     version         BIGINT       NOT NULL DEFAULT 0,
     created_at      TIMESTAMPTZ  NOT NULL DEFAULT NOW(),
     updated_at      TIMESTAMPTZ  NOT NULL DEFAULT NOW(),
-    CONSTRAINT pk_commerce_membership_privilege_usage PRIMARY KEY (id),
-    CONSTRAINT uk_commerce_membership_privilege_usage_uuid UNIQUE (uuid),
-    CONSTRAINT uk_commerce_membership_privilege_usage_unique UNIQUE (tenant_id, user_id, benefit_code, period_start),
+    CONSTRAINT pk_membership_privilege_usage PRIMARY KEY (id),
+    CONSTRAINT uk_membership_privilege_usage_uuid UNIQUE (uuid),
+    CONSTRAINT uk_membership_privilege_usage_unique UNIQUE (tenant_id, user_id, benefit_code, period_start),
     CONSTRAINT chk_priv_usage_used CHECK (used_count >= 0),
     CONSTRAINT chk_priv_usage_limit CHECK (usage_limit >= 0),
     CONSTRAINT chk_priv_usage_period CHECK (period_end >= period_start)
 );
 
 CREATE INDEX IF NOT EXISTS idx_priv_usage_user_period
-    ON commerce_membership_privilege_usage (tenant_id, user_id, period_end);
+    ON membership_privilege_usage (tenant_id, user_id, period_end);
 CREATE INDEX IF NOT EXISTS idx_priv_usage_subscription
-    ON commerce_membership_privilege_usage (subscription_id, created_at DESC);
+    ON membership_privilege_usage (subscription_id, created_at DESC);
 
 -- 3. Membership change audit log (immutable)
-CREATE TABLE IF NOT EXISTS commerce_membership_change_log (
+CREATE TABLE IF NOT EXISTS membership_change_log (
     id              BIGINT       NOT NULL,
     uuid            VARCHAR(64)  NOT NULL,
     tenant_id       BIGINT       NOT NULL,
@@ -519,8 +519,8 @@ CREATE TABLE IF NOT EXISTS commerce_membership_change_log (
     metadata        JSONB,
     trace_id        VARCHAR(64),
     created_at      TIMESTAMPTZ  NOT NULL DEFAULT NOW(),
-    CONSTRAINT pk_commerce_membership_change_log PRIMARY KEY (id),
-    CONSTRAINT uk_commerce_membership_change_log_uuid UNIQUE (uuid),
+    CONSTRAINT pk_membership_change_log PRIMARY KEY (id),
+    CONSTRAINT uk_membership_change_log_uuid UNIQUE (uuid),
     CONSTRAINT chk_change_log_action CHECK (action IN (
         'activate', 'renew', 'upgrade', 'downgrade',
         'expire', 'cancel', 'grace', 'restore'
@@ -530,9 +530,9 @@ CREATE TABLE IF NOT EXISTS commerce_membership_change_log (
 );
 
 CREATE INDEX IF NOT EXISTS idx_change_log_subscription
-    ON commerce_membership_change_log (subscription_id, created_at DESC, id DESC);
+    ON membership_change_log (subscription_id, created_at DESC, id DESC);
 CREATE INDEX IF NOT EXISTS idx_change_log_tenant_user
-    ON commerce_membership_change_log (tenant_id, user_id, created_at DESC, id DESC);
+    ON membership_change_log (tenant_id, user_id, created_at DESC, id DESC);
 
 -- 4. Add missing standard columns to existing membership tables
 -- These ALTER TABLE statements are idempotent via DO blocks.
@@ -650,53 +650,53 @@ BEGIN
     END IF;
 END $$;
 
--- Add uuid to benefit_definition
+-- Add uuid to membership_benefit_definition
 DO $$
 BEGIN
     IF NOT EXISTS (
         SELECT 1 FROM information_schema.columns
-        WHERE table_schema = current_schema() AND table_name = 'benefit_definition' AND column_name = 'uuid'
+        WHERE table_schema = current_schema() AND table_name = 'membership_benefit_definition' AND column_name = 'uuid'
     ) THEN
-        ALTER TABLE benefit_definition ADD COLUMN uuid VARCHAR(64);
-        ALTER TABLE benefit_definition ADD COLUMN version BIGINT NOT NULL DEFAULT 0;
-        CREATE UNIQUE INDEX IF NOT EXISTS uk_benefit_definition_uuid ON benefit_definition (uuid);
+        ALTER TABLE membership_benefit_definition ADD COLUMN uuid VARCHAR(64);
+        ALTER TABLE membership_benefit_definition ADD COLUMN version BIGINT NOT NULL DEFAULT 0;
+        CREATE UNIQUE INDEX IF NOT EXISTS uk_membership_benefit_definition_uuid ON membership_benefit_definition (uuid);
     END IF;
 END $$;
 
--- Add uuid to entitlement_account
+-- Add uuid to membership_entitlement_account
 DO $$
 BEGIN
     IF NOT EXISTS (
         SELECT 1 FROM information_schema.columns
-        WHERE table_schema = current_schema() AND table_name = 'entitlement_account' AND column_name = 'uuid'
+        WHERE table_schema = current_schema() AND table_name = 'membership_entitlement_account' AND column_name = 'uuid'
     ) THEN
-        ALTER TABLE entitlement_account ADD COLUMN uuid VARCHAR(64);
-        ALTER TABLE entitlement_account ADD COLUMN version BIGINT NOT NULL DEFAULT 0;
-        CREATE UNIQUE INDEX IF NOT EXISTS uk_entitlement_account_uuid ON entitlement_account (uuid);
+        ALTER TABLE membership_entitlement_account ADD COLUMN uuid VARCHAR(64);
+        ALTER TABLE membership_entitlement_account ADD COLUMN version BIGINT NOT NULL DEFAULT 0;
+        CREATE UNIQUE INDEX IF NOT EXISTS uk_membership_entitlement_account_uuid ON membership_entitlement_account (uuid);
     END IF;
 END $$;
 
--- Add uuid to entitlement_grant
+-- Add uuid to membership_entitlement_grant
 DO $$
 BEGIN
     IF NOT EXISTS (
         SELECT 1 FROM information_schema.columns
-        WHERE table_schema = current_schema() AND table_name = 'entitlement_grant' AND column_name = 'uuid'
+        WHERE table_schema = current_schema() AND table_name = 'membership_entitlement_grant' AND column_name = 'uuid'
     ) THEN
-        ALTER TABLE entitlement_grant ADD COLUMN uuid VARCHAR(64);
-        CREATE UNIQUE INDEX IF NOT EXISTS uk_entitlement_grant_uuid ON entitlement_grant (uuid);
+        ALTER TABLE membership_entitlement_grant ADD COLUMN uuid VARCHAR(64);
+        CREATE UNIQUE INDEX IF NOT EXISTS uk_membership_entitlement_grant_uuid ON membership_entitlement_grant (uuid);
     END IF;
 END $$;
 
--- Add uuid to entitlement_ledger_entry
+-- Add uuid to membership_entitlement_ledger_entry
 DO $$
 BEGIN
     IF NOT EXISTS (
         SELECT 1 FROM information_schema.columns
-        WHERE table_schema = current_schema() AND table_name = 'entitlement_ledger_entry' AND column_name = 'uuid'
+        WHERE table_schema = current_schema() AND table_name = 'membership_entitlement_ledger_entry' AND column_name = 'uuid'
     ) THEN
-        ALTER TABLE entitlement_ledger_entry ADD COLUMN uuid VARCHAR(64);
-        CREATE UNIQUE INDEX IF NOT EXISTS uk_entitlement_ledger_uuid ON entitlement_ledger_entry (uuid);
+        ALTER TABLE membership_entitlement_ledger_entry ADD COLUMN uuid VARCHAR(64);
+        CREATE UNIQUE INDEX IF NOT EXISTS uk_entitlement_ledger_uuid ON membership_entitlement_ledger_entry (uuid);
     END IF;
 END $$;
 
@@ -723,18 +723,18 @@ CREATE INDEX IF NOT EXISTS idx_membership_subscription_expire
 CREATE INDEX IF NOT EXISTS idx_membership_plan_benefit_version_status
     ON membership_plan_benefit (plan_version_id, status, sort_weight);
 
-CREATE INDEX IF NOT EXISTS idx_entitlement_account_subject_status
-    ON entitlement_account (tenant_id, subject_id, status);
+CREATE INDEX IF NOT EXISTS idx_membership_entitlement_account_subject_status
+    ON membership_entitlement_account (tenant_id, subject_id, status);
 
-CREATE INDEX IF NOT EXISTS idx_entitlement_grant_source
-    ON entitlement_grant (source_type, source_id, status);
+CREATE INDEX IF NOT EXISTS idx_membership_entitlement_grant_source
+    ON membership_entitlement_grant (source_type, source_id, status);
 
-CREATE INDEX IF NOT EXISTS idx_entitlement_grant_expire
-    ON entitlement_grant (status, expires_at)
+CREATE INDEX IF NOT EXISTS idx_membership_entitlement_grant_expire
+    ON membership_entitlement_grant (status, expires_at)
     WHERE status = 'active';
 
 CREATE INDEX IF NOT EXISTS idx_entitlement_ledger_account
-    ON entitlement_ledger_entry (account_id, occurred_at DESC);
+    ON membership_entitlement_ledger_entry (account_id, occurred_at DESC);
 
 -- 6. updated_at maintenance triggers for membership-owned mutable tables
 CREATE OR REPLACE FUNCTION fn_membership_set_updated_at()
@@ -745,12 +745,12 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
-DROP TRIGGER IF EXISTS trg_membership_priv_usage_updated ON commerce_membership_privilege_usage;
+DROP TRIGGER IF EXISTS trg_membership_priv_usage_updated ON membership_privilege_usage;
 CREATE TRIGGER trg_membership_priv_usage_updated
-    BEFORE UPDATE ON commerce_membership_privilege_usage
+    BEFORE UPDATE ON membership_privilege_usage
     FOR EACH ROW EXECUTE FUNCTION fn_membership_set_updated_at();
 
-DROP TRIGGER IF EXISTS trg_membership_daily_reward_updated ON commerce_membership_daily_reward;
+DROP TRIGGER IF EXISTS trg_membership_daily_reward_updated ON membership_daily_reward;
 CREATE TRIGGER trg_membership_daily_reward_updated
-    BEFORE UPDATE ON commerce_membership_daily_reward
+    BEFORE UPDATE ON membership_daily_reward
     FOR EACH ROW EXECUTE FUNCTION fn_membership_set_updated_at();

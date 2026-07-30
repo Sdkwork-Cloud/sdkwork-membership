@@ -22,6 +22,3 @@ pub const MEMBER_DETAIL: &str = "/members/{id}";
 
 /// Entitlements listing: `/backend/v3/api/memberships/entitlements`
 pub const ENTITLEMENTS: &str = "/entitlements";
-
-/// Purchase fulfillment: `/backend/v3/api/memberships/purchases/fulfillments`
-pub const PURCHASE_FULFILLMENTS: &str = "/purchases/fulfillments";

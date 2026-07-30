@@ -8,7 +8,7 @@ fn postgres_paid_order_fulfillment_keeps_concurrency_and_replay_guards() {
 }
 
 #[test]
-fn postgres_platform_catalog_and_entitlement_identity_match_sqlite_semantics() {
+fn postgres_platform_catalog_and_entitlement_identity_are_stable() {
     assert!(POSTGRES_SOURCE
         .contains("p.tenant_id = CAST($1 AS TEXT) OR p.tenant_id = CAST($4 AS TEXT)"));
     assert!(POSTGRES_SOURCE.contains(".bind(DEFAULT_CATALOG_TENANT_ID)"));

@@ -134,15 +134,22 @@ The membership database lifecycle initializes 18 membership capability tables:
 
 | Category | Tables |
 | --- | --- |
-| Catalog | `commerce_product_spu`, `commerce_product_sku`, `membership_plan`, `membership_plan_version`, `benefit_definition`, `membership_plan_benefit`, `membership_package_group`, `membership_package` |
+| Catalog | `membership_product_spu`, `membership_product_sku`, `membership_plan`, `membership_plan_version`, `membership_benefit_definition`, `membership_plan_benefit`, `membership_package_group`, `membership_package` |
 | Subscription | `membership_subscription`, `membership_period` |
-| Entitlements | `entitlement_account`, `entitlement_grant`, `entitlement_ledger_entry` |
-| Points projection | `commerce_account`, `commerce_account_ledger` |
-| Membership extensions | `commerce_membership_daily_reward`, `commerce_membership_privilege_usage`, `commerce_membership_change_log` |
+| Entitlements | `membership_entitlement_account`, `membership_entitlement_grant`, `membership_entitlement_ledger_entry` |
+| Points projection | `membership_points_account`, `membership_points_ledger` |
+| Membership extensions | `membership_daily_reward`, `membership_privilege_usage`, `membership_change_log` |
 
-The module-owned `database/database.manifest.json` enables the standard catalog seed profile. A standalone host bootstraps it through `sdkwork-membership-database-host`; a composed host registers the same module in `DatabaseModuleRegistry` and runs `RegistryLifecycleOrchestrator` on its shared pool before serving Membership routes. The seeded package external IDs are API data, not application constants. Product hosts must not copy the package catalog into local migrations, fallback arrays, or frontend mocks.
+The module-owned `database/database.manifest.json` declares an `authoritative-server` PostgreSQL
+module with automatic migration and seeding disabled. A standalone host bootstraps it through
+`sdkwork-membership-database-host`; a composed host injects the process-shared PostgreSQL pool and
+runs the Membership lifecycle before serving routes. The seeded package external IDs are API data,
+not application constants. Product hosts must not copy the package catalog into local migrations,
+fallback arrays, or frontend mocks.
 
-The built-in in-memory catalog is limited to catalog-level unit tests. It has no entitlement persistence authority and must reject paid-purchase fulfillment; production and commerce-composition hosts fulfill paid Orders only through the SQLite or PostgreSQL `AppMembershipStore` implementations.
+The built-in in-memory catalog is limited to catalog-level unit tests. It has no entitlement
+persistence authority and must reject paid-purchase fulfillment; production and composition hosts
+fulfill paid Orders only through `PostgresCommerceMembershipStore`.
 
 The baseline and seeds must not initialize:
 
@@ -179,7 +186,12 @@ sequenceDiagram
     Membership-->>Order: active or idempotent replay
 ```
 
-The fulfillment transaction serializes by Membership subject, resolves tenant catalog entries with platform fallback, creates the subscription/period only when absent, activates period-scoped grants and ledger entries, and extends benefit-scoped entitlement accounts. Historical replay is resolved through `membership_period.source_order_id`, so renew and upgrade never erase prior Order fulfillment identity. SQLite uses `BEGIN IMMEDIATE`; PostgreSQL uses a transaction-scoped advisory lock.
+The PostgreSQL fulfillment transaction serializes by Membership subject with a transaction-scoped
+advisory lock, resolves tenant catalog entries with platform fallback, creates the
+subscription/period only when absent, activates period-scoped grants and ledger entries, and
+extends benefit-scoped entitlement accounts. Historical replay is resolved through
+`membership_period.source_order_id`, so renew and upgrade never erase prior Order fulfillment
+identity.
 
 Dependency rules:
 

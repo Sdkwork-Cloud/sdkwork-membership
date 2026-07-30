@@ -1,14 +1,13 @@
-﻿[workspace]
+[workspace]
 resolver = "2"
 members = [
-    "crates/sdkwork-api-membership-assembly",
-    "crates/sdkwork-api-membership-assembly",
   "crates/sdkwork-membership-service",
   "crates/sdkwork-membership-repository-sqlx",
   "crates/sdkwork-routes-membership-app-api",
   "crates/sdkwork-routes-membership-backend-api",
   "crates/sdkwork-membership-database-host",
   "crates/sdkwork-membership-service-host",
+  "crates/sdkwork-api-membership-assembly",
   "crates/sdkwork-api-membership-standalone-gateway",
 ]
 
@@ -23,7 +22,7 @@ axum = "0.8"
 tokio = { version = "1.51", features = ["macros", "rt-multi-thread", "net", "sync"] }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
-sqlx = { version = "0.8", default-features = false, features = ["runtime-tokio", "postgres", "sqlite", "uuid", "chrono"] }
+sqlx = { version = "0.8", default-features = false, features = ["runtime-tokio", "postgres", "uuid", "chrono"] }
 uuid = { version = "1", features = ["v4", "serde"] }
 chrono = { version = "0.4", features = ["serde"] }
 tower = "0.5"
@@ -36,6 +35,7 @@ async-trait = "0.1"
 sdkwork_contract_service = { path = "../sdkwork-account/crates/sdkwork-contract-service", package = "sdkwork-contract-service" }
 sdkwork-utils-rust = { path = "../sdkwork-utils/packages/sdkwork-utils-rust", package = "sdkwork-utils-rust" }
 sdkwork-web-core = { path = "../sdkwork-web-framework/crates/sdkwork-web-core" }
+sdkwork-web-build = { path = "../sdkwork-web-framework/crates/sdkwork-web-build" }
 sdkwork-web-axum = { path = "../sdkwork-web-framework/crates/sdkwork-web-axum" }
 sdkwork-web-contract = { path = "../sdkwork-web-framework/crates/sdkwork-web-contract" }
 sdkwork-web-bootstrap = { path = "../sdkwork-web-framework/crates/sdkwork-web-bootstrap" }
@@ -50,6 +50,8 @@ sdkwork_membership_service = { path = "crates/sdkwork-membership-service", packa
 sdkwork_membership_repository_sqlx = { path = "crates/sdkwork-membership-repository-sqlx", package = "sdkwork-membership-repository-sqlx" }
 sdkwork_routes_membership_app_api = { path = "crates/sdkwork-routes-membership-app-api", package = "sdkwork-routes-membership-app-api" }
 sdkwork_routes_membership_backend_api = { path = "crates/sdkwork-routes-membership-backend-api", package = "sdkwork-routes-membership-backend-api" }
+sdkwork-routes-membership-app-api = { path = "crates/sdkwork-routes-membership-app-api" }
+sdkwork-routes-membership-backend-api = { path = "crates/sdkwork-routes-membership-backend-api" }
 sdkwork_api_membership_assembly = { path = "crates/sdkwork-api-membership-assembly", package = "sdkwork-api-membership-assembly" }
 sdkwork_membership_database_host = { path = "crates/sdkwork-membership-database-host", package = "sdkwork-membership-database-host" }
 sdkwork_membership_service_host = { path = "crates/sdkwork-membership-service-host", package = "sdkwork-membership-service-host" }

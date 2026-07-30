@@ -92,11 +92,11 @@ Membership points are exposed through the membership capability as account and l
 
 ### 4.7 Daily Rewards
 
-Daily rewards track user check-in state and consecutive-day bonuses through `commerce_membership_daily_reward`. Duplicate reward claims are prevented by tenant/user/date uniqueness and idempotency.
+Daily rewards track user check-in state and consecutive-day bonuses through `membership_daily_reward`. Duplicate reward claims are prevented by tenant/user/date uniqueness and idempotency.
 
 ### 4.8 Privilege Usage
 
-Privilege usage reads quota from entitlement accounts and records per-period usage through `commerce_membership_privilege_usage`. Usage resets according to activated subscription periods.
+Privilege usage reads quota from entitlement accounts and records per-period usage through `membership_privilege_usage`. Usage resets according to activated subscription periods.
 
 ## 5. Capability Boundaries
 

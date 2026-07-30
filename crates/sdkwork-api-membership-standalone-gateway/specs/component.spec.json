@@ -1,0 +1,74 @@
+{
+  "schemaVersion": 1,
+  "kind": "sdkwork.component.spec",
+  "component": {
+    "name": "sdkwork-api-membership-standalone-gateway",
+    "displayName": "SDKWork Membership Standalone Gateway",
+    "version": "0.1.0",
+    "type": "rust-api-standalone-gateway",
+    "root": "crates/sdkwork-api-membership-standalone-gateway",
+    "domain": "application",
+    "capability": "api-gateway",
+    "surface": "gateway-api",
+    "languages": [
+      "rust"
+    ],
+    "generated": false,
+    "private": true,
+    "manifests": [
+      "Cargo.toml"
+    ]
+  },
+  "canonicalSpecs": [
+    {
+      "file": "API_ASSEMBLY_SPEC.md",
+      "path": "../../../sdkwork-specs/API_ASSEMBLY_SPEC.md",
+      "purpose": "Complete owner API assembly and standalone hosting rules."
+    },
+    {
+      "file": "APPLICATION_GATEWAY_SPEC.md",
+      "path": "../../../sdkwork-specs/APPLICATION_GATEWAY_SPEC.md",
+      "purpose": "Standalone application ingress and composition boundaries."
+    },
+    {
+      "file": "WEB_FRAMEWORK_SPEC.md",
+      "path": "../../../sdkwork-specs/WEB_FRAMEWORK_SPEC.md",
+      "purpose": "Single process-wide HTTP framework host and request context."
+    },
+    {
+      "file": "RUST_CODE_SPEC.md",
+      "path": "../../../sdkwork-specs/RUST_CODE_SPEC.md",
+      "purpose": "Rust process-host structure and verification."
+    }
+  ],
+  "contracts": {
+    "layerRole": "runtime-gateway",
+    "publicExports": [],
+    "providedPorts": [],
+    "requiredPorts": [
+      {
+        "name": "membershipApiAssembly",
+        "export": "sdkwork_api_membership_assembly::assemble_api_router_from_env"
+      }
+    ],
+    "runtimeEntrypoints": [
+      "src/main.rs",
+      "Cargo.toml[[bin]].sdkwork-api-membership-standalone-gateway"
+    ],
+    "routeManifest": null,
+    "sdkClients": [],
+    "sdkDependencies": [],
+    "dependencyApiExports": [],
+    "dependencyApiSurfaces": [],
+    "events": [],
+    "configKeys": [
+      "SDKWORK_MEMBERSHIP_APPLICATION_PUBLIC_INGRESS_BIND"
+    ]
+  },
+  "verification": {
+    "commands": [
+      "cargo check -p sdkwork-api-membership-standalone-gateway",
+      "pnpm run api:assembly:validate -- --strict"
+    ]
+  }
+}

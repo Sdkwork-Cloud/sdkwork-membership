@@ -21,6 +21,13 @@ export default defineConfig(({ mode }) => {
     root: appRoot,
     resolve: {
       alias: {
+        "@sdkwork/runtime-bootstrap": path.resolve(workspaceRoot, "../sdkwork-appbase/packages/common/foundation/sdkwork-runtime-bootstrap/src/index.ts"),
+        "@sdkwork/iam-app-sdk": path.resolve(workspaceRoot, "../sdkwork-iam/sdks/sdkwork-iam-app-sdk/sdkwork-iam-app-sdk-typescript/src/index.ts"),
+        "@sdkwork/iam-backend-sdk": path.resolve(workspaceRoot, "../sdkwork-iam/sdks/sdkwork-iam-backend-sdk/sdkwork-iam-backend-sdk-typescript/src/index.ts"),
+        "@sdkwork/iam-contracts": path.resolve(workspaceRoot, "../sdkwork-iam/apps/sdkwork-iam-common/packages/sdkwork-iam-contracts/src/index.ts"),
+        "@sdkwork/iam-runtime": path.resolve(workspaceRoot, "../sdkwork-iam/apps/sdkwork-iam-common/packages/sdkwork-iam-runtime/src/index.ts"),
+        "@sdkwork/iam-sdk-ports": path.resolve(workspaceRoot, "../sdkwork-iam/apps/sdkwork-iam-common/packages/sdkwork-iam-sdk-ports/src/index.ts"),
+        "@sdkwork/iam-service": path.resolve(workspaceRoot, "../sdkwork-iam/apps/sdkwork-iam-common/packages/sdkwork-iam-service/src/index.ts"),
         "@sdkwork/membership-app-sdk": membershipAppSdkEntry,
         "@sdkwork/membership-pc-core": path.resolve(appRoot, "packages/sdkwork-membership-pc-core/src/index.ts"),
         "@sdkwork/membership-pc-shell": path.resolve(appRoot, "packages/sdkwork-membership-pc-shell/src/index.tsx"),

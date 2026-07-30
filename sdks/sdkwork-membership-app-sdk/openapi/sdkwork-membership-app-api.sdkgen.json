@@ -19,7 +19,7 @@
           "memberships"
         ],
         "summary": "Memberships current retrieve.",
-        "operationId": "memberships.current.retrieve",
+        "operationId": "current.retrieve",
         "parameters": [],
         "responses": {
           "200": {
@@ -126,7 +126,7 @@
           "memberships"
         ],
         "summary": "Memberships current status retrieve.",
-        "operationId": "memberships.current.status.retrieve",
+        "operationId": "current.status.retrieve",
         "parameters": [],
         "responses": {
           "200": {
@@ -233,7 +233,7 @@
           "memberships"
         ],
         "summary": "Memberships benefits list.",
-        "operationId": "memberships.benefits.list",
+        "operationId": "benefits.list",
         "parameters": [
           {
             "name": "page",
@@ -377,7 +377,7 @@
           "memberships"
         ],
         "summary": "Memberships plans list.",
-        "operationId": "memberships.plans.list",
+        "operationId": "plans.list",
         "parameters": [
           {
             "name": "status",
@@ -519,7 +519,7 @@
           "memberships"
         ],
         "summary": "Memberships package Groups list.",
-        "operationId": "memberships.packageGroups.list",
+        "operationId": "packageGroups.list",
         "parameters": [
           {
             "name": "status",
@@ -681,7 +681,7 @@
           "memberships"
         ],
         "summary": "Memberships package Groups retrieve.",
-        "operationId": "memberships.packageGroups.retrieve",
+        "operationId": "packageGroups.retrieve",
         "parameters": [
           {
             "name": "packageGroupId",
@@ -793,7 +793,7 @@
           "memberships"
         ],
         "summary": "Memberships package Groups packages list.",
-        "operationId": "memberships.packageGroups.packages.list",
+        "operationId": "packageGroups.packages.list",
         "parameters": [
           {
             "name": "packageGroupId",
@@ -963,7 +963,7 @@
           "memberships"
         ],
         "summary": "Memberships packages list.",
-        "operationId": "memberships.packages.list",
+        "operationId": "packages.list",
         "parameters": [
           {
             "name": "status",
@@ -1125,7 +1125,7 @@
           "memberships"
         ],
         "summary": "Memberships packages retrieve.",
-        "operationId": "memberships.packages.retrieve",
+        "operationId": "packages.retrieve",
         "parameters": [
           {
             "name": "packageId",
@@ -1237,7 +1237,7 @@
           "memberships"
         ],
         "summary": "Memberships purchases create.",
-        "operationId": "memberships.purchases.create",
+        "operationId": "purchases.create",
         "parameters": [],
         "responses": {
           "201": {
@@ -1354,7 +1354,7 @@
           "memberships"
         ],
         "summary": "Memberships purchases renew.",
-        "operationId": "memberships.purchases.renew",
+        "operationId": "purchases.renew",
         "parameters": [],
         "responses": {
           "200": {
@@ -1471,7 +1471,7 @@
           "memberships"
         ],
         "summary": "Memberships purchases upgrade.",
-        "operationId": "memberships.purchases.upgrade",
+        "operationId": "purchases.upgrade",
         "parameters": [],
         "responses": {
           "200": {
@@ -1588,7 +1588,7 @@
           "memberships"
         ],
         "summary": "Memberships points balance retrieve.",
-        "operationId": "memberships.points.balance.retrieve",
+        "operationId": "points.balance.retrieve",
         "parameters": [],
         "responses": {
           "200": {
@@ -1695,7 +1695,7 @@
           "memberships"
         ],
         "summary": "Memberships points history list.",
-        "operationId": "memberships.points.history.list",
+        "operationId": "points.history.list",
         "parameters": [
           {
             "name": "page",
@@ -1833,7 +1833,7 @@
           "memberships"
         ],
         "summary": "Memberships points daily Rewards create.",
-        "operationId": "memberships.points.dailyRewards.create",
+        "operationId": "points.dailyRewards.create",
         "parameters": [],
         "responses": {
           "201": {
@@ -1950,7 +1950,7 @@
           "memberships"
         ],
         "summary": "Memberships points daily Rewards status retrieve.",
-        "operationId": "memberships.points.dailyRewards.status.retrieve",
+        "operationId": "points.dailyRewards.status.retrieve",
         "parameters": [],
         "responses": {
           "200": {
@@ -2057,7 +2057,7 @@
           "memberships"
         ],
         "summary": "Memberships privileges usage retrieve.",
-        "operationId": "memberships.privileges.usage.retrieve",
+        "operationId": "privileges.usage.retrieve",
         "parameters": [],
         "responses": {
           "200": {
@@ -2164,7 +2164,7 @@
           "memberships"
         ],
         "summary": "Memberships privileges speed Ups create.",
-        "operationId": "memberships.privileges.speedUps.create",
+        "operationId": "privileges.speedUps.create",
         "parameters": [],
         "responses": {
           "201": {
@@ -2550,7 +2550,7 @@
         "required": [
           "action"
         ],
-        "description": "Membership operation command. action values: purchase, renew, upgrade, claim_daily_reward, consume_speed_up.",
+        "description": "Membership operation command. purchase/renew/upgrade require packageId, orderId, and requestNo from order memberships.orders.create.",
         "properties": {
           "action": {
             "type": "string",
@@ -2565,6 +2565,14 @@
           "packageId": {
             "type": "integer",
             "format": "int64"
+          },
+          "orderId": {
+            "type": "string",
+            "description": "Commerce order UUID from order memberships.orders.create."
+          },
+          "requestNo": {
+            "type": "string",
+            "description": "Human-readable order number from order memberships.orders.create."
           },
           "couponId": {
             "type": "string"

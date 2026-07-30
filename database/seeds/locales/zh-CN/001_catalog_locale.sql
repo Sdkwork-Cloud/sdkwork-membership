@@ -28,29 +28,29 @@ UPDATE membership_plan_version SET title = '巅峰版', updated_at = CURRENT_TIM
 UPDATE membership_plan_version SET title = '超级版', updated_at = CURRENT_TIMESTAMP WHERE id = 'plan-super-v1';
 
 -- ---------------------------------------------------------------------------
--- benefit_definition: benefit display names and descriptions
+-- membership_benefit_definition: benefit display names and descriptions
 -- ---------------------------------------------------------------------------
-UPDATE benefit_definition SET name = '平台免费算力元', description = '每日登录免费算力元。', updated_at = CURRENT_TIMESTAMP WHERE id = 'benefit-platform-free-points';
-UPDATE benefit_definition SET name = '充值购买算力元', description = '充值购买的算力元。', updated_at = CURRENT_TIMESTAMP WHERE id = 'benefit-purchased-points';
-UPDATE benefit_definition SET name = '订阅会员算力元', description = '每月订阅赠送算力元。', updated_at = CURRENT_TIMESTAMP WHERE id = 'benefit-daily-points';
-UPDATE benefit_definition SET name = 'Seedance 2.0 VIP模型', description = 'Seedance 2.0 VIP模型使用权限。', updated_at = CURRENT_TIMESTAMP WHERE id = 'benefit-seedance-vip-model';
-UPDATE benefit_definition SET name = 'Seedance 1.5 Pro模型', description = 'Seedance 1.5 Pro模型算力元折扣。', updated_at = CURRENT_TIMESTAMP WHERE id = 'benefit-seedance-pro-model';
-UPDATE benefit_definition SET name = '标准生成通道', description = '标准优先级生成通道。', updated_at = CURRENT_TIMESTAMP WHERE id = 'benefit-standard-queue';
-UPDATE benefit_definition SET name = '快速生成通道', description = '高优先级快速生成通道。', updated_at = CURRENT_TIMESTAMP WHERE id = 'benefit-fast-queue';
-UPDATE benefit_definition SET name = 'VIP优先通道', description = '专属VIP生成通道。', updated_at = CURRENT_TIMESTAMP WHERE id = 'benefit-vip-queue';
-UPDATE benefit_definition SET name = '视频对口型', description = '视频对口型功能权限。', updated_at = CURRENT_TIMESTAMP WHERE id = 'benefit-video-lip-sync';
-UPDATE benefit_definition SET name = '视频高清', description = '视频高清导出功能。', updated_at = CURRENT_TIMESTAMP WHERE id = 'benefit-video-hd';
-UPDATE benefit_definition SET name = '视频补帧', description = '视频补帧功能。', updated_at = CURRENT_TIMESTAMP WHERE id = 'benefit-video-frame-interp';
-UPDATE benefit_definition SET name = '图片4.0限时免费', description = '图片4.0免费分辨率。', updated_at = CURRENT_TIMESTAMP WHERE id = 'benefit-image-4k-free';
-UPDATE benefit_definition SET name = '智能超清', description = '智能超清分辨率。', updated_at = CURRENT_TIMESTAMP WHERE id = 'benefit-smart-upscale';
-UPDATE benefit_definition SET name = '去除品牌水印', description = '导出无水印。', updated_at = CURRENT_TIMESTAMP WHERE id = 'benefit-no-watermark';
-UPDATE benefit_definition SET name = '生成加速', description = '加速生成速度。', updated_at = CURRENT_TIMESTAMP WHERE id = 'benefit-generation-acceleration';
-UPDATE benefit_definition SET name = '无忧退款', description = '无忧退款及优先客服支持。', updated_at = CURRENT_TIMESTAMP WHERE id = 'benefit-vip-support';
+UPDATE membership_benefit_definition SET name = '平台免费算力元', description = '每日登录免费算力元。', updated_at = CURRENT_TIMESTAMP WHERE id = 'benefit-platform-free-points';
+UPDATE membership_benefit_definition SET name = '充值购买算力元', description = '充值购买的算力元。', updated_at = CURRENT_TIMESTAMP WHERE id = 'benefit-purchased-points';
+UPDATE membership_benefit_definition SET name = '订阅会员算力元', description = '每月订阅赠送算力元。', updated_at = CURRENT_TIMESTAMP WHERE id = 'benefit-daily-points';
+UPDATE membership_benefit_definition SET name = 'Seedance 2.0 VIP模型', description = 'Seedance 2.0 VIP模型使用权限。', updated_at = CURRENT_TIMESTAMP WHERE id = 'benefit-seedance-vip-model';
+UPDATE membership_benefit_definition SET name = 'Seedance 1.5 Pro模型', description = 'Seedance 1.5 Pro模型算力元折扣。', updated_at = CURRENT_TIMESTAMP WHERE id = 'benefit-seedance-pro-model';
+UPDATE membership_benefit_definition SET name = '标准生成通道', description = '标准优先级生成通道。', updated_at = CURRENT_TIMESTAMP WHERE id = 'benefit-standard-queue';
+UPDATE membership_benefit_definition SET name = '快速生成通道', description = '高优先级快速生成通道。', updated_at = CURRENT_TIMESTAMP WHERE id = 'benefit-fast-queue';
+UPDATE membership_benefit_definition SET name = 'VIP优先通道', description = '专属VIP生成通道。', updated_at = CURRENT_TIMESTAMP WHERE id = 'benefit-vip-queue';
+UPDATE membership_benefit_definition SET name = '视频对口型', description = '视频对口型功能权限。', updated_at = CURRENT_TIMESTAMP WHERE id = 'benefit-video-lip-sync';
+UPDATE membership_benefit_definition SET name = '视频高清', description = '视频高清导出功能。', updated_at = CURRENT_TIMESTAMP WHERE id = 'benefit-video-hd';
+UPDATE membership_benefit_definition SET name = '视频补帧', description = '视频补帧功能。', updated_at = CURRENT_TIMESTAMP WHERE id = 'benefit-video-frame-interp';
+UPDATE membership_benefit_definition SET name = '图片4.0限时免费', description = '图片4.0免费分辨率。', updated_at = CURRENT_TIMESTAMP WHERE id = 'benefit-image-4k-free';
+UPDATE membership_benefit_definition SET name = '智能超清', description = '智能超清分辨率。', updated_at = CURRENT_TIMESTAMP WHERE id = 'benefit-smart-upscale';
+UPDATE membership_benefit_definition SET name = '去除品牌水印', description = '导出无水印。', updated_at = CURRENT_TIMESTAMP WHERE id = 'benefit-no-watermark';
+UPDATE membership_benefit_definition SET name = '生成加速', description = '加速生成速度。', updated_at = CURRENT_TIMESTAMP WHERE id = 'benefit-generation-acceleration';
+UPDATE membership_benefit_definition SET name = '无忧退款', description = '无忧退款及优先客服支持。', updated_at = CURRENT_TIMESTAMP WHERE id = 'benefit-vip-support';
 
 -- Privilege benefits (runtime quota)
-UPDATE benefit_definition SET name = '加速加速', description = '生成任务手动加速配额。', updated_at = CURRENT_TIMESTAMP WHERE id = 'seed-benefit-priority-speed-up';
-UPDATE benefit_definition SET name = '优先队列', description = '活跃会员优先队列容量。', updated_at = CURRENT_TIMESTAMP WHERE id = 'benefit-definition-priority_queue';
-UPDATE benefit_definition SET name = 'AI配额', description = '专属模型和AI配额。', updated_at = CURRENT_TIMESTAMP WHERE id = 'seed-benefit-ai-quota';
+UPDATE membership_benefit_definition SET name = '加速加速', description = '生成任务手动加速配额。', updated_at = CURRENT_TIMESTAMP WHERE id = 'seed-benefit-priority-speed-up';
+UPDATE membership_benefit_definition SET name = '优先队列', description = '活跃会员优先队列容量。', updated_at = CURRENT_TIMESTAMP WHERE id = 'benefit-definition-priority_queue';
+UPDATE membership_benefit_definition SET name = 'AI配额', description = '专属模型和AI配额。', updated_at = CURRENT_TIMESTAMP WHERE id = 'seed-benefit-ai-quota';
 
 -- ---------------------------------------------------------------------------
 -- membership_plan_benefit: grant_quantity display text (text-type cells only)
@@ -88,26 +88,26 @@ UPDATE membership_package_group SET name = '连续包季', description = '9.8折
 UPDATE membership_package_group SET name = '单月购买', description = NULL, updated_at = CURRENT_TIMESTAMP WHERE id = 'package-group-single';
 
 -- ---------------------------------------------------------------------------
--- commerce_product_sku: SKU display names and spec_json tags
+-- membership_product_sku: SKU display names and spec_json tags
 -- Tags: 10元=100算力元, daily = point_amount/30 (monthly sub rate)
 -- Basic: 540/30=18, Standard: 1560/30=52, Premium: 4290/30=143, Super: 10720/30≈357
 -- ---------------------------------------------------------------------------
-UPDATE commerce_product_sku SET name = '基础版-连续包年', title = '基础版-连续包年', spec_json = '{"tags":["首年9.7折","18算力元/天"]}', updated_at = CURRENT_TIMESTAMP WHERE id = 'sku-basic-annual';
-UPDATE commerce_product_sku SET name = '标准版-连续包年', title = '标准版-连续包年', spec_json = '{"tags":["首年9.7折","52算力元/天"]}', updated_at = CURRENT_TIMESTAMP WHERE id = 'sku-standard-annual';
-UPDATE commerce_product_sku SET name = '巅峰版-连续包年', title = '巅峰版-连续包年', spec_json = '{"tags":["首年9.7折","143算力元/天"]}', updated_at = CURRENT_TIMESTAMP WHERE id = 'sku-premium-annual';
-UPDATE commerce_product_sku SET name = '基础版-连续包月', title = '基础版-连续包月', spec_json = '{"tags":["9.9折","18算力元/天"]}', updated_at = CURRENT_TIMESTAMP WHERE id = 'sku-basic-monthly';
-UPDATE commerce_product_sku SET name = '标准版-连续包月', title = '标准版-连续包月', spec_json = '{"tags":["9.9折","52算力元/天"]}', updated_at = CURRENT_TIMESTAMP WHERE id = 'sku-standard-monthly';
-UPDATE commerce_product_sku SET name = '巅峰版-连续包月', title = '巅峰版-连续包月', spec_json = '{"tags":["9.9折","143算力元/天"]}', updated_at = CURRENT_TIMESTAMP WHERE id = 'sku-premium-monthly';
-UPDATE commerce_product_sku SET name = '基础版-连续包季', title = '基础版-连续包季', spec_json = '{"tags":["9.8折","18算力元/天"]}', updated_at = CURRENT_TIMESTAMP WHERE id = 'sku-basic-quarterly';
-UPDATE commerce_product_sku SET name = '标准版-连续包季', title = '标准版-连续包季', spec_json = '{"tags":["9.8折","52算力元/天"]}', updated_at = CURRENT_TIMESTAMP WHERE id = 'sku-standard-quarterly';
-UPDATE commerce_product_sku SET name = '巅峰版-连续包季', title = '巅峰版-连续包季', spec_json = '{"tags":["9.8折","143算力元/天"]}', updated_at = CURRENT_TIMESTAMP WHERE id = 'sku-premium-quarterly';
-UPDATE commerce_product_sku SET name = '基础版-单月购买', title = '基础版-单月购买', spec_json = '{"tags":["18算力元/天"]}', updated_at = CURRENT_TIMESTAMP WHERE id = 'sku-basic-single';
-UPDATE commerce_product_sku SET name = '标准版-单月购买', title = '标准版-单月购买', spec_json = '{"tags":["52算力元/天"]}', updated_at = CURRENT_TIMESTAMP WHERE id = 'sku-standard-single';
-UPDATE commerce_product_sku SET name = '巅峰版-单月购买', title = '巅峰版-单月购买', spec_json = '{"tags":["143算力元/天"]}', updated_at = CURRENT_TIMESTAMP WHERE id = 'sku-premium-single';
-UPDATE commerce_product_sku SET name = '超级版-连续包年', title = '超级版-连续包年', spec_json = '{"tags":["首年9.7折","357算力元/天"]}', updated_at = CURRENT_TIMESTAMP WHERE id = 'sku-super-annual';
-UPDATE commerce_product_sku SET name = '超级版-连续包月', title = '超级版-连续包月', spec_json = '{"tags":["9.9折","357算力元/天"]}', updated_at = CURRENT_TIMESTAMP WHERE id = 'sku-super-monthly';
-UPDATE commerce_product_sku SET name = '超级版-连续包季', title = '超级版-连续包季', spec_json = '{"tags":["9.8折","357算力元/天"]}', updated_at = CURRENT_TIMESTAMP WHERE id = 'sku-super-quarterly';
-UPDATE commerce_product_sku SET name = '超级版-单月购买', title = '超级版-单月购买', spec_json = '{"tags":["357算力元/天"]}', updated_at = CURRENT_TIMESTAMP WHERE id = 'sku-super-single';
+UPDATE membership_product_sku SET name = '基础版-连续包年', title = '基础版-连续包年', spec_json = '{"tags":["首年9.7折","18算力元/天"]}', updated_at = CURRENT_TIMESTAMP WHERE id = 'sku-basic-annual';
+UPDATE membership_product_sku SET name = '标准版-连续包年', title = '标准版-连续包年', spec_json = '{"tags":["首年9.7折","52算力元/天"]}', updated_at = CURRENT_TIMESTAMP WHERE id = 'sku-standard-annual';
+UPDATE membership_product_sku SET name = '巅峰版-连续包年', title = '巅峰版-连续包年', spec_json = '{"tags":["首年9.7折","143算力元/天"]}', updated_at = CURRENT_TIMESTAMP WHERE id = 'sku-premium-annual';
+UPDATE membership_product_sku SET name = '基础版-连续包月', title = '基础版-连续包月', spec_json = '{"tags":["9.9折","18算力元/天"]}', updated_at = CURRENT_TIMESTAMP WHERE id = 'sku-basic-monthly';
+UPDATE membership_product_sku SET name = '标准版-连续包月', title = '标准版-连续包月', spec_json = '{"tags":["9.9折","52算力元/天"]}', updated_at = CURRENT_TIMESTAMP WHERE id = 'sku-standard-monthly';
+UPDATE membership_product_sku SET name = '巅峰版-连续包月', title = '巅峰版-连续包月', spec_json = '{"tags":["9.9折","143算力元/天"]}', updated_at = CURRENT_TIMESTAMP WHERE id = 'sku-premium-monthly';
+UPDATE membership_product_sku SET name = '基础版-连续包季', title = '基础版-连续包季', spec_json = '{"tags":["9.8折","18算力元/天"]}', updated_at = CURRENT_TIMESTAMP WHERE id = 'sku-basic-quarterly';
+UPDATE membership_product_sku SET name = '标准版-连续包季', title = '标准版-连续包季', spec_json = '{"tags":["9.8折","52算力元/天"]}', updated_at = CURRENT_TIMESTAMP WHERE id = 'sku-standard-quarterly';
+UPDATE membership_product_sku SET name = '巅峰版-连续包季', title = '巅峰版-连续包季', spec_json = '{"tags":["9.8折","143算力元/天"]}', updated_at = CURRENT_TIMESTAMP WHERE id = 'sku-premium-quarterly';
+UPDATE membership_product_sku SET name = '基础版-单月购买', title = '基础版-单月购买', spec_json = '{"tags":["18算力元/天"]}', updated_at = CURRENT_TIMESTAMP WHERE id = 'sku-basic-single';
+UPDATE membership_product_sku SET name = '标准版-单月购买', title = '标准版-单月购买', spec_json = '{"tags":["52算力元/天"]}', updated_at = CURRENT_TIMESTAMP WHERE id = 'sku-standard-single';
+UPDATE membership_product_sku SET name = '巅峰版-单月购买', title = '巅峰版-单月购买', spec_json = '{"tags":["143算力元/天"]}', updated_at = CURRENT_TIMESTAMP WHERE id = 'sku-premium-single';
+UPDATE membership_product_sku SET name = '超级版-连续包年', title = '超级版-连续包年', spec_json = '{"tags":["首年9.7折","357算力元/天"]}', updated_at = CURRENT_TIMESTAMP WHERE id = 'sku-super-annual';
+UPDATE membership_product_sku SET name = '超级版-连续包月', title = '超级版-连续包月', spec_json = '{"tags":["9.9折","357算力元/天"]}', updated_at = CURRENT_TIMESTAMP WHERE id = 'sku-super-monthly';
+UPDATE membership_product_sku SET name = '超级版-连续包季', title = '超级版-连续包季', spec_json = '{"tags":["9.8折","357算力元/天"]}', updated_at = CURRENT_TIMESTAMP WHERE id = 'sku-super-quarterly';
+UPDATE membership_product_sku SET name = '超级版-单月购买', title = '超级版-单月购买', spec_json = '{"tags":["357算力元/天"]}', updated_at = CURRENT_TIMESTAMP WHERE id = 'sku-super-single';
 
 -- ---------------------------------------------------------------------------
 -- membership_package: package display names and descriptions

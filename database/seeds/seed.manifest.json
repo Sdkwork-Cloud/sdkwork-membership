@@ -1,41 +1,44 @@
 {
   "schemaVersion": 1,
   "kind": "sdkwork.database.seed",
+  "i18nVersion": "1.0.0",
   "defaultLocale": "zh-CN",
-  "supportedLocales": ["zh-CN", "en-US", "ja-JP", "de-DE", "fr-FR", "ru-RU", "ko-KR"],
-  "activeLocales": ["zh-CN", "en-US"],
+  "fallbackLocale": "zh-CN",
+  "supportedLocales": [
+    "zh-CN",
+    "en-US",
+    "ja-JP",
+    "de-DE",
+    "fr-FR",
+    "ru-RU",
+    "ko-KR"
+  ],
+  "activeLocales": [
+    "zh-CN",
+    "en-US"
+  ],
+  "localeSets": {
+    "zh-CN": {
+      "version": "1.0.0",
+      "required": true,
+      "checksum": "sha256:eca3913d4fb5d4cff2c03f48b8b0e58b7ffdd647a39b7d0ee9025d9b0799cf15",
+      "files": [
+        "locales/zh-CN/001_catalog_locale.sql"
+      ]
+    },
+    "en-US": {
+      "version": "1.0.0",
+      "required": true,
+      "checksum": "sha256:519ed8d73c4b8ac8924854679407153aea3481d4dc8e1b62e8ef79ff5ee0b2bf",
+      "files": [
+        "locales/en-US/001_catalog_locale.sql"
+      ]
+    }
+  },
   "profiles": {
-    "dev": {
-      "common": [
-        "001_catalog.sql",
-        "002_dev_demo.sql"
-      ],
-      "locales": {
-        "zh-CN": [
-          "001_catalog_locale.sql"
-        ],
-        "en-US": [
-          "001_catalog_locale.sql"
-        ]
-      }
-    },
-    "release": {
-      "common": [
-        "001_catalog.sql"
-      ],
-      "locales": {
-        "zh-CN": [
-          "001_catalog_locale.sql"
-        ],
-        "en-US": [
-          "001_catalog_locale.sql"
-        ]
-      }
-    },
     "standard": {
       "common": [
-        "001_catalog.sql",
-        "002_dev_demo.sql"
+        "001_catalog.sql"
       ],
       "locales": {
         "zh-CN": [

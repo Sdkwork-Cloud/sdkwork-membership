@@ -48,12 +48,6 @@ test("membership backend operator operations declare central commerce permission
 
   for (const contractPath of [reviewContractPath, sdkAuthorityPath, sdkInputPath]) {
     for (const { method, operation } of operationEntries(readJson(contractPath))) {
-      if (operation.operationId === "memberships.purchases.fulfillments.create") {
-        assert.equal(operation["x-sdkwork-credential-mode"], "service-token");
-        assert.equal(operation["x-sdkwork-permission"], undefined);
-        continue;
-      }
-
       const expectedPermission = method === "get"
         ? "commerce.memberships.read"
         : "commerce.memberships.manage";
@@ -63,13 +57,14 @@ test("membership backend operator operations declare central commerce permission
   }
 });
 
-test("membership backend SDK authority excludes service-only fulfillment", () => {
+test("membership fulfillment remains an in-process order integration", () => {
   const reviewOperations = operationMap(readJson(reviewContractPath));
   const authorityOperations = operationMap(readJson(sdkAuthorityPath));
   const inputOperations = operationMap(readJson(sdkInputPath));
 
-  assert.ok(reviewOperations.has("memberships.purchases.fulfillments.create"));
-  assert.equal(authorityOperations.has("memberships.purchases.fulfillments.create"), false);
+  for (const operations of [reviewOperations, authorityOperations, inputOperations]) {
+    assert.equal(operations.has("purchases.fulfillments.create"), false);
+  }
   assert.deepEqual([...inputOperations.keys()].sort(), [...authorityOperations.keys()].sort());
   assert.deepEqual(readJson(sdkInputPath), readJson(sdkAuthorityPath));
 });

@@ -4,12 +4,10 @@ pub mod pagination;
 mod postgres;
 mod read_model;
 pub mod shared;
-mod sqlite;
 mod types;
 
 pub use entity_id::TimestampMembershipEntityIdGenerator;
 pub use postgres::PostgresCommerceMembershipStore;
-pub use sqlite::SqliteCommerceMembershipStore;
 pub use types::{
     AdminMembershipEntitlementItem, AdminMembershipFuture, AdminMembershipMemberItem,
     AdminMembershipPackageGroupItem, AdminMembershipPackageGroupMutation,

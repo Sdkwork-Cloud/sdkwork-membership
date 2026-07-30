@@ -19,7 +19,7 @@
           "memberships"
         ],
         "summary": "Membership plans list.",
-        "operationId": "memberships.plans.list",
+        "operationId": "plans.list",
         "x-sdkwork-permission": "commerce.memberships.read",
         "parameters": [
           {
@@ -143,7 +143,7 @@
           "memberships"
         ],
         "summary": "Membership plan create.",
-        "operationId": "memberships.plans.create",
+        "operationId": "plans.create",
         "x-sdkwork-permission": "commerce.memberships.manage",
         "parameters": [],
         "requestBody": {
@@ -249,7 +249,7 @@
           "memberships"
         ],
         "summary": "Membership plan update.",
-        "operationId": "memberships.plans.update",
+        "operationId": "plans.update",
         "x-sdkwork-permission": "commerce.memberships.manage",
         "parameters": [
           {
@@ -362,7 +362,7 @@
           "memberships"
         ],
         "summary": "Membership plan delete.",
-        "operationId": "memberships.plans.delete",
+        "operationId": "plans.delete",
         "x-sdkwork-permission": "commerce.memberships.manage",
         "parameters": [
           {
@@ -460,7 +460,7 @@
           "memberships"
         ],
         "summary": "Membership package groups list.",
-        "operationId": "memberships.packageGroups.list",
+        "operationId": "packageGroups.list",
         "x-sdkwork-permission": "commerce.memberships.read",
         "parameters": [
           {
@@ -584,7 +584,7 @@
           "memberships"
         ],
         "summary": "Membership package group create.",
-        "operationId": "memberships.packageGroups.create",
+        "operationId": "packageGroups.create",
         "x-sdkwork-permission": "commerce.memberships.manage",
         "parameters": [],
         "requestBody": {
@@ -690,7 +690,7 @@
           "memberships"
         ],
         "summary": "Membership package group update.",
-        "operationId": "memberships.packageGroups.update",
+        "operationId": "packageGroups.update",
         "x-sdkwork-permission": "commerce.memberships.manage",
         "parameters": [
           {
@@ -803,7 +803,7 @@
           "memberships"
         ],
         "summary": "Membership package group delete.",
-        "operationId": "memberships.packageGroups.delete",
+        "operationId": "packageGroups.delete",
         "x-sdkwork-permission": "commerce.memberships.manage",
         "parameters": [
           {
@@ -901,7 +901,7 @@
           "memberships"
         ],
         "summary": "Membership packages list.",
-        "operationId": "memberships.packages.list",
+        "operationId": "packages.list",
         "x-sdkwork-permission": "commerce.memberships.read",
         "parameters": [
           {
@@ -1041,7 +1041,7 @@
           "memberships"
         ],
         "summary": "Membership package create.",
-        "operationId": "memberships.packages.create",
+        "operationId": "packages.create",
         "x-sdkwork-permission": "commerce.memberships.manage",
         "parameters": [],
         "requestBody": {
@@ -1147,7 +1147,7 @@
           "memberships"
         ],
         "summary": "Membership package update.",
-        "operationId": "memberships.packages.update",
+        "operationId": "packages.update",
         "x-sdkwork-permission": "commerce.memberships.manage",
         "parameters": [
           {
@@ -1260,7 +1260,7 @@
           "memberships"
         ],
         "summary": "Membership package delete.",
-        "operationId": "memberships.packages.delete",
+        "operationId": "packages.delete",
         "x-sdkwork-permission": "commerce.memberships.manage",
         "parameters": [
           {
@@ -1358,7 +1358,7 @@
           "memberships"
         ],
         "summary": "Membership members list.",
-        "operationId": "memberships.members.list",
+        "operationId": "members.list",
         "x-sdkwork-permission": "commerce.memberships.read",
         "parameters": [
           {
@@ -1496,16 +1496,20 @@
     },
     "/backend/v3/api/memberships/members/{id}": {
       "get": {
-        "tags": ["memberships"],
+        "tags": [
+          "memberships"
+        ],
         "summary": "Membership member detail.",
-        "operationId": "memberships.members.retrieve",
+        "operationId": "members.retrieve",
         "x-sdkwork-permission": "commerce.memberships.read",
         "parameters": [
           {
             "name": "id",
             "in": "path",
             "required": true,
-            "schema": { "type": "string" }
+            "schema": {
+              "type": "string"
+            }
           }
         ],
         "responses": {
@@ -1513,7 +1517,9 @@
             "description": "Success",
             "content": {
               "application/json": {
-                "schema": { "$ref": "#/components/schemas/AdminMembershipMemberResponse" }
+                "schema": {
+                  "$ref": "#/components/schemas/AdminMembershipMemberResponse"
+                }
               }
             }
           },
@@ -1521,7 +1527,9 @@
             "description": "Bad request",
             "content": {
               "application/problem+json": {
-                "schema": { "$ref": "#/components/schemas/ProblemDetail" }
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetail"
+                }
               }
             }
           },
@@ -1529,7 +1537,9 @@
             "description": "Unauthorized",
             "content": {
               "application/problem+json": {
-                "schema": { "$ref": "#/components/schemas/ProblemDetail" }
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetail"
+                }
               }
             }
           },
@@ -1537,7 +1547,9 @@
             "description": "Forbidden",
             "content": {
               "application/problem+json": {
-                "schema": { "$ref": "#/components/schemas/ProblemDetail" }
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetail"
+                }
               }
             }
           },
@@ -1545,7 +1557,9 @@
             "description": "Not found",
             "content": {
               "application/problem+json": {
-                "schema": { "$ref": "#/components/schemas/ProblemDetail" }
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetail"
+                }
               }
             }
           },
@@ -1553,12 +1567,19 @@
             "description": "Internal server error",
             "content": {
               "application/problem+json": {
-                "schema": { "$ref": "#/components/schemas/ProblemDetail" }
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetail"
+                }
               }
             }
           }
         },
-        "security": [{ "AuthToken": [], "AccessToken": [] }],
+        "security": [
+          {
+            "AuthToken": [],
+            "AccessToken": []
+          }
+        ],
         "x-sdkwork-owner": "sdkwork-membership",
         "x-sdkwork-api-authority": "sdkwork-membership-backend-api",
         "x-sdkwork-domain": "commerce",
@@ -1574,7 +1595,7 @@
           "memberships"
         ],
         "summary": "Membership member status update.",
-        "operationId": "memberships.members.status.update",
+        "operationId": "members.status.update",
         "x-sdkwork-permission": "commerce.memberships.manage",
         "parameters": [
           {
@@ -1689,7 +1710,7 @@
           "memberships"
         ],
         "summary": "Membership entitlements list.",
-        "operationId": "memberships.entitlements.list",
+        "operationId": "entitlements.list",
         "x-sdkwork-permission": "commerce.memberships.read",
         "parameters": [
           {
@@ -1820,101 +1841,6 @@
         "x-sdkwork-api-authority": "sdkwork-membership-backend-api",
         "x-sdkwork-domain": "commerce",
         "x-sdkwork-resource": "memberships.entitlements",
-        "x-sdkwork-request-context": "WebRequestContext",
-        "x-sdkwork-api-surface": "backend-api",
-        "x-sdkwork-server-request-id": true
-      }
-    },
-    "/backend/v3/api/memberships/purchases/fulfillments": {
-      "post": {
-        "tags": [
-          "memberships"
-        ],
-        "summary": "Membership purchase fulfillment.",
-        "operationId": "memberships.purchases.fulfillments.create",
-        "x-sdkwork-credential-mode": "service-token",
-        "parameters": [],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/MembershipPurchaseFulfillmentRequest"
-              }
-            }
-          }
-        },
-        "responses": {
-          "201": {
-            "description": "Created",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/MembershipPurchaseFulfillmentResponse"
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "Bad request",
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetail"
-                }
-              }
-            }
-          },
-          "401": {
-            "description": "Unauthorized",
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetail"
-                }
-              }
-            }
-          },
-          "404": {
-            "description": "Not found",
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetail"
-                }
-              }
-            }
-          },
-          "409": {
-            "description": "Conflict",
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetail"
-                }
-              }
-            }
-          },
-          "500": {
-            "description": "Internal server error",
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetail"
-                }
-              }
-            }
-          }
-        },
-        "security": [
-          {
-            "AuthToken": []
-          }
-        ],
-        "x-sdkwork-owner": "sdkwork-membership",
-        "x-sdkwork-api-authority": "sdkwork-membership-backend-api",
-        "x-sdkwork-domain": "commerce",
-        "x-sdkwork-resource": "memberships.purchases.fulfillments",
         "x-sdkwork-request-context": "WebRequestContext",
         "x-sdkwork-api-surface": "backend-api",
         "x-sdkwork-server-request-id": true
@@ -2841,135 +2767,6 @@
                   },
                   "pageInfo": {
                     "$ref": "#/components/schemas/PageInfo"
-                  }
-                }
-              }
-            }
-          }
-        ]
-      },
-      "MembershipPurchaseFulfillmentRequest": {
-        "type": "object",
-        "additionalProperties": false,
-        "required": [
-          "action",
-          "tenantId",
-          "ownerUserId",
-          "packageId",
-          "orderId",
-          "membershipId",
-          "orderNo",
-          "paidAt",
-          "requestNo",
-          "idempotencyKey"
-        ],
-        "properties": {
-          "action": {
-            "type": "string",
-            "enum": [
-              "purchase",
-              "renew",
-              "upgrade"
-            ]
-          },
-          "tenantId": {
-            "type": "string",
-            "format": "int64",
-            "pattern": "^[1-9][0-9]*$",
-            "x-sdkwork-int64-string": true,
-            "x-sdkwork-rust-type": "i64"
-          },
-          "organizationId": {
-            "type": [
-              "string",
-              "null"
-            ],
-            "format": "int64",
-            "pattern": "^(0|[1-9][0-9]*)$",
-            "x-sdkwork-int64-string": true,
-            "x-sdkwork-rust-type": "i64"
-          },
-          "ownerUserId": {
-            "type": "string",
-            "format": "int64",
-            "pattern": "^[1-9][0-9]*$",
-            "x-sdkwork-int64-string": true,
-            "x-sdkwork-rust-type": "i64"
-          },
-          "packageId": {
-            "type": "string",
-            "format": "int64",
-            "pattern": "^[1-9][0-9]*$",
-            "x-sdkwork-int64-string": true,
-            "x-sdkwork-rust-type": "i64"
-          },
-          "orderId": {
-            "type": "string",
-            "minLength": 1
-          },
-          "membershipId": {
-            "type": "string",
-            "minLength": 1
-          },
-          "orderNo": {
-            "type": "string",
-            "minLength": 1
-          },
-          "paidAt": {
-            "type": "string",
-            "format": "date-time"
-          },
-          "requestNo": {
-            "type": "string",
-            "minLength": 1
-          },
-          "idempotencyKey": {
-            "type": "string",
-            "minLength": 1,
-            "maxLength": 160
-          }
-        }
-      },
-      "MembershipPurchaseFulfillmentOutcome": {
-        "type": "object",
-        "additionalProperties": false,
-        "required": [
-          "accepted",
-          "replayed",
-          "fulfillmentStatus"
-        ],
-        "properties": {
-          "accepted": {
-            "type": "boolean"
-          },
-          "replayed": {
-            "type": "boolean"
-          },
-          "fulfillmentStatus": {
-            "type": "string"
-          }
-        }
-      },
-      "MembershipPurchaseFulfillmentResponse": {
-        "allOf": [
-          {
-            "$ref": "#/components/schemas/SdkWorkApiResponse"
-          },
-          {
-            "type": "object",
-            "required": [
-              "data"
-            ],
-            "properties": {
-              "data": {
-                "type": "object",
-                "additionalProperties": false,
-                "required": [
-                  "item"
-                ],
-                "properties": {
-                  "item": {
-                    "$ref": "#/components/schemas/MembershipPurchaseFulfillmentOutcome"
                   }
                 }
               }

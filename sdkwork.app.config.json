@@ -1,0 +1,135 @@
+{
+  "schemaVersion": 3,
+  "kind": "sdkwork.app",
+  "app": {
+    "key": "sdkwork-membership",
+    "name": "SDKWork Membership",
+    "displayName": "SDKWork Membership",
+    "description": "Membership catalog, subscriptions, entitlements, benefits, and fulfillment APIs.",
+    "officialWebsiteUrl": "https://sdkwork.com/apps/sdkwork-membership",
+    "appType": "SDK",
+    "identifiers": {
+      "containerImage": "sdkwork-membership"
+    }
+  },
+  "backend": {
+    "primaryLanguage": "rust",
+    "framework": "axum",
+    "appId": "sdkwork-membership",
+    "serviceId": "sdkwork-membership",
+    "profileKey": "backend-root-admin",
+    "tenantId": "100001",
+    "organizationId": "0",
+    "accessTokenPermissionScope": [
+      "commerce.memberships.read",
+      "commerce.memberships.manage"
+    ]
+  },
+  "runtime": {
+    "family": "server",
+    "framework": "rust-axum",
+    "defaultPlatform": "API",
+    "defaultArchitecture": "x64",
+    "supportedDeploymentProfiles": [
+      "standalone",
+      "cloud"
+    ],
+    "defaultDeploymentProfile": "standalone"
+  },
+  "media": {
+    "icons": {
+      "primary": {
+        "id": "sdkwork-membership-primary-icon",
+        "type": "ICON",
+        "purpose": "PRIMARY",
+        "platform": "API",
+        "format": "PNG",
+        "width": 1024,
+        "height": 1024,
+        "enabled": false,
+        "resource": {
+          "kind": "catalog-media-deferred"
+        }
+      },
+      "platform": []
+    },
+    "screenshots": [],
+    "previews": []
+  },
+  "publish": {
+    "status": "INTERNAL",
+    "platforms": [
+      "API"
+    ],
+    "installPlatforms": [
+      "API"
+    ],
+    "installSkill": false
+  },
+  "artifacts": {
+    "installConfig": {
+      "defaultPackageId": "linux-x64-standalone-server-tar-gz",
+      "packages": [
+        {
+          "id": "linux-x64-standalone-server-tar-gz",
+          "name": "SDKWork Membership Linux x64 Server",
+          "sourceType": "SCRIPT",
+          "packageFormat": "TAR_GZ",
+          "platform": "API",
+          "architecture": "x64",
+          "profileBinding": "fixed",
+          "deploymentProfile": "standalone",
+          "runtimeTarget": "server",
+          "targetPlatform": "linux",
+          "enabled": true
+        },
+        {
+          "id": "linux-x64-cloud-server-tar-gz",
+          "name": "SDKWork Membership Linux x64 Cloud Server",
+          "sourceType": "SCRIPT",
+          "packageFormat": "TAR_GZ",
+          "platform": "API",
+          "architecture": "x64",
+          "profileBinding": "fixed",
+          "deploymentProfile": "cloud",
+          "runtimeTarget": "server",
+          "targetPlatform": "linux",
+          "enabled": true
+        }
+      ]
+    }
+  },
+  "release": {
+    "currentVersion": "0.1.0",
+    "defaultChannel": "DEV",
+    "latest": {
+      "DEV": "0.1.0"
+    },
+    "notes": [
+      {
+        "version": "0.1.0",
+        "channel": "DEV",
+        "current": true,
+        "summary": "Initial membership service and SDK application contract.",
+        "packageIds": [
+          "linux-x64-standalone-server-tar-gz",
+          "linux-x64-cloud-server-tar-gz"
+        ]
+      }
+    ]
+  },
+  "security": {
+    "checksumRequired": false,
+    "signatureRequired": false,
+    "sbomRequired": false
+  },
+  "devApp": {
+    "enabled": true,
+    "sourceRoot": "."
+  },
+  "metadata": {
+    "componentSpec": "specs/component.spec.json",
+    "deploymentConfig": "etc/sdkwork.deployment.config.json",
+    "workflowManifest": "sdkwork.workflow.json"
+  }
+}

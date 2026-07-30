@@ -1,11 +1,9 @@
-use std::sync::Arc;
-
-use sdkwork_api_membership_assembly::assemble_api_router;
-use sdkwork_membership_service_host::MembershipServiceHost;
-use sdkwork_web_bootstrap::{service_router, ServiceRouterConfig};
+use sdkwork_api_membership_assembly::assemble_api_router_from_env;
+use sdkwork_web_bootstrap::ComposedApiAssembly;
 
 #[tokio::main]
 async fn main() {
+    sdkwork_database_sqlx::enable_process_shared_database_pool();
     tracing_subscriber::fmt::init();
     if let Err(error) = run().await {
         eprintln!("membership gateway failed: {error}");
@@ -14,12 +12,16 @@ async fn main() {
 }
 
 async fn run() -> Result<(), String> {
-    let host = Arc::new(MembershipServiceHost::from_env().await?);
-    let business = assemble_api_router(host).await.router;
-    // CORS is handled by the sdkwork-web-framework standard interceptor
-    // chain (deny-by-default). Do not add permissive CORS here.
-    let app = service_router(business, ServiceRouterConfig::default().with_always_ready());
-    let addr = std::env::var("MEMBERSHIP_API_BIND").unwrap_or_else(|_| "0.0.0.0:18096".to_owned());
+    let assembly = assemble_api_router_from_env().await?;
+    let manifest = assembly.route_manifest.clone();
+    let resolver = sdkwork_iam_web_adapter::iam_web_request_context_resolver_from_env().await;
+    let framework =
+        sdkwork_iam_web_adapter::build_web_framework_builder(resolver, manifest, Vec::new());
+    let app = ComposedApiAssembly::try_compose("SDKWork Membership API", vec![assembly])?
+        .into_hosted(framework)
+        .router;
+    let addr = std::env::var("SDKWORK_MEMBERSHIP_APPLICATION_PUBLIC_INGRESS_BIND")
+        .unwrap_or_else(|_| "127.0.0.1:18096".to_owned());
     let listener = tokio::net::TcpListener::bind(&addr)
         .await
         .map_err(|error| format!("failed to bind membership gateway on {addr}: {error}"))?;

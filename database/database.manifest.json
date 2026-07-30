@@ -1,24 +1,22 @@
 {
-  "schemaVersion": 1,
+  "schemaVersion": 2,
   "kind": "sdkwork.database.module",
+  "databaseRole": "authoritative-server",
   "moduleId": "membership",
   "serviceCode": "MEMBERSHIP",
   "displayName": "Membership Database",
   "owner": "sdkwork-membership",
   "engines": [
-    "postgres",
-    "sqlite"
+    "postgres"
   ],
   "defaultEngine": "postgres",
-  "tablePrefix": "commerce_",
+  "tablePrefix": "membership_",
   "contractVersion": "1.0.0",
   "baselineStrategy": "baseline-plus-migrations",
-  "modules": [
-    "membership_extension"
-  ],
+  "modules": [],
   "lifecycle": {
-    "autoMigrate": true,
-    "seedOnBoot": true,
+    "autoMigrate": false,
+    "seedOnBoot": false,
     "defaultSeedLocale": "zh-CN",
     "defaultSeedProfile": "standard",
     "supportedSeedLocales": [

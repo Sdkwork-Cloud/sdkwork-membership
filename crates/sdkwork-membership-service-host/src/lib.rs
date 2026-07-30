@@ -27,6 +27,10 @@ impl MembershipServiceHost {
         self.database.pool()
     }
 
+    pub fn postgres_pool(&self) -> &sqlx::PgPool {
+        self.database.postgres_pool()
+    }
+
     pub fn database_module(&self) -> std::sync::Arc<sdkwork_database_spi::DefaultDatabaseModule> {
         self.database.module()
     }

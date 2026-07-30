@@ -2,11 +2,13 @@
 
 - Owner: sdkwork-membership platform team
 - Capability: membership (commerce domain)
-- Engines: PostgreSQL, SQLite
-- Table prefix: `commerce_` for commerce-scoped membership extension tables
+- Database role: `authoritative-server`
+- Engine: PostgreSQL only
+- Supported PostgreSQL: 15 or newer; no optional extensions are required
+- Table prefix: `membership_`
 - Compliance level: L2
 - Contract version: 1.0.0
-- Updated: 2026-07-08
+- Updated: 2026-07-30
 
 ## Related Specs
 
@@ -37,24 +39,24 @@ The current baseline and contract initialize 18 membership capability tables.
 
 | Table | Owner | Purpose |
 | --- | --- | --- |
-| `commerce_product_spu` | sdkwork-membership | Membership catalog SPU rows used by package SKU projection |
-| `commerce_product_sku` | sdkwork-membership | Membership package SKU rows and display metadata |
+| `membership_product_spu` | sdkwork-membership | Membership catalog SPU rows used by package SKU projection |
+| `membership_product_sku` | sdkwork-membership | Membership package SKU rows and display metadata |
 | `membership_plan` | sdkwork-membership | Membership plan/rank definitions |
 | `membership_plan_version` | sdkwork-membership | Published plan versions |
-| `benefit_definition` | sdkwork-membership | Entitlement/privilege dictionary |
+| `membership_benefit_definition` | sdkwork-membership | Entitlement/privilege dictionary |
 | `membership_plan_benefit` | sdkwork-membership | Plan-version benefit bindings |
 | `membership_package_group` | sdkwork-membership | Billing-cycle package groups |
 | `membership_package` | sdkwork-membership | Sellable membership packages |
 | `membership_subscription` | sdkwork-membership | User subscription reservation and active-state record |
 | `membership_period` | sdkwork-membership | Subscription period reservation and activation record |
-| `entitlement_account` | sdkwork-membership | Per-user entitlement balances and usage counters |
-| `entitlement_grant` | sdkwork-membership | Pending/active entitlement grants from membership fulfillment |
-| `entitlement_ledger_entry` | sdkwork-membership | Entitlement grant/use audit ledger |
-| `commerce_account` | sdkwork-membership | Membership points account projection |
-| `commerce_account_ledger` | sdkwork-membership | Membership points ledger projection |
-| `commerce_membership_daily_reward` | sdkwork-membership | Daily check-in reward tracking |
-| `commerce_membership_privilege_usage` | sdkwork-membership | Per-period privilege consumption summary |
-| `commerce_membership_change_log` | sdkwork-membership | Immutable membership state-change audit log |
+| `membership_entitlement_account` | sdkwork-membership | Per-user entitlement balances and usage counters |
+| `membership_entitlement_grant` | sdkwork-membership | Pending/active entitlement grants from membership fulfillment |
+| `membership_entitlement_ledger_entry` | sdkwork-membership | Entitlement grant/use audit ledger |
+| `membership_points_account` | sdkwork-membership | Membership points account projection |
+| `membership_points_ledger` | sdkwork-membership | Membership points ledger projection |
+| `membership_daily_reward` | sdkwork-membership | Daily check-in reward tracking |
+| `membership_privilege_usage` | sdkwork-membership | Per-period privilege consumption summary |
+| `membership_change_log` | sdkwork-membership | Immutable membership state-change audit log |
 
 The baseline does not create and seeds do not insert any of these external tables:
 
@@ -78,19 +80,14 @@ The membership database only persists the pending membership reservation and lat
 ## Baseline And Seeds
 
 - `database/ddl/baseline/postgres/0001_membership_baseline.sql`
-- `database/ddl/baseline/sqlite/0001_membership_baseline.sql`
 - `database/seeds/common/001_catalog.sql` — token plan catalog (plans, benefits, packages, SKUs)
-- `database/seeds/common/002_dev_demo.sql` — dev demo user data (subscription, points, entitlements)
+- `database/fixtures/002_dev_demo.sql` - explicit test/demo data; never read by production bootstrap
 
 The baseline is the greenfield initialization snapshot for this pre-launch application. The migration directories are reserved for post-GA incremental changes and are intentionally empty unless a released schema needs expand/contract evolution.
 
-Seed profiles:
-
-- `dev` — catalog + demo user data (default for local development)
-- `release` — catalog only (for production/staging without demo user data)
-- `standard` — catalog + demo user data (backward-compatible default profile)
-
-Select a profile via `SDKWORK_MEMBERSHIP_DATABASE_SEED_PROFILE=dev|release|standard`.
+The `standard` seed profile installs language-neutral catalog data plus the selected active locale.
+Select it with `SDKWORK_DATABASE_SEED_PROFILE=standard`. Demo subjects and balances are test
+fixtures and must be applied explicitly by a test harness, never by `db:seed` or application startup.
 
 Seed data covers authenticated frontend membership flows for the demo tenant:
 
@@ -103,11 +100,14 @@ Seed data covers authenticated frontend membership flows for the demo tenant:
 
 Local checkout tests that need real order/payment rows must start the `sdkwork-order` and `sdkwork-payment` lifecycles separately. This repository must not add order/payment DDL or seed rows for convenience.
 
+Automatic migration and seeding are disabled by default. Production changes run through an elected
+migrator and reviewed release workflow; application replicas never race schema or seed execution.
+
 ## Contract Registry
 
 - `contract/schema.yaml` - 18 table contracts registered with profile, compliance level, and owner
 - `contract/table-registry.json` - machine-readable inventory of the 18 initialized tables
-- `contract/prefix-registry.json` - `commerce_` prefix registration for commerce-scoped membership extension tables
+- `contract/prefix-registry.json` - `membership_` bounded-context prefix registration
 - `database.manifest.json` - database module manifest used by `sdkwork-database`
 
 Regenerate the contract from the PostgreSQL baseline after DDL changes:

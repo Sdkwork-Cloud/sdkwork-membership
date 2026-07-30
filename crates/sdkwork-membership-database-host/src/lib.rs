@@ -1,9 +1,10 @@
-use sdkwork_database_config::DatabaseConfig;
+use sdkwork_database_config::{DatabaseConfig, DatabaseEngine};
 use sdkwork_database_lifecycle::{lifecycle_options_from_env, LifecycleOrchestrator};
 use sdkwork_database_spi::{
     DatabaseAssetProvider, DatabaseManifest, DefaultDatabaseModule, SpiError,
 };
 use sdkwork_database_sqlx::{create_pool_from_config, DatabasePool};
+use sqlx::PgPool;
 use std::path::PathBuf;
 use std::sync::Arc;
 
@@ -15,6 +16,12 @@ pub struct MembershipDatabaseHost {
 impl MembershipDatabaseHost {
     pub fn pool(&self) -> &DatabasePool {
         &self.pool
+    }
+
+    pub fn postgres_pool(&self) -> &PgPool {
+        self.pool
+            .as_postgres()
+            .expect("membership database host only constructs PostgreSQL pools")
     }
 
     pub fn module(&self) -> Arc<DefaultDatabaseModule> {
@@ -46,16 +53,22 @@ pub fn database_module() -> Result<DefaultDatabaseModule, SpiError> {
     DefaultDatabaseModule::from_app_root(&app_root)
 }
 
-/// Bootstrap the membership database from the `MEMBERSHIP` env config.
+/// Bootstrap the membership database from the workspace database config.
 ///
 /// This creates the pool, runs the DDL baseline (`init`), optionally
 /// applies migrations (`auto_migrate`), and optionally applies seeds
 /// (`seed_on_boot`). All three toggles are controlled by the database
-/// manifest and overridable through `SDKWORK_MEMBERSHIP_DATABASE_*` env vars.
+/// manifest and overridable through the canonical `SDKWORK_DATABASE_*` env vars.
 pub async fn bootstrap_membership_database_from_env() -> Result<MembershipDatabaseHost, String> {
     let _ = dotenvy::dotenv();
     let config = DatabaseConfig::from_env("MEMBERSHIP")
         .map_err(|error| format!("read membership database config failed: {error}"))?;
+    if config.engine != DatabaseEngine::Postgres {
+        return Err(
+            "membership authoritative-server database requires SDKWORK_DATABASE_ENGINE=postgresql"
+                .to_owned(),
+        );
+    }
     let pool = create_pool_from_config(config)
         .await
         .map_err(|error| format!("create membership database pool failed: {error}"))?;
@@ -93,6 +106,11 @@ pub async fn bootstrap_membership_database_from_env() -> Result<MembershipDataba
 pub async fn bootstrap_membership_database_host_with_pool(
     pool: &DatabasePool,
 ) -> Result<MembershipDatabaseHost, String> {
+    if pool.as_postgres().is_none() {
+        return Err(
+            "membership authoritative-server assembly requires a shared PostgreSQL pool".to_owned(),
+        );
+    }
     let module = Arc::new(
         database_module()
             .map_err(|error| format!("load membership database module failed: {error}"))?,

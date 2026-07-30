@@ -1,18 +1,18 @@
 schema_version: 1
 kind: sdkwork.database.schema
+database_role: authoritative-server
 module_id: membership
 contract_version: 1.0.0
 owner_team: sdkwork-membership
 compliance_level: L2
 engines:
   - postgres
-  - sqlite
-table_prefix: commerce_
+table_prefix: membership_
 tables:
-  - name: commerce_product_spu
+  - name: membership_product_spu
     lifecycle_status: active
     owner: sdkwork-membership
-  - name: commerce_product_sku
+  - name: membership_product_sku
     lifecycle_status: active
     owner: sdkwork-membership
   - name: membership_plan
@@ -21,7 +21,7 @@ tables:
   - name: membership_plan_version
     lifecycle_status: active
     owner: sdkwork-membership
-  - name: benefit_definition
+  - name: membership_benefit_definition
     lifecycle_status: active
     owner: sdkwork-membership
   - name: membership_plan_benefit
@@ -39,27 +39,27 @@ tables:
   - name: membership_period
     lifecycle_status: active
     owner: sdkwork-membership
-  - name: entitlement_account
+  - name: membership_entitlement_account
     lifecycle_status: active
     owner: sdkwork-membership
-  - name: entitlement_grant
+  - name: membership_entitlement_grant
     lifecycle_status: active
     owner: sdkwork-membership
-  - name: entitlement_ledger_entry
+  - name: membership_entitlement_ledger_entry
     lifecycle_status: active
     owner: sdkwork-membership
-  - name: commerce_account
+  - name: membership_points_account
     lifecycle_status: active
     owner: sdkwork-membership
-  - name: commerce_account_ledger
+  - name: membership_points_ledger
     lifecycle_status: active
     owner: sdkwork-membership
-  - name: commerce_membership_daily_reward
+  - name: membership_daily_reward
     lifecycle_status: active
     owner: sdkwork-membership
-  - name: commerce_membership_privilege_usage
+  - name: membership_privilege_usage
     lifecycle_status: active
     owner: sdkwork-membership
-  - name: commerce_membership_change_log
+  - name: membership_change_log
     lifecycle_status: active
     owner: sdkwork-membership

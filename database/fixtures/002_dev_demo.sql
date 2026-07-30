@@ -26,7 +26,7 @@ INSERT INTO membership_period (
   NULL, 'seed-membership-period-user-1', 'seed-membership-period-user-1', '2026-06-28 00:00:00', CURRENT_TIMESTAMP
 ) ON CONFLICT (id) DO NOTHING;
 
-INSERT INTO commerce_account (
+INSERT INTO membership_points_account (
   id, uuid, tenant_id, organization_id, owner_type, owner_id, asset_code, currency_code,
   account_purpose, available_amount, frozen_amount, pending_amount, status, version, created_at, updated_at
 ) VALUES (
@@ -34,7 +34,7 @@ INSERT INTO commerce_account (
   'GENERAL', 19000, 0, 0, 1, 0, '2026-06-23 00:00:00', CURRENT_TIMESTAMP
 ) ON CONFLICT (id) DO NOTHING;
 
-INSERT INTO commerce_account_ledger (
+INSERT INTO membership_points_ledger (
   id, uuid, tenant_id, organization_id, account_id, journal_id, owner_type, owner_id,
   asset_code, currency_code, ledger_type, entry_type, direction, amount, balance_before,
   balance_after, business_type, business_no, request_no, idempotency_key, source_type,
@@ -53,7 +53,7 @@ INSERT INTO commerce_account_ledger (
    19000, 'daily_reward', 'seed-points-daily-reward-user-1', 'seed-points-daily-reward-user-1', 'seed-points-daily-reward-user-1', 'membership_daily_reward',
    9100003, 'Daily membership reward', '{}', 'seed-trace-membership-user-1', '2026-07-12 00:00:00') ON CONFLICT (id) DO NOTHING;
 
-INSERT INTO entitlement_account (
+INSERT INTO membership_entitlement_account (
   id, tenant_id, organization_id, account_no, benefit_id, subject_type,
   subject_id, total_granted, total_used, balance, status, expires_at,
   version, created_at, updated_at
@@ -65,7 +65,7 @@ INSERT INTO entitlement_account (
   ('seed-entitlement-account-user-1-ai-quota', '100001', '0', 'seed-entitlement-account-user-1-ai-quota', 'seed-benefit-ai-quota', 'user',
    '1', '50', '6', '44', 'active', '2027-06-29 00:00:00', 0, '2026-06-28 00:00:00', CURRENT_TIMESTAMP) ON CONFLICT (id) DO NOTHING;
 
-INSERT INTO entitlement_grant (
+INSERT INTO membership_entitlement_grant (
   id, tenant_id, organization_id, grant_no, benefit_id, subject_type, subject_id,
   source_type, source_id, grant_policy, granted_quantity, status, starts_at,
   expires_at, request_no, idempotency_key, created_at, updated_at
@@ -80,7 +80,7 @@ INSERT INTO entitlement_grant (
    'membership_subscription', 'seed-membership-subscription-user-1', 'membership_plan', '50', 'active', '2026-06-28 00:00:00',
    '2027-06-29 00:00:00', 'seed-entitlement-grant-user-1-ai-quota', 'seed-entitlement-grant-user-1-ai-quota', '2026-06-28 00:00:00', CURRENT_TIMESTAMP) ON CONFLICT (id) DO NOTHING;
 
-INSERT INTO entitlement_ledger_entry (
+INSERT INTO membership_entitlement_ledger_entry (
   id, tenant_id, organization_id, ledger_no, account_id, grant_id, benefit_id,
   subject_type, subject_id, direction, amount, balance_after, business_type,
   source_type, source_id, request_no, idempotency_key, occurred_at, created_at
@@ -92,7 +92,7 @@ INSERT INTO entitlement_ledger_entry (
   ('seed-entitlement-ledger-user-1-ai-quota-credit', '100001', '0', 'seed-entitlement-ledger-user-1-ai-quota-credit', 'seed-entitlement-account-user-1-ai-quota', 'seed-entitlement-grant-user-1-ai-quota', 'seed-benefit-ai-quota',
    'user', '1', 'credit', '50', '50', 'membership_grant', 'membership_subscription', 'seed-membership-subscription-user-1', 'seed-entitlement-ledger-user-1-ai-quota-credit', 'seed-entitlement-ledger-user-1-ai-quota-credit', '2026-06-28 00:00:00', '2026-06-28 00:00:00') ON CONFLICT (id) DO NOTHING;
 
-INSERT INTO commerce_membership_privilege_usage (
+INSERT INTO membership_privilege_usage (
   id, uuid, tenant_id, organization_id, user_id, subscription_id, benefit_code,
   period_start, period_end, used_count, usage_limit, last_used_at, version, created_at, updated_at
 ) VALUES
@@ -103,7 +103,7 @@ INSERT INTO commerce_membership_privilege_usage (
   (9102003, 'seed-membership-privilege-user-1-ai-quota', 100001, 0, 1, NULL, 'ai_quota',
    '2026-06-28 00:00:00', '2027-06-29 00:00:00', 6, 50, '2026-07-12 00:00:00', 0, '2026-06-28 00:00:00', CURRENT_TIMESTAMP) ON CONFLICT (id) DO NOTHING;
 
-INSERT INTO commerce_membership_daily_reward (
+INSERT INTO membership_daily_reward (
   id, uuid, tenant_id, organization_id, user_id, reward_date, reward_points,
   consecutive_days, total_days, status, idempotency_key, created_at, version, updated_at
 ) VALUES (

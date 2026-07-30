@@ -1,0 +1,59 @@
+{
+  "schemaVersion": 1,
+  "kind": "sdkwork.process-database-pool",
+  "profile": {
+    "exampleFile": ".env.postgres.example",
+    "database": "sdkwork_ai_dev",
+    "schema": "sdkwork_ai_dev"
+  },
+  "processes": [
+    {
+      "id": "sdkwork-api-membership-standalone-gateway",
+      "entrypoint": "crates/sdkwork-api-membership-standalone-gateway/src/main.rs",
+      "poolOwner": "crates/sdkwork-membership-database-host/src/lib.rs",
+      "driver": "sdkwork_database_sqlx::DatabasePool",
+      "poolCount": 1,
+      "databaseUrlEnv": "SDKWORK_DATABASE_URL",
+      "schemaEnv": "SDKWORK_DATABASE_SCHEMA",
+      "maxConnectionsEnv": "SDKWORK_DATABASE_MAX_CONNECTIONS",
+      "productionSourceRoots": [
+        "crates/sdkwork-api-membership-standalone-gateway/src",
+        "crates/sdkwork-api-membership-assembly/src",
+        "crates/sdkwork-membership-database-host/src",
+        "crates/sdkwork-membership-service-host/src",
+        "crates/sdkwork-membership-repository-sqlx/src",
+        "crates/sdkwork-routes-membership-app-api/src",
+        "crates/sdkwork-routes-membership-backend-api/src"
+      ],
+      "consumers": [
+        {
+          "module": "Membership database lifecycle",
+          "poolMode": "installed-process-pool",
+          "evidence": [
+            "crates/sdkwork-membership-database-host/src/lib.rs"
+          ]
+        },
+        {
+          "module": "Membership PostgreSQL repositories",
+          "poolMode": "injected",
+          "evidence": [
+            "crates/sdkwork-membership-service-host/src/lib.rs",
+            "crates/sdkwork-membership-repository-sqlx/src/lib.rs"
+          ]
+        },
+        {
+          "module": "Membership readiness",
+          "poolMode": "injected",
+          "evidence": [
+            "crates/sdkwork-api-membership-assembly/src/bootstrap.rs"
+          ]
+        }
+      ],
+      "temporaryDriverExceptions": []
+    }
+  ],
+  "verification": [
+    "node ../sdkwork-specs/tools/check-process-shared-database-pool.mjs --root .",
+    "cargo check -p sdkwork-api-membership-standalone-gateway"
+  ]
+}

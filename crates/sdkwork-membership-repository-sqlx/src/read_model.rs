@@ -1,16 +1,3 @@
-pub(crate) fn is_missing_sqlite_read_model(error: &sqlx::Error) -> bool {
-    if matches!(error, sqlx::Error::ColumnNotFound(_)) {
-        return true;
-    }
-    error
-        .as_database_error()
-        .map(|database_error| {
-            let message = database_error.message().to_ascii_lowercase();
-            message.contains("no such table") || message.contains("no such column")
-        })
-        .unwrap_or(false)
-}
-
 pub(crate) fn is_missing_postgres_read_model(error: &sqlx::Error) -> bool {
     if matches!(error, sqlx::Error::ColumnNotFound(_)) {
         return true;

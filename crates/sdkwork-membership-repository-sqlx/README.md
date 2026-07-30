@@ -9,7 +9,7 @@ This README is the SDKWork module entrypoint for `sdkwork_membership_repository_
 
 ## Public API
 
-- `PostgresCommerceMembershipStore`, `SqliteCommerceMembershipStore` — tenant-scoped membership persistence.
+- `PostgresCommerceMembershipStore` - tenant-scoped authoritative membership persistence.
 - `app_membership_router_with_*`, `admin_membership_router_with_*` — Axum routers emitting canonical `SdkWorkApiResponse` / `application/problem+json` envelopes.
 - `TimestampMembershipEntityIdGenerator` — default entity id generator for command surfaces.
 
@@ -21,9 +21,10 @@ This README is the SDKWork module entrypoint for `sdkwork_membership_repository_
 
 Configuration keys, runtime entrypoints, and integration contracts are declared in `specs/component.spec.json`. Shared modules must receive configuration through typed bootstrap or service boundaries rather than reading host-local environment state directly.
 
-## SaaS/Private/Local Behavior
+## Deployment Behavior
 
-This component follows the deployment and runtime rules referenced by its `canonicalSpecs` entries. SaaS, private, and local behavior must stay compatible with the relevant SDKWork specs before implementation changes are made.
+This repository is an `authoritative-server` module and accepts PostgreSQL only. Standalone and
+cloud hosts inject the process-shared pool; SQLite is not a server fallback or test substitute.
 
 ## Security
 

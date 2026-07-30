@@ -3,7 +3,7 @@
   "kind": "sdkwork.database.prefix-registry",
   "prefixes": [
     {
-      "prefix": "commerce_",
+      "prefix": "membership_",
       "owner": "sdkwork-membership",
       "domain": "membership"
     }

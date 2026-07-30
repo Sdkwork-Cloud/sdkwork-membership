@@ -54,12 +54,12 @@ const PACKAGE_GROUP_ID_PARAM = {
 };
 
 const OPERATION_PARAMS = {
-  "memberships.benefits.list": [PLAN_ID_PARAM, CURSOR_PARAM],
-  "memberships.plans.list": [CURSOR_PARAM],
-  "memberships.packageGroups.list": [PLAN_ID_PARAM, RECOMMENDED_ONLY_PARAM, CURSOR_PARAM],
-  "memberships.packageGroups.packages.list": [PLAN_ID_PARAM, RECOMMENDED_ONLY_PARAM, CURSOR_PARAM],
-  "memberships.packages.list": [PACKAGE_GROUP_ID_PARAM, PLAN_ID_PARAM, CURSOR_PARAM],
-  "memberships.points.history.list": [CURSOR_PARAM],
+  "benefits.list": [PLAN_ID_PARAM, CURSOR_PARAM],
+  "plans.list": [CURSOR_PARAM],
+  "packageGroups.list": [PLAN_ID_PARAM, RECOMMENDED_ONLY_PARAM, CURSOR_PARAM],
+  "packageGroups.packages.list": [PLAN_ID_PARAM, RECOMMENDED_ONLY_PARAM, CURSOR_PARAM],
+  "packages.list": [PACKAGE_GROUP_ID_PARAM, PLAN_ID_PARAM, CURSOR_PARAM],
+  "points.history.list": [CURSOR_PARAM],
 };
 
 function upsertParameter(parameters, param) {

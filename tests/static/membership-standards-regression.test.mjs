@@ -437,56 +437,43 @@ test("membership component external service surfaces explicitly disable same-ori
 });
 
 test("membership baseline does not create order-owned order tables", () => {
-  const sqliteBaseline = readRelative("database/ddl/baseline/sqlite/0001_membership_baseline.sql");
   const postgresBaseline = readRelative("database/ddl/baseline/postgres/0001_membership_baseline.sql");
 
-  for (const [label, source] of [
-    ["sqlite baseline", sqliteBaseline],
-    ["postgres baseline", postgresBaseline],
+  for (const table of [
+    "commerce_order",
+    "commerce_order_item",
+    "commerce_order_amount_breakdown",
   ]) {
-    for (const table of [
-      "commerce_order",
-      "commerce_order_item",
-      "commerce_order_amount_breakdown",
-    ]) {
-      assert.equal(
-        source.includes(`CREATE TABLE IF NOT EXISTS ${table}`),
-        false,
-        `${label} must not create order-owned ${table}`,
-      );
-    }
+    assert.equal(
+      postgresBaseline.includes(`CREATE TABLE IF NOT EXISTS ${table}`),
+      false,
+      `PostgreSQL baseline must not create order-owned ${table}`,
+    );
   }
 });
 
 test("membership database initialization does not create payment-owned tables or seed payment catalog", () => {
-  const sqliteBaseline = readRelative("database/ddl/baseline/sqlite/0001_membership_baseline.sql");
   const postgresBaseline = readRelative("database/ddl/baseline/postgres/0001_membership_baseline.sql");
   const seedSource = readRelative("database/seeds/common/001_catalog.sql")
-    + "\n" + readRelative("database/seeds/common/002_dev_demo.sql");
-  const sqliteRepository = readRelative("crates/sdkwork-membership-repository-sqlx/src/sqlite.rs");
+    + "\n" + readRelative("database/fixtures/002_dev_demo.sql");
   const postgresRepository = readRelative("crates/sdkwork-membership-repository-sqlx/src/postgres.rs");
 
-  for (const [label, source] of [
-    ["sqlite baseline", sqliteBaseline],
-    ["postgres baseline", postgresBaseline],
+  for (const table of [
+    "commerce_payment_method",
+    "commerce_payment_intent",
+    "commerce_payment_attempt",
   ]) {
-    for (const table of [
-      "commerce_payment_method",
-      "commerce_payment_intent",
-      "commerce_payment_attempt",
-    ]) {
-      assert.equal(
-        source.includes(`CREATE TABLE IF NOT EXISTS ${table}`),
-        false,
-        `${label} must not create payment-owned ${table}`,
-      );
-    }
     assert.equal(
-      source.includes("source_payment_intent_id"),
+      postgresBaseline.includes(`CREATE TABLE IF NOT EXISTS ${table}`),
       false,
-      `${label} membership-owned tables must not retain payment intent linkage columns`,
+      `PostgreSQL baseline must not create payment-owned ${table}`,
     );
   }
+  assert.equal(
+    postgresBaseline.includes("source_payment_intent_id"),
+    false,
+    "PostgreSQL membership-owned tables must not retain payment intent linkage columns",
+  );
 
   assert.equal(
     seedSource.includes("INSERT OR IGNORE INTO commerce_payment_method"),
@@ -499,21 +486,16 @@ test("membership database initialization does not create payment-owned tables or
     "membership seed must not initialize payment intent linkage columns",
   );
 
-  for (const [label, source] of [
-    ["sqlite repository", sqliteRepository],
-    ["postgres repository", postgresRepository],
-  ]) {
-    assert.equal(
-      source.includes("commerce_payment_intent"),
-      false,
-      `${label} must not query payment-owned commerce_payment_intent for membership read models`,
-    );
-    assert.equal(
-      source.includes("source_payment_intent_id"),
-      false,
-      `${label} must not persist payment intent identifiers in membership-owned tables`,
-    );
-  }
+  assert.equal(
+    postgresRepository.includes("commerce_payment_intent"),
+    false,
+    "PostgreSQL repository must not query payment-owned commerce_payment_intent",
+  );
+  assert.equal(
+    postgresRepository.includes("source_payment_intent_id"),
+    false,
+    "PostgreSQL repository must not persist payment intent identifiers",
+  );
 });
 
 test("membership database contract excludes order payment and token-order tables", () => {
@@ -618,7 +600,6 @@ test("membership app API uses structured DTO fields instead of human message pay
   const sdkgen = readJson("sdks/sdkwork-membership-app-sdk/openapi/sdkwork-membership-app-api.sdkgen.json");
   const facadeSource = readRelative("sdks/sdkwork-membership-app-sdk/sdkwork-membership-app-sdk-typescript/src/index.ts");
   const repositoryTypes = readRelative("crates/sdkwork-membership-repository-sqlx/src/types.rs");
-  const sqliteRepository = readRelative("crates/sdkwork-membership-repository-sqlx/src/sqlite.rs");
   const postgresRepository = readRelative("crates/sdkwork-membership-repository-sqlx/src/postgres.rs");
 
   for (const [label, document] of [
@@ -647,7 +628,6 @@ test("membership app API uses structured DTO fields instead of human message pay
 
   for (const [label, source] of [
     ["repository DTOs", repositoryTypes],
-    ["sqlite repository", sqliteRepository],
     ["postgres repository", postgresRepository],
   ]) {
     assert.equal(
@@ -850,6 +830,11 @@ test("membership PC packages do not depend on order or payment packages", () => 
     true,
     "sdkwork-specs membership workspace overlay must include promotion PC core",
   );
+  assert.equal(
+    overlayPackages.includes("../sdkwork-promotion/sdks/sdkwork-promotion-backend-sdk/sdkwork-promotion-backend-sdk-typescript"),
+    true,
+    "sdkwork-specs membership workspace overlay must close the promotion service workspace dependency graph",
+  );
   for (const paymentOverlay of [
     "../sdkwork-payment/apps/sdkwork-payment-common/packages/*",
     "../sdkwork-payment/apps/sdkwork-payment-pc/packages/sdkwork-payment-pc-payment",
@@ -891,4 +876,29 @@ test("membership PC packages do not depend on order or payment packages", () => 
     true,
     "technical architecture must document the subscription-to-payment package decoupling",
   );
+});
+
+test("membership SDK generation preserves sdkgen ownership state", () => {
+  const sharedGenerator = readRelative("scripts/generate-membership-sdk.mjs");
+  const familyEntrypoints = [
+    readRelative("sdks/sdkwork-membership-app-sdk/bin/generate-sdk.mjs"),
+    readRelative("sdks/sdkwork-membership-backend-sdk/bin/generate-sdk.mjs"),
+  ];
+  const powershellEntrypoints = [
+    readRelative("sdks/sdkwork-membership-app-sdk/bin/generate-sdk.ps1"),
+    readRelative("sdks/sdkwork-membership-backend-sdk/bin/generate-sdk.ps1"),
+  ];
+
+  assert.match(sharedGenerator, /sdkwork-sdk-generator["),\s]+bin["),\s]+sdkgen\.js/u);
+  assert.match(sharedGenerator, /--standard-profile["),\s]+sdkwork-v3/u);
+  assert.doesNotMatch(sharedGenerator, /(?:rmSync|Remove-Item|generate-sdk\.sh)/u);
+
+  for (const entrypoint of familyEntrypoints) {
+    assert.match(entrypoint, /runMembershipSdkGeneration/u);
+    assert.doesNotMatch(entrypoint, /(?:powershell|spawnSync|generate-sdk\.sh|Remove-Item)/u);
+  }
+  for (const entrypoint of powershellEntrypoints) {
+    assert.match(entrypoint, /generate-sdk\.mjs/u);
+    assert.doesNotMatch(entrypoint, /Remove-Item/u);
+  }
 });

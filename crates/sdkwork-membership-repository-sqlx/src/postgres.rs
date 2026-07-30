@@ -73,7 +73,7 @@ JOIN membership_package_group g
     ON g.id = p.package_group_id
 LEFT JOIN membership_plan l
     ON l.id = p.plan_id
-LEFT JOIN commerce_product_sku s
+LEFT JOIN membership_product_sku s
     ON s.id = p.sku_id
 WHERE (p.tenant_id = CAST($1 AS TEXT) OR p.tenant_id IS NULL)
   AND (p.organization_id = CAST($2 AS TEXT) OR p.organization_id IS NULL)
@@ -111,7 +111,7 @@ JOIN membership_package_group g
     ON g.id = p.package_group_id
 LEFT JOIN membership_plan l
     ON l.id = p.plan_id
-LEFT JOIN commerce_product_sku s
+LEFT JOIN membership_product_sku s
     ON s.id = p.sku_id
 WHERE (p.tenant_id = CAST($1 AS TEXT) OR p.tenant_id = CAST($4 AS TEXT) OR p.tenant_id IS NULL)
   AND (p.organization_id = CAST($2 AS TEXT) OR p.organization_id = CAST($5 AS TEXT) OR p.organization_id IS NULL)
@@ -155,7 +155,7 @@ LEFT JOIN membership_plan_benefit b
     ON b.plan_version_id = v.id
    AND b.tenant_id = p.tenant_id
    AND b.status = 'active'
-LEFT JOIN benefit_definition d
+LEFT JOIN membership_benefit_definition d
     ON d.id = b.benefit_id
    AND d.tenant_id = b.tenant_id
 WHERE (p.tenant_id = CAST($1 AS TEXT) OR p.tenant_id IS NULL)
@@ -188,7 +188,7 @@ LEFT JOIN membership_plan_benefit b
     ON b.plan_version_id = v.id
    AND b.tenant_id = p.tenant_id
    AND b.status = 'active'
-LEFT JOIN benefit_definition d
+LEFT JOIN membership_benefit_definition d
     ON d.id = b.benefit_id
    AND d.tenant_id = b.tenant_id
 WHERE p.id = $1
@@ -224,7 +224,7 @@ const LOAD_POINTS_BALANCE: &str = r#"
 SELECT
     CAST(available_amount AS TEXT) AS available_amount,
     CAST(frozen_amount AS TEXT) AS frozen_amount
-FROM commerce_account
+FROM membership_points_account
 WHERE tenant_id = CAST($1 AS BIGINT)
   AND (organization_id IS NULL OR organization_id = CAST($2 AS BIGINT))
   AND owner_type = 'USER'
@@ -246,7 +246,7 @@ SELECT
     source_type,
     remark,
     CAST(created_at AS TEXT) AS created_at
-FROM commerce_account_ledger
+FROM membership_points_ledger
 WHERE tenant_id = CAST($1 AS BIGINT)
   AND (organization_id IS NULL OR organization_id = CAST($2 AS BIGINT))
   AND owner_type = 'USER'
@@ -266,7 +266,7 @@ SELECT
     source_type,
     remark,
     CAST(created_at AS TEXT) AS created_at
-FROM commerce_account_ledger
+FROM membership_points_ledger
 WHERE tenant_id = CAST($1 AS BIGINT)
   AND (organization_id IS NULL OR organization_id = CAST($2 AS BIGINT))
   AND owner_type = 'USER'
@@ -577,7 +577,7 @@ impl AppMembershipStore for PostgresCommerceMembershipStore {
                     usage.exclusive_model_used = actual.exclusive_model_used;
                 }
                 if let Ok(entitlement) =
-                    load_entitlement_account_usage_postgres(&self.pool, subject).await
+                    load_membership_entitlement_account_usage_postgres(&self.pool, subject).await
                 {
                     usage.speed_up_used = usage.speed_up_used.max(entitlement.speed_up_used);
                     usage.priority_queue_used = usage
@@ -830,7 +830,7 @@ async fn list_admin_membership_plans(
             ON b.plan_version_id = v.id
            AND b.tenant_id = p.tenant_id
            AND b.status = 'active'
-        LEFT JOIN benefit_definition d
+        LEFT JOIN membership_benefit_definition d
             ON d.id = b.benefit_id
            AND d.tenant_id = b.tenant_id
         WHERE p.tenant_id = $1
@@ -1214,7 +1214,7 @@ async fn create_admin_membership_package(
     .await?;
     sqlx::query(
         r#"
-        INSERT INTO commerce_product_sku
+        INSERT INTO membership_product_sku
             (id, tenant_id, organization_id, spu_id, sku_no, name, title, price_amount, original_price_amount, currency_code, fulfillment_type, inventory_tracking, status, spec_json, created_at, updated_at)
         VALUES
             ($1, $2, $3, 'seed-product-membership', $4, $5, $5, $6, NULL, $7, 'membership_activation', 'untracked', $8, '{}', $9, $9)
@@ -1308,7 +1308,7 @@ async fn update_admin_membership_package(
     .await?;
     sqlx::query(
         r#"
-        INSERT INTO commerce_product_sku
+        INSERT INTO membership_product_sku
             (id, tenant_id, organization_id, spu_id, sku_no, name, title, price_amount, original_price_amount, currency_code, fulfillment_type, inventory_tracking, status, spec_json, created_at, updated_at)
         VALUES
             ($1, $2, $3, 'seed-product-membership', $4, $5, $5, $6, NULL, $7, 'membership_activation', 'untracked', $8, '{}', $9, $9)
@@ -1510,10 +1510,10 @@ async fn list_admin_membership_entitlements(
     let total: i64 = sqlx::query_scalar(
         r#"
         SELECT COUNT(*)
-        FROM entitlement_account a
-        JOIN benefit_definition d
+        FROM membership_entitlement_account a
+        JOIN membership_benefit_definition d
           ON d.id = a.benefit_id
-        LEFT JOIN entitlement_grant g
+        LEFT JOIN membership_entitlement_grant g
           ON g.benefit_id = a.benefit_id
          AND g.subject_type = a.subject_type
          AND g.subject_id = a.subject_id
@@ -1547,10 +1547,10 @@ async fn list_admin_membership_entitlements(
         SELECT a.id, d.benefit_code AS entitlement_code, g.source_id AS membership_id,
                a.total_granted AS granted_quantity, a.total_used AS used_quantity,
                m.plan_id AS plan_id
-        FROM entitlement_account a
-        JOIN benefit_definition d
+        FROM membership_entitlement_account a
+        JOIN membership_benefit_definition d
           ON d.id = a.benefit_id
-        LEFT JOIN entitlement_grant g
+        LEFT JOIN membership_entitlement_grant g
           ON g.benefit_id = a.benefit_id
          AND g.subject_type = a.subject_type
          AND g.subject_id = a.subject_id
@@ -1619,7 +1619,7 @@ async fn load_admin_membership_plan(
             ON b.plan_version_id = v.id
            AND b.tenant_id = p.tenant_id
            AND b.status = 'active'
-        LEFT JOIN benefit_definition d
+        LEFT JOIN membership_benefit_definition d
             ON d.id = b.benefit_id
            AND d.tenant_id = b.tenant_id
         WHERE p.tenant_id = $1
@@ -1833,7 +1833,7 @@ async fn replace_admin_plan_benefits(
         .map_err(|error| store_error("failed to clear membership plan benefits", error))?;
     for (index, benefit) in benefits.iter().enumerate() {
         let benefit_code = admin_benefit_code(benefit, index + 1);
-        let benefit_id = benefit_definition_id_for_code(&benefit_code);
+        let benefit_id = membership_benefit_definition_id_for_code(&benefit_code);
         let benefit_type = benefit
             .r#type
             .as_deref()
@@ -1841,7 +1841,7 @@ async fn replace_admin_plan_benefits(
             .unwrap_or("quota");
         sqlx::query(
             r#"
-            INSERT INTO benefit_definition
+            INSERT INTO membership_benefit_definition
                 (id, tenant_id, organization_id, benefit_code, name, benefit_type, value_unit, measurement_type, description, status, created_at, updated_at)
             VALUES
                 ($1, $2, $3, $4, $5, $6, 'count', 'counter', $7, 'active', $8, $8)
@@ -2224,7 +2224,7 @@ async fn load_benefits_page(
             ON b.plan_version_id = v.id
            AND b.tenant_id = p.tenant_id
            AND b.status = 'active'
-        LEFT JOIN benefit_definition d
+        LEFT JOIN membership_benefit_definition d
             ON d.id = b.benefit_id
            AND d.tenant_id = b.tenant_id
         WHERE (p.tenant_id = CAST($1 AS TEXT) OR p.tenant_id IS NULL)
@@ -2348,7 +2348,7 @@ async fn load_plans_page(
             ON b.plan_version_id = v.id
            AND b.tenant_id = p.tenant_id
            AND b.status = 'active'
-        LEFT JOIN benefit_definition d
+        LEFT JOIN membership_benefit_definition d
             ON d.id = b.benefit_id
            AND d.tenant_id = b.tenant_id
         WHERE p.id IN ({placeholders})
@@ -3342,7 +3342,7 @@ async fn activate_membership_purchase(
 
     sqlx::query(
         r#"
-        UPDATE entitlement_grant
+        UPDATE membership_entitlement_grant
         SET status = 'active',
             updated_at = $1
         WHERE source_type = 'membership_subscription'
@@ -3360,7 +3360,7 @@ async fn activate_membership_purchase(
 
     sqlx::query(
         r#"
-        UPDATE entitlement_account
+        UPDATE membership_entitlement_account
         SET status = 'active',
             updated_at = $1
         WHERE tenant_id = CAST($2 AS TEXT)
@@ -3369,7 +3369,7 @@ async fn activate_membership_purchase(
           AND status = 'pending'
           AND benefit_id IN (
               SELECT benefit_id
-              FROM entitlement_grant
+              FROM membership_entitlement_grant
               WHERE source_type = 'membership_subscription'
                 AND source_id = $4
                 AND tenant_id = CAST($5 AS TEXT)
@@ -3486,9 +3486,9 @@ async fn validate_coupon_package_postgres(
         r#"
         SELECT COUNT(1)
         FROM membership_package p
-        JOIN commerce_product_sku s
+        JOIN membership_product_sku s
           ON s.tenant_id = p.tenant_id AND s.id = p.sku_id
-        JOIN commerce_product_spu product
+        JOIN membership_product_spu product
           ON product.tenant_id = s.tenant_id AND product.id = s.spu_id
         WHERE (p.tenant_id = CAST($1 AS TEXT) OR p.tenant_id IS NULL)
           AND (p.organization_id = CAST($2 AS TEXT) OR p.organization_id IS NULL)
@@ -3532,8 +3532,8 @@ async fn apply_coupon_subscription_quota_postgres(
         r#"
         SELECT g.id AS grant_id, g.benefit_id, CAST(g.granted_quantity AS BIGINT) AS granted_quantity,
                COALESCE(g.grant_policy, '') AS grant_policy
-        FROM entitlement_grant g
-        JOIN benefit_definition d
+        FROM membership_entitlement_grant g
+        JOIN membership_benefit_definition d
           ON d.tenant_id = g.tenant_id AND d.id = g.benefit_id
         WHERE g.tenant_id = CAST($1 AS TEXT)
           AND g.subject_type = 'user'
@@ -3580,7 +3580,7 @@ async fn apply_coupon_subscription_quota_postgres(
     let delta = command.total_quota - old_quantity;
     let updated = sqlx::query(
         r#"
-        UPDATE entitlement_account
+        UPDATE membership_entitlement_account
         SET total_granted = CAST(CAST(total_granted AS BIGINT) + $1 AS TEXT),
             balance = CAST(CAST(balance AS BIGINT) + $1 AS TEXT),
             version = version + 1,
@@ -3607,7 +3607,7 @@ async fn apply_coupon_subscription_quota_postgres(
     }
     sqlx::query(
         r#"
-        UPDATE entitlement_grant
+        UPDATE membership_entitlement_grant
         SET granted_quantity = CAST($1 AS TEXT), grant_policy = $2, updated_at = $3
         WHERE id = $4 AND tenant_id = CAST($5 AS TEXT)
         "#,
@@ -3806,7 +3806,7 @@ async fn insert_entitlements(
             .benefit_key
             .clone()
             .unwrap_or_else(|| format!("membership-benefit-{}", benefit.id));
-        let benefit_id = benefit_definition_id_for_code(&benefit_code);
+        let benefit_id = membership_benefit_definition_id_for_code(&benefit_code);
         let quantity = benefit.usage_limit.unwrap_or(0).max(0).to_string();
         let account_id = format!(
             "{}-entitlement-account-{}",
@@ -3816,7 +3816,7 @@ async fn insert_entitlements(
         let ledger_id = format!("{}-entitlement-ledger-{}", period_id, index + 1);
         sqlx::query(
             r#"
-            INSERT INTO entitlement_grant
+            INSERT INTO membership_entitlement_grant
                 (id, tenant_id, organization_id, grant_no, benefit_id, subject_type, subject_id,
                  source_type, source_id, grant_policy, granted_quantity, status, starts_at,
                  expires_at, request_no, idempotency_key, created_at, updated_at)
@@ -3844,7 +3844,7 @@ async fn insert_entitlements(
         .await
         .map_err(|error| store_error("failed to insert entitlement grant", error))?;
 
-        let account = upsert_entitlement_account(
+        let account = upsert_membership_entitlement_account(
             tx,
             command,
             &account_id,
@@ -3856,7 +3856,7 @@ async fn insert_entitlements(
 
         sqlx::query(
             r#"
-            INSERT INTO entitlement_ledger_entry
+            INSERT INTO membership_entitlement_ledger_entry
                 (id, tenant_id, organization_id, ledger_no, account_id, grant_id, benefit_id,
                  subject_type, subject_id, direction, amount, balance_after, business_type,
                  source_type, source_id, request_no, idempotency_key, occurred_at, created_at)
@@ -3894,7 +3894,7 @@ struct EntitlementAccountBalance {
     balance_after: String,
 }
 
-async fn upsert_entitlement_account(
+async fn upsert_membership_entitlement_account(
     tx: &mut Transaction<'_, Postgres>,
     command: &SubmitMembershipPurchaseCommand,
     account_id: &str,
@@ -3904,7 +3904,7 @@ async fn upsert_entitlement_account(
 ) -> AppMembershipResult<EntitlementAccountBalance> {
     sqlx::query(
         r#"
-        INSERT INTO entitlement_account
+        INSERT INTO membership_entitlement_account
             (id, tenant_id, organization_id, account_no, benefit_id, subject_type,
              subject_id, total_granted, total_used, balance, status, expires_at,
              version, created_at, updated_at)
@@ -3912,17 +3912,17 @@ async fn upsert_entitlement_account(
             ($1, CAST($2 AS TEXT), CAST($3 AS TEXT), $4, $5, 'user',
              CAST($6 AS TEXT), $7, '0', $8, 'pending', $9, 0, $10, $11)
         ON CONFLICT(tenant_id, subject_type, subject_id, benefit_id) DO UPDATE SET
-            total_granted = CAST((CAST(entitlement_account.total_granted AS INTEGER) + CAST(excluded.total_granted AS INTEGER)) AS TEXT),
-            balance = CAST((CAST(entitlement_account.balance AS INTEGER) + CAST(excluded.balance AS INTEGER)) AS TEXT),
+            total_granted = CAST((CAST(membership_entitlement_account.total_granted AS INTEGER) + CAST(excluded.total_granted AS INTEGER)) AS TEXT),
+            balance = CAST((CAST(membership_entitlement_account.balance AS INTEGER) + CAST(excluded.balance AS INTEGER)) AS TEXT),
             status = CASE
-                WHEN entitlement_account.status = 'active' THEN 'active'
+                WHEN membership_entitlement_account.status = 'active' THEN 'active'
                 ELSE 'pending'
             END,
             expires_at = CASE
-                WHEN entitlement_account.expires_at IS NULL OR excluded.expires_at > entitlement_account.expires_at THEN excluded.expires_at
-                ELSE entitlement_account.expires_at
+                WHEN membership_entitlement_account.expires_at IS NULL OR excluded.expires_at > membership_entitlement_account.expires_at THEN excluded.expires_at
+                ELSE membership_entitlement_account.expires_at
             END,
-            version = entitlement_account.version + 1,
+            version = membership_entitlement_account.version + 1,
             updated_at = excluded.updated_at
         "#,
     )
@@ -3944,7 +3944,7 @@ async fn upsert_entitlement_account(
     let row = sqlx::query(
         r#"
         SELECT id, balance
-        FROM entitlement_account
+        FROM membership_entitlement_account
         WHERE tenant_id = CAST($1 AS TEXT)
           AND subject_type = 'user'
           AND subject_id = CAST($2 AS TEXT)
@@ -3996,9 +3996,9 @@ async fn consume_subscription_quota(
         SELECT l.amount, l.grant_id, l.source_id, l.balance_after,
                d.benefit_code, g.grant_policy,
                CAST(g.granted_quantity AS BIGINT) AS granted_quantity
-        FROM entitlement_ledger_entry l
-        JOIN entitlement_grant g ON g.id = l.grant_id AND g.tenant_id = l.tenant_id
-        JOIN benefit_definition d ON d.id = l.benefit_id AND d.tenant_id = l.tenant_id
+        FROM membership_entitlement_ledger_entry l
+        JOIN membership_entitlement_grant g ON g.id = l.grant_id AND g.tenant_id = l.tenant_id
+        JOIN membership_benefit_definition d ON d.id = l.benefit_id AND d.tenant_id = l.tenant_id
         WHERE l.id = $1
           AND l.tenant_id = CAST($2 AS TEXT)
           AND l.subject_type = 'user'
@@ -4031,7 +4031,7 @@ async fn consume_subscription_quota(
                     WHEN occurred_at >= CAST($2 AS TIMESTAMPTZ)
                      AND occurred_at < CAST($3 AS TIMESTAMPTZ)
                     THEN CAST(amount AS BIGINT) ELSE 0 END), 0) AS daily_used
-            FROM entitlement_ledger_entry
+            FROM membership_entitlement_ledger_entry
             WHERE grant_id = $1
               AND direction = 'debit'
               AND business_type = 'coupon_subscription_quota_usage'
@@ -4068,13 +4068,13 @@ async fn consume_subscription_quota(
         SELECT a.id AS account_id, a.balance, g.id AS grant_id, g.source_id,
                g.grant_policy, CAST(g.granted_quantity AS BIGINT) AS granted_quantity,
                d.benefit_code
-        FROM entitlement_grant g
-        JOIN entitlement_account a
+        FROM membership_entitlement_grant g
+        JOIN membership_entitlement_account a
           ON a.tenant_id = g.tenant_id
          AND a.subject_type = g.subject_type
          AND a.subject_id = g.subject_id
          AND a.benefit_id = g.benefit_id
-        JOIN benefit_definition d ON d.tenant_id = g.tenant_id AND d.id = g.benefit_id
+        JOIN membership_benefit_definition d ON d.tenant_id = g.tenant_id AND d.id = g.benefit_id
         JOIN membership_subscription m ON m.tenant_id = g.tenant_id AND m.id = g.source_id
         WHERE g.tenant_id = CAST($1 AS TEXT)
           AND (g.organization_id IS NULL OR g.organization_id = CAST($2 AS TEXT))
@@ -4126,7 +4126,7 @@ async fn consume_subscription_quota(
                     WHEN occurred_at >= CAST($2 AS TIMESTAMPTZ)
                      AND occurred_at < CAST($3 AS TIMESTAMPTZ)
                     THEN CAST(amount AS BIGINT) ELSE 0 END), 0) AS daily_used
-            FROM entitlement_ledger_entry
+            FROM membership_entitlement_ledger_entry
             WHERE grant_id = $1
               AND direction = 'debit'
               AND business_type = 'coupon_subscription_quota_usage'
@@ -4153,7 +4153,7 @@ async fn consume_subscription_quota(
         let account_id = string_cell(&row, "account_id");
         let updated = sqlx::query(
             r#"
-            UPDATE entitlement_account
+            UPDATE membership_entitlement_account
             SET total_used = CAST(CAST(total_used AS BIGINT) + $1 AS TEXT),
                 balance = CAST(CAST(balance AS BIGINT) - $1 AS TEXT),
                 version = version + 1,
@@ -4179,7 +4179,7 @@ async fn consume_subscription_quota(
         let benefit_code = string_cell(&row, "benefit_code");
         sqlx::query(
             r#"
-            INSERT INTO entitlement_ledger_entry
+            INSERT INTO membership_entitlement_ledger_entry
                 (id, tenant_id, organization_id, ledger_no, account_id, grant_id, benefit_id,
                  subject_type, subject_id, direction, amount, balance_after, business_type,
                  source_type, source_id, request_no, idempotency_key, occurred_at, created_at)
@@ -4188,7 +4188,7 @@ async fn consume_subscription_quota(
                 'user', CAST($5 AS TEXT), 'debit', CAST($6 AS TEXT), CAST($7 AS TEXT),
                 'coupon_subscription_quota_usage', 'membership_subscription', $8, $9, $10,
                 CAST($11 AS TIMESTAMPTZ), CAST($11 AS TIMESTAMPTZ)
-            FROM entitlement_account a
+            FROM membership_entitlement_account a
             WHERE a.id = $12
             "#,
         )
@@ -4216,16 +4216,16 @@ async fn consume_subscription_quota(
         let usage_uuid = format!("coupon-quota-usage-{usage_id}");
         sqlx::query(
             r#"
-            INSERT INTO commerce_membership_privilege_usage
+            INSERT INTO membership_privilege_usage
                 (id, uuid, tenant_id, organization_id, user_id, benefit_code,
                  period_start, period_end, used_count, usage_limit, last_used_at, created_at, updated_at)
             VALUES ($1, $2, $3, $4, $5, $6, CAST($7 AS TIMESTAMPTZ), CAST($8 AS TIMESTAMPTZ),
                     $9, $10, CAST($11 AS TIMESTAMPTZ), CAST($11 AS TIMESTAMPTZ), CAST($11 AS TIMESTAMPTZ))
             ON CONFLICT (tenant_id, user_id, benefit_code, period_start) DO UPDATE SET
-                used_count = commerce_membership_privilege_usage.used_count + excluded.used_count,
-                usage_limit = GREATEST(commerce_membership_privilege_usage.usage_limit, excluded.usage_limit),
+                used_count = membership_privilege_usage.used_count + excluded.used_count,
+                usage_limit = GREATEST(membership_privilege_usage.usage_limit, excluded.usage_limit),
                 last_used_at = excluded.last_used_at,
-                version = commerce_membership_privilege_usage.version + 1,
+                version = membership_privilege_usage.version + 1,
                 updated_at = excluded.updated_at
             "#,
         )
@@ -4287,10 +4287,10 @@ async fn consume_speed_up(
             a.total_granted AS granted_quantity,
             a.total_used AS used_quantity,
             a.balance AS balance
-        FROM entitlement_account a
-        JOIN benefit_definition d
+        FROM membership_entitlement_account a
+        JOIN membership_benefit_definition d
           ON d.id = a.benefit_id
-        LEFT JOIN entitlement_grant g
+        LEFT JOIN membership_entitlement_grant g
           ON g.benefit_id = a.benefit_id
          AND g.subject_type = a.subject_type
          AND g.subject_id = a.subject_id
@@ -4334,7 +4334,7 @@ async fn consume_speed_up(
 
     let updated_rows = sqlx::query(
         r#"
-        UPDATE entitlement_account
+        UPDATE membership_entitlement_account
         SET total_used = CAST(CAST(total_used AS INTEGER) + 1 AS TEXT),
             balance = CAST(CAST(balance AS INTEGER) - 1 AS TEXT),
             version = version + 1,
@@ -4363,7 +4363,7 @@ async fn consume_speed_up(
     );
     sqlx::query(
         r#"
-        INSERT INTO entitlement_ledger_entry
+        INSERT INTO membership_entitlement_ledger_entry
             (id, tenant_id, organization_id, ledger_no, account_id, grant_id, benefit_id,
              subject_type, subject_id, direction, amount, balance_after, business_type,
              source_type, source_id, request_no, idempotency_key, occurred_at, created_at)
@@ -4371,7 +4371,7 @@ async fn consume_speed_up(
             $1, CAST($2 AS TEXT), CAST($3 AS TEXT), $1, a.id, $4, a.benefit_id,
             'user', CAST($5 AS TEXT), 'debit', '1', CAST($6 AS TEXT), 'membership_speed_up',
             'membership_subscription', $7, $8, $8, $9, $9
-        FROM entitlement_account a
+        FROM membership_entitlement_account a
         WHERE a.id = $10
         "#,
     )
@@ -4436,7 +4436,7 @@ fn admin_benefit_code(benefit: &AppMembershipBenefitItem, fallback_index: usize)
         .unwrap_or_else(|| format!("membership_benefit_{fallback_index}"))
 }
 
-fn benefit_definition_id_for_code(benefit_code: &str) -> String {
+fn membership_benefit_definition_id_for_code(benefit_code: &str) -> String {
     match benefit_code {
         "ai_quota" => "seed-benefit-ai-quota".to_owned(),
         "priority_speed_up" => "seed-benefit-priority-speed-up".to_owned(),
@@ -4630,7 +4630,7 @@ async fn load_daily_reward_status_postgres(
             total_days::bigint AS total_days,
             TO_CHAR(CURRENT_DATE, 'YYYY-MM-DD') AS today,
             CASE WHEN reward_date = CURRENT_DATE THEN 1 ELSE 0 END AS is_today
-        FROM commerce_membership_daily_reward
+        FROM membership_daily_reward
         WHERE tenant_id = $1
           AND (organization_id = 0 OR organization_id = $2)
           AND user_id = $3
@@ -4686,7 +4686,7 @@ async fn claim_daily_reward_postgres(
             reward_date::text AS reward_date,
             consecutive_days::bigint AS consecutive_days,
             total_days::bigint AS total_days
-        FROM commerce_membership_daily_reward
+        FROM membership_daily_reward
         WHERE tenant_id = $1
           AND (organization_id = 0 OR organization_id = $2)
           AND user_id = $3
@@ -4739,7 +4739,7 @@ async fn claim_daily_reward_postgres(
 
     let result = sqlx::query(
         r#"
-        INSERT INTO commerce_membership_daily_reward
+        INSERT INTO membership_daily_reward
             (id, uuid, tenant_id, organization_id, user_id, reward_date,
              reward_points, consecutive_days, total_days, status, idempotency_key, created_at)
         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, 'claimed', $10, $11)
@@ -4853,7 +4853,7 @@ fn is_leap_year(year: i64) -> bool {
 
 // ── Privilege usage helpers ──
 
-async fn load_entitlement_account_usage_postgres(
+async fn load_membership_entitlement_account_usage_postgres(
     pool: &PgPool,
     subject: AppMembershipSubject,
 ) -> AppMembershipResult<AppMembershipPrivilegeUsageResponse> {
@@ -4862,8 +4862,8 @@ async fn load_entitlement_account_usage_postgres(
         SELECT
             d.benefit_code,
             CAST(COALESCE(a.total_used, '0') AS BIGINT) AS used_count
-        FROM entitlement_account a
-        JOIN benefit_definition d
+        FROM membership_entitlement_account a
+        JOIN membership_benefit_definition d
           ON d.id = a.benefit_id
         WHERE a.tenant_id = CAST($1 AS TEXT)
           AND (a.organization_id IS NULL OR a.organization_id = CAST($2 AS TEXT))
@@ -4904,7 +4904,7 @@ async fn load_privilege_usage_postgres(
             benefit_code,
             used_count::bigint AS used_count,
             usage_limit::bigint AS usage_limit
-        FROM commerce_membership_privilege_usage
+        FROM membership_privilege_usage
         WHERE tenant_id = $1
           AND (organization_id = 0 OR organization_id = $2)
           AND user_id = $3

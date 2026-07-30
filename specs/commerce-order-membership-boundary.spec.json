@@ -27,13 +27,13 @@
       "membership_plan_benefit",
       "membership_package",
       "membership_package_group",
-      "benefit_definition",
-      "entitlement_account",
-      "entitlement_grant",
-      "entitlement_ledger_entry",
-      "commerce_membership_daily_reward",
-      "commerce_membership_privilege_usage",
-      "commerce_membership_change_log"
+      "membership_benefit_definition",
+      "membership_entitlement_account",
+      "membership_entitlement_grant",
+      "membership_entitlement_ledger_entry",
+      "membership_daily_reward",
+      "membership_privilege_usage",
+      "membership_change_log"
     ]
   },
   "allowedDependencyDirection": [
