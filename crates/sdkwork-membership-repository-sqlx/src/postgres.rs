@@ -838,7 +838,7 @@ async fn list_admin_membership_plans(
         ORDER BY p.rank ASC, p.plan_no ASC, b.sort_weight ASC, b.id ASC
         "#
     );
-    let mut db_query = sqlx::query(&sql).bind(&tenant_id);
+    let mut db_query = sqlx::query(sqlx::AssertSqlSafe(sql.as_str())).bind(&tenant_id);
     for plan_id in &plan_ids {
         db_query = db_query.bind(plan_id);
     }
@@ -2355,7 +2355,7 @@ async fn load_plans_page(
         ORDER BY p.rank ASC, p.plan_no ASC, b.sort_weight ASC, b.id ASC
         "#
     );
-    let mut db_query = sqlx::query(&sql);
+    let mut db_query = sqlx::query(sqlx::AssertSqlSafe(sql.as_str()));
     for plan_id in &plan_ids {
         db_query = db_query.bind(plan_id);
     }
@@ -2500,7 +2500,7 @@ async fn load_package_rows(
     sql.push_str("ORDER BY g.sort_weight ASC, p.sort_weight ASC, p.external_id ASC\n");
     sql.push_str(&format!("LIMIT ${next_param} OFFSET ${}\n", next_param + 1));
 
-    let mut db_query = sqlx::query(&sql).bind(tenant_id).bind(organization_id);
+    let mut db_query = sqlx::query(sqlx::AssertSqlSafe(sql.as_str())).bind(tenant_id).bind(organization_id);
     if let Some(group_id) = package_group_id {
         db_query = db_query.bind(group_id);
     }
