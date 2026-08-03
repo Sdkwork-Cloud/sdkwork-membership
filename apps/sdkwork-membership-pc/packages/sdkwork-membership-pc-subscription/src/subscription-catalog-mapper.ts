@@ -462,6 +462,7 @@ export function mapPackagesToPlanCards(
         membershipTierKey: display.membershipTierKey,
         name: translate(display.nameKey, pkg.name || "Membership"),
         originalPriceLabel,
+        packageNumericId,
         packagePeriodLabel: resolvePeriodLabel(durationDays, translate),
         pointsAllowanceLabel: `${formatSdkworkMembershipPoints(
           resolveMonthlyPointAllowance(pointAmount, durationDays),

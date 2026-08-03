@@ -116,6 +116,14 @@ export function SdkworkSubscriptionCatalogPage({
       return;
     }
 
+    if (packageNumericId <= 0) {
+      handleNotify(
+        t("plan_unavailable_to_purchase", "该套餐暂时无法购买，请稍后重试。"),
+        "error",
+      );
+      return;
+    }
+
     if (
       membershipTierKey === SDKWORK_SUBSCRIPTION_CATALOG_UNAVAILABLE_TIER_KEY
       || memberSummary?.membershipTierKey === membershipTierKey
@@ -139,8 +147,11 @@ export function SdkworkSubscriptionCatalogPage({
   }
 
   function handlePlanCardSelect(plan: SdkworkSubscriptionCatalogPlanCardModel) {
-    const packageNumericId = Number(plan.id);
-    if (!Number.isFinite(packageNumericId) || packageNumericId <= 0) {
+    if (plan.packageNumericId <= 0) {
+      handleNotify(
+        t("plan_unavailable_to_purchase", "该套餐暂时无法购买，请稍后重试。"),
+        "error",
+      );
       return;
     }
 
@@ -149,7 +160,7 @@ export function SdkworkSubscriptionCatalogPage({
       plan.membershipTierKey,
       plan.name,
       plan.priceLabel,
-      packageNumericId,
+      plan.packageNumericId,
       plan.originalPriceLabel || undefined,
       plan.packagePeriodLabel,
     );

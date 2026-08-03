@@ -1,36 +1,35 @@
 # Drift policy for membership database module.
-# Severity defaults align with DATABASE_FRAMEWORK_SPEC.md section 9.2.
+# Schema aligns with sdkwork-specs/DATABASE_FRAMEWORK_SPEC.md section 9.2 and
+# the sdkwork-database-spi DriftPolicyFile/DriftPolicyRules contract.
+#
+# Severity defaults match the drift engine defaults, preserving the previous
+# module policy behavior:
+#   - error: missing_table, missing_column, type_mismatch, missing_constraint,
+#            migration_pending, migration_unknown, checksum_mismatch
+#   - warn:  extra_table, extra_column, missing_index
+#   - info:  extra_index
+#
+# Reference-only tables owned by other commerce modules (order/payment) share
+# this schema. They are not part of the membership contract, so drift reports
+# them as `extra_table` at warn severity only and never block drift-check.
+
+schemaVersion: 1
+kind: sdkwork.database.drift-policy
 
 rules:
-  - code: missing_table
-    severity: error
-  - code: extra_table
-    severity: warn
-  - code: missing_column
-    severity: error
-  - code: extra_column
-    severity: warn
-  - code: type_mismatch
-    severity: error
-  - code: missing_index
-    severity: warn
-  - code: extra_index
-    severity: info
-  - code: missing_constraint
-    severity: error
-  - code: migration_pending
-    severity: error
-  - code: migration_unknown
-    severity: error
-  - code: checksum_mismatch
-    severity: error
+  # Tables excluded from drift comparison (foreign migration trackers).
+  ignoreTables:
+    - "_prisma_migrations"
+    - "schema_migrations"
+    - "flyway_schema_history"
 
-# Reference-only tables are owned by the commerce platform (T0) and registered
-# here for contract visibility. Drift on these tables is informational because
-# the membership module does not own their schema.
-reference_only_tables:
-  exempt: true
-  rules:
-    missing_table: info
-    missing_column: info
-    type_mismatch: warn
+  # Columns excluded from drift comparison (table.column notation).
+  ignoreColumns: []
+
+  # Severity overrides for specific drift patterns.
+  severityOverrides:
+    # Reference-only commerce tables stay informational/warn (engine default).
+    extra_table: warn
+    extra_column: warn
+    missing_index: warn
+    extra_index: info

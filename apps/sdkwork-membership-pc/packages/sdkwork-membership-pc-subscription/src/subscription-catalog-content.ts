@@ -15,6 +15,15 @@ export interface SdkworkSubscriptionCatalogPlanCardModel {
   membershipTierKey: string;
   name: string;
   originalPriceLabel: string;
+  /**
+   * The numeric package id used to open checkout and place the order.
+   *
+   * Kept separate from `id` because fallback/static cards carry non-numeric
+   * placeholder ids ("basic", "pro", ...) that cannot be parsed back into a
+   * purchasable package id. `0` means the card is a placeholder without a
+   * real purchasable package.
+   */
+  packageNumericId: number;
   packagePeriodLabel: string;
   pointsAllowanceLabel: string;
   pointsConversionLabel: string;
@@ -69,6 +78,7 @@ export function createSdkworkSubscriptionCatalogPlanCards(
       membershipTierKey: "pro",
       name: translate("basic_plan", "基础会员"),
       originalPriceLabel: "¥659",
+      packageNumericId: 0,
       packagePeriodLabel: "每年",
       pointsAllowanceLabel: "328 算力元/月",
       pointsConversionLabel: "换算¥10=100算力元",
@@ -92,6 +102,7 @@ export function createSdkworkSubscriptionCatalogPlanCards(
       membershipTierKey: "peak",
       name: translate("pro_plan", "高级会员"),
       originalPriceLabel: "¥1899",
+      packageNumericId: 0,
       packagePeriodLabel: "每年",
       pointsAllowanceLabel: "916 算力元/月",
       pointsConversionLabel: "换算¥10=100算力元",
@@ -115,6 +126,7 @@ export function createSdkworkSubscriptionCatalogPlanCards(
       membershipTierKey: "peak",
       name: translate("peak_plan", "巅峰会员"),
       originalPriceLabel: "¥5199",
+      packageNumericId: 0,
       packagePeriodLabel: "每年",
       pointsAllowanceLabel: "2,583 算力元/月",
       pointsConversionLabel: "换算¥10=100算力元",
@@ -138,6 +150,7 @@ export function createSdkworkSubscriptionCatalogPlanCards(
       membershipTierKey: "super",
       name: translate("super_plan", "超级会员"),
       originalPriceLabel: "¥12,999",
+      packageNumericId: 0,
       packagePeriodLabel: "每年",
       pointsAllowanceLabel: "7,499 算力元/月",
       pointsConversionLabel: "换算¥10=100算力元",

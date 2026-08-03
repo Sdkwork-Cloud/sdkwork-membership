@@ -40,6 +40,11 @@ function loadLocalReactAliases() {
     { find: "react-dom", replacement: reactDomRoot },
     { find: "react/jsx-runtime", replacement: path.join(reactRoot, "jsx-runtime.js") },
     { find: "react/jsx-dev-runtime", replacement: path.join(reactRoot, "jsx-dev-runtime.js") },
+    // react-i18next must resolve through this workspace's own pnpm store;
+    // otherwise its peer `react` import resolves to another workspace copy
+    // and useTranslation throws "Invalid hook call" (dual React instances).
+    { find: "react-i18next", replacement: path.join(root, "node_modules/.pnpm/react-i18next@17.0.8_i18nex_a14f3448584731c80a124f3b9d002aa1/node_modules/react-i18next") },
+    { find: "i18next", replacement: path.join(root, "node_modules/.pnpm/i18next@26.3.2_typescript@6.0.3/node_modules/i18next") },
     { find: /^@radix-ui\/(.*)$/, replacement: `${radixRoot}/$1` },
   ];
 }

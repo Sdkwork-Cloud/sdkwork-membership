@@ -1,6 +1,95 @@
-import { existsSync } from "node:fs";
+import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { spawnSync } from "node:child_process";
+
+// Generated TypeScript SDK packages resolve @sdkwork/sdk-common through the
+// pnpm workspace protocol and pin toolchain devDependencies for reproducible
+// builds. Aligned with clawrouter_strict_sdk_generate.mjs constants.
+const SDK_COMMON_SPEC = "@sdkwork/sdk-common@workspace:*";
+const SDK_TYPES_NODE_VERSION = "24.13.3";
+const SDK_TYPESCRIPT_VERSION = "5.9.3";
+const SDK_ROLLUP_VERSION = "4.62.4";
+const STANDARDIZE_PUBLISH_CORE_HELPER = `function hasTypeScriptSdkDependencies(projectDir) {
+  return existsSync(path.join(projectDir, 'node_modules', 'typescript'))
+    && existsSync(path.join(projectDir, 'node_modules', 'rollup'))
+    && existsSync(path.join(projectDir, 'node_modules', '@sdkwork', 'sdk-common'));
+}
+
+`;
+
+const STANDARDIZE_PUBLISH_CORE_RUN_TYPE_SCRIPT = `function runTypeScript(ctx) {
+  const packageFile = path.join(ctx.projectDir, 'package.json');
+  ensureFile(packageFile, 'package.json');
+  const packageJson = loadJson(packageFile);
+  const hasBuildScript = Boolean(packageJson?.scripts?.build);
+
+  if (!hasTypeScriptSdkDependencies(ctx.projectDir)) {
+    run('npm', ['install', '--ignore-scripts'], { cwd: ctx.projectDir });
+  } else {
+    log('TypeScript dependencies already installed, skipping npm install.');
+  }
+  if (hasBuildScript) {
+    run('npm', ['run', 'build'], { cwd: ctx.projectDir });
+  } else {
+    log('No build script found in package.json, skipping build.');
+  }
+
+  if (ctx.action === 'check') {
+    run('npm', ['pack', '--dry-run'], { cwd: ctx.projectDir });
+    return;
+  }
+
+  if (ctx.action === 'build') {
+    return;
+  }
+
+  const registry = process.env.NPM_REGISTRY_URL || 'https://registry.npmjs.org/';
+  const args = ['publish', '--access', 'public', '--registry', registry];
+  if (ctx.channel === 'test') {
+    args.push('--tag', 'next');
+  }
+  if (ctx.dryRun) {
+    args.push('--dry-run');
+  }
+  run('npm', args, { cwd: ctx.projectDir });
+}`;
+
+function standardizePublishCoreContent(content) {
+  let updated = content;
+  if (!updated.includes("function hasTypeScriptSdkDependencies(projectDir)")) {
+    const marker = "function runTypeScript(ctx) {";
+    updated = updated.replace(marker, `${STANDARDIZE_PUBLISH_CORE_HELPER}${marker}`);
+  }
+  return replaceJavaScriptFunction(updated, "runTypeScript", STANDARDIZE_PUBLISH_CORE_RUN_TYPE_SCRIPT);
+}
+
+function replaceJavaScriptFunction(source, functionName, replacement) {
+  const marker = `function ${functionName}(`;
+  const start = source.indexOf(marker);
+  if (start < 0) {
+    return source;
+  }
+
+  const openBrace = source.indexOf("{", start);
+  if (openBrace < 0) {
+    return source;
+  }
+
+  let depth = 0;
+  for (let index = openBrace; index < source.length; index += 1) {
+    const character = source[index];
+    if (character === "{") {
+      depth += 1;
+    } else if (character === "}") {
+      depth -= 1;
+      if (depth === 0) {
+        return `${source.slice(0, start)}${replacement}${source.slice(index + 1)}`;
+      }
+    }
+  }
+
+  return source;
+}
 
 const SURFACES = {
   app: {
@@ -51,7 +140,7 @@ export function runMembershipSdkGeneration({
     assertPathWithin(languageWorkspace, outputPath);
 
     process.stdout.write(`Generating ${language} SDK at ${outputPath}\n`);
-    runNode([
+    const languageArgs = [
       generatorPath,
       "generate",
       "-i",
@@ -81,8 +170,33 @@ export function runMembershipSdkGeneration({
       "--sdk-name",
       sdkName,
       "--no-sync-published-version",
-    ]);
+    ];
+    if (language === "typescript") {
+      languageArgs.push("--common-package", SDK_COMMON_SPEC);
+    }
+    runNode(languageArgs);
+    if (language === "typescript") {
+      standardizeTypeScriptGeneratedOutput(outputPath);
+    }
   }
+}
+
+function standardizeTypeScriptGeneratedOutput(outputPath) {
+  standardizeTypeScriptPackageJson(path.join(outputPath, "package.json"));
+  const publishCorePath = path.join(outputPath, "bin", "publish-core.mjs");
+  if (existsSync(publishCorePath)) {
+    writeFileSync(publishCorePath, standardizePublishCoreContent(readFileSync(publishCorePath, "utf8")));
+  }
+}
+
+function standardizeTypeScriptPackageJson(packageJsonPath) {
+  const packageJson = JSON.parse(readFileSync(packageJsonPath, "utf8"));
+  const devDependencies = { ...(packageJson.devDependencies ?? {}) };
+  devDependencies["@types/node"] = SDK_TYPES_NODE_VERSION;
+  devDependencies.typescript = SDK_TYPESCRIPT_VERSION;
+  devDependencies.rollup = SDK_ROLLUP_VERSION;
+  packageJson.devDependencies = devDependencies;
+  writeFileSync(packageJsonPath, `${JSON.stringify(packageJson, null, 2)}\n`);
 }
 
 function parseOptions(argv, env, defaultBaseUrl) {

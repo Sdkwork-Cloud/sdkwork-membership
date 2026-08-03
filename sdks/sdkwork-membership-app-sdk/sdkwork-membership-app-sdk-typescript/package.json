@@ -14,8 +14,19 @@
       "default": "./src/index.ts"
     }
   },
+  "scripts": {
+    "build": "node custom/build-runtime.mjs",
+    "dev": "node custom/build-runtime.mjs",
+    "prepublishOnly": "npm run build",
+    "typecheck": "tsc --noEmit --project tsconfig.json"
+  },
   "dependencies": {
     "@sdkwork/sdk-common": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/node": "24.13.3",
+    "typescript": "5.9.3",
+    "rollup": "4.62.4"
   },
   "publishConfig": {
     "access": "public",

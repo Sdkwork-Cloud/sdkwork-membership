@@ -223,13 +223,23 @@ function resolveComposerCommand(projectDir) {
   return 'composer';
 }
 
+function hasTypeScriptSdkDependencies(projectDir) {
+  return existsSync(path.join(projectDir, 'node_modules', 'typescript'))
+    && existsSync(path.join(projectDir, 'node_modules', 'rollup'))
+    && existsSync(path.join(projectDir, 'node_modules', '@sdkwork', 'sdk-common'));
+}
+
 function runTypeScript(ctx) {
   const packageFile = path.join(ctx.projectDir, 'package.json');
   ensureFile(packageFile, 'package.json');
   const packageJson = loadJson(packageFile);
   const hasBuildScript = Boolean(packageJson?.scripts?.build);
 
-  run('npm', ['install'], { cwd: ctx.projectDir });
+  if (!hasTypeScriptSdkDependencies(ctx.projectDir)) {
+    run('npm', ['install', '--ignore-scripts'], { cwd: ctx.projectDir });
+  } else {
+    log('TypeScript dependencies already installed, skipping npm install.');
+  }
   if (hasBuildScript) {
     run('npm', ['run', 'build'], { cwd: ctx.projectDir });
   } else {

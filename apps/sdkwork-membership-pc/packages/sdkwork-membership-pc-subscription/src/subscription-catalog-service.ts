@@ -197,9 +197,13 @@ export function createSdkworkSubscriptionCatalogService(
         billingCycles: catalog.billingCycles,
         comparisonCategories: catalog.comparisonCategories,
         memberSummary,
+        // Render the real packages for the selected billing cycle. When a
+        // cycle has no packages, render an empty plan area instead of
+        // repeating the same static fallback cards for every tab — otherwise
+        // switching tabs appears to do nothing.
         planCards: packages.length > 0
           ? mapPackagesToPlanCards(packages, catalog.plans, memberSummary, translate)
-          : createSdkworkSubscriptionCatalogPlanCards(translate),
+          : [],
         selectedPackageGroupId: selectedGroup ? toSdkworkMembershipNumber(selectedGroup.id) : null,
         tierColumns: packages.length > 0
           ? mapPackagesToTierColumns(packages, catalog.plans, memberSummary, translate)
