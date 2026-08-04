@@ -108,7 +108,7 @@ describe("sdkwork-membership-pc-subscription catalog interactions", () => {
     await waitFor(() => {
       expectPlanName("基础会员(月)");
     });
-    expect(screen.getAllByText("39").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("¥39").length).toBeGreaterThan(0);
 
     // Click the first billing tab: 连续包年 (hero and tier-compare both render tabs).
     fireEvent.click(screen.getAllByRole("button", { name: /连续包年/ })[0]);
@@ -116,7 +116,7 @@ describe("sdkwork-membership-pc-subscription catalog interactions", () => {
     await waitFor(() => {
       expectPlanName("基础会员(年)");
     });
-    expect(screen.getAllByText("393").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("¥393").length).toBeGreaterThan(0);
     expect(screen.queryAllByText("基础会员(月)")).toHaveLength(0);
   });
 

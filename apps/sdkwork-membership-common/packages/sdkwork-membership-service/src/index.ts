@@ -5,9 +5,7 @@ import {
   type MembershipSdkMethod,
 } from "@sdkwork/membership-sdk-ports";
 import type { SdkworkMembershipMutationStatus } from "@sdkwork/membership-contracts";
-import {
-  formatCurrency as formatSdkworkCurrency,
-} from "@sdkwork/utils";
+import { formatMoney } from "@sdkwork/utils/money";
 import {
   isSdkworkIamSessionAuthenticated,
 } from "@sdkwork/iam-runtime";
@@ -243,10 +241,7 @@ export function toSdkworkMembershipMutationStatus(status: unknown): SdkworkMembe
 }
 
 export function formatSdkworkMembershipCurrencyCny(value: number | null | undefined, language = "en-US"): string {
-  if (value === null || value === undefined || !Number.isFinite(value)) {
-    return "--";
-  }
-  return formatSdkworkCurrency(value, "CNY", language) ?? "--";
+  return formatMoney(value, { currency: "CNY", locale: language, mode: "symbol" }) ?? "--";
 }
 
 export function formatSdkworkMembershipPoints(value: number, language = "en-US"): string {

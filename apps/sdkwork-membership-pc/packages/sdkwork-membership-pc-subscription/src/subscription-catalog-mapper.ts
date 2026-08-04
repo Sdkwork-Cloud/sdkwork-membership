@@ -5,6 +5,7 @@ import {
   toSdkworkMembershipNumber,
   toSdkworkMembershipOptionalString,
 } from "@sdkwork/membership-service";
+import { formatMoney } from "@sdkwork/utils/money";
 import { SDKWORK_SUBSCRIPTION_CATALOG_UNAVAILABLE_TIER_KEY } from "./subscription-catalog-content";
 import type {
   SdkworkSubscriptionCatalogBillingCycleOption,
@@ -406,7 +407,15 @@ function formatPriceLabel(value: number | null): string {
   if (value === null) {
     return "--";
   }
-  return formatSdkworkMembershipPoints(value, "zh-CN");
+  return (
+    formatMoney(value, {
+      currency: "CNY",
+      locale: "zh-CN",
+      mode: "symbol",
+      minFractionDigits: 0,
+      maxFractionDigits: 2,
+    }) ?? formatSdkworkMembershipPoints(value, "zh-CN")
+  );
 }
 
 function formatOriginalPriceLabel(value: number | null): string {
@@ -454,8 +463,8 @@ export function mapPackagesToPlanCards(
         buttonText: disabled
           ? translate("current_plan", "当前计划")
           : discountTag
-            ? `¥${priceLabel} ${discountTag}`
-            : `¥${priceLabel}`,
+            ? `${priceLabel} ${discountTag}`
+            : priceLabel,
         disabled,
         features: resolveFeatureTemplates(rank, pointAmount, durationDays, translate),
         id: String(packageNumericId),

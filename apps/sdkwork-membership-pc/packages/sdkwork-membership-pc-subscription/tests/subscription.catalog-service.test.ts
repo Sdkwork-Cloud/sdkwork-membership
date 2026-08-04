@@ -96,7 +96,7 @@ describe("sdkwork-membership-pc-subscription catalog service", () => {
 
     expect(viewModel.billingCycles[0]?.label).toBe("连续包月");
     expect(viewModel.planCards[0]?.id).toBe("201");
-    expect(viewModel.planCards[0]?.priceLabel).toBe("68");
+    expect(viewModel.planCards[0]?.priceLabel).toBe("¥68");
     expect(viewModel.tierColumns[0]?.packageNumericId).toBe(201);
     expect(viewModel.planCards.at(-1)?.disabled).toBe(false);
   });

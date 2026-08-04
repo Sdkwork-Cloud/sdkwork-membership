@@ -34,6 +34,7 @@
     "@sdkwork/membership-service": "workspace:*",
     "@sdkwork/promotion-pc-coupon": "workspace:*",
     "@sdkwork/promotion-service": "workspace:*",
+    "@sdkwork/utils": "workspace:*",
     "lucide-react": "catalog:",
     "react-i18next": "catalog:"
   },
