@@ -30,6 +30,7 @@
   },
   "dependencies": {
     "@sdkwork/appbase-pc-react": "workspace:*",
+    "@sdkwork/membership-pc-core": "workspace:*",
     "@sdkwork/membership-pc-membership": "workspace:*",
     "@sdkwork/membership-service": "workspace:*",
     "@sdkwork/promotion-pc-coupon": "workspace:*",

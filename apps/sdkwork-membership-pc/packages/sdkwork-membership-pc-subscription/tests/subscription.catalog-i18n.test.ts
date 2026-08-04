@@ -37,6 +37,6 @@ describe("subscription catalog checkout i18n", () => {
 
   it("keeps shared checkout copy application-neutral", () => {
     const copy = JSON.stringify(sdkworkSubscriptionCheckoutMessages);
-    expect(copy).not.toMatch(/ClawRouter|Claw Router|BirdCoder|SDKWork IM/i);
+    expect(copy).not.toMatch(/CloudRouter|Cloud Router|BirdCoder|SDKWork IM/i);
   });
 });

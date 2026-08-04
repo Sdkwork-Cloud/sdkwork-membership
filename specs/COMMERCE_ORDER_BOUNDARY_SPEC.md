@@ -17,7 +17,7 @@ Fix the dependency direction for membership purchase flows. `sdkwork-membership`
 | Order | `sdkwork-order` | `commerce_order*`, membership-subject order creation, checkout UI/service, payment status, settlement orchestration |
 | Payment | `sdkwork-payment` | Payment execution, attempts, providers, refunds, and webhook persistence behind order-owned ports |
 | Membership | `sdkwork-membership` | Plans, packages, membership state, subscriptions, entitlements, and idempotent fulfillment after payment success |
-| Application composition | Product application root such as `sdkwork-clawrouter` | Composes membership and order packages and injects the order-owned checkout implementation into membership UI |
+| Application composition | Product application root such as `sdkwork-cloudrouter` | Composes membership and order packages and injects the order-owned checkout implementation into membership UI |
 
 ## 3. Mandatory Dependency Direction
 

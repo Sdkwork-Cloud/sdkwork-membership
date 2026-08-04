@@ -15,7 +15,7 @@ function resolveNoticeTone(tone: "error" | "info" | "success"): "danger" | "defa
 /**
  * A self-contained subscription catalog screen that can be mounted with zero
  * props.  It wires default host components, notification UI, and no-op
- * callbacks internally, so external hosts (e.g. ClawRouter) can embed it
+ * callbacks internally, so external hosts (e.g. CloudRouter) can embed it
  * with a single `<SdkworkSubscriptionCatalogScreen />`.
  *
  * The component automatically:

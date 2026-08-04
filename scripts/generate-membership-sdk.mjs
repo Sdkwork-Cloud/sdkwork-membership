@@ -4,7 +4,7 @@ import { spawnSync } from "node:child_process";
 
 // Generated TypeScript SDK packages resolve @sdkwork/sdk-common through the
 // pnpm workspace protocol and pin toolchain devDependencies for reproducible
-// builds. Aligned with clawrouter_strict_sdk_generate.mjs constants.
+// builds. Aligned with cloudrouter_strict_sdk_generate.mjs constants.
 const SDK_COMMON_SPEC = "@sdkwork/sdk-common@workspace:*";
 const SDK_TYPES_NODE_VERSION = "24.13.3";
 const SDK_TYPESCRIPT_VERSION = "5.9.3";

@@ -20,6 +20,7 @@
   },
   "dependencies": {
     "@sdkwork/appbase-pc-react": "workspace:*",
+    "@sdkwork/membership-pc-core": "workspace:*",
     "@sdkwork/membership-service": "workspace:*"
   },
   "devDependencies": {

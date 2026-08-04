@@ -98,7 +98,7 @@ export interface SdkworkMediaResource {
 // survive the "dual-package hazard" where Vite, pnpm, or bundler
 // deduplication may load this module twice.  When that happens, a
 // module-level `let` would be reset to `null` in the duplicate copy, causing
-// the clawrouter's `configureSdkworkMembershipAppServiceProvider()` call to
+// the cloudrouter's `configureSdkworkMembershipAppServiceProvider()` call to
 // write to one instance while `getSdkworkMembershipService()` reads from
 // another — resulting in "provider is not configured" errors even though
 // the host already called configure.

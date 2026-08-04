@@ -35,7 +35,7 @@ impl MembershipDatabaseHost {
 /// # Convention
 ///
 /// Each `*-database-host` crate exports this function so that federated hosts
-/// (e.g. ClawRouter) can discover and register database modules through a
+/// (e.g. CloudRouter) can discover and register database modules through a
 /// `DatabaseModuleRegistry` without manual per-capability bootstrap wiring.
 /// The host builds a registry from all known `*-database-host` crates and calls
 /// `RegistryLifecycleOrchestrator::bootstrap_all_from_env()` once on the shared
@@ -98,7 +98,7 @@ pub async fn bootstrap_membership_database_from_env() -> Result<MembershipDataba
 /// provided pool.
 ///
 /// This is used when membership is integrated as a federated capability
-/// inside a host application (e.g. ClawRouter) that already owns a shared
+/// inside a host application (e.g. CloudRouter) that already owns a shared
 /// database pool. The function loads the membership database module from
 /// the membership repository's `database/` assets, runs the DDL baseline,
 /// optionally applies migrations, and optionally applies seeds — all

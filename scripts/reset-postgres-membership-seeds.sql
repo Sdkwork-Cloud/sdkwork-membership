@@ -14,10 +14,10 @@
 -- Usage:
 --   psql -U <user> -d <database> -h <host> -p <port> -f scripts/reset-postgres-membership-seeds.sql
 --
---   Or, when using the ClawRouter shared PostgreSQL instance:
+--   Or, when using the CloudRouter shared PostgreSQL instance:
 --   psql -U sdkwork -d sdkwork -h localhost -p 5432 -f scripts/reset-postgres-membership-seeds.sql
 --
--- After running this script, restart the application (or ClawRouter) so the
+-- After running this script, restart the application (or CloudRouter) so the
 -- database lifecycle framework re-applies all seeds with the corrected content.
 -- ============================================================================
 
