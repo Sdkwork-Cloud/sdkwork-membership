@@ -82,6 +82,17 @@ pub async fn assemble_backend_business_router_from_env() -> Result<BusinessRoute
     Ok(assemble_backend_business_router(host).await)
 }
 
+/// Compose the membership backend business router on a shared pool owned by
+/// the consuming host (same-origin dependency composition). Mirrors
+/// `assemble_app_api_contribution_with_pool`; the consuming assembly selects
+/// this entrypoint instead of importing `sdkwork-routes-*` directly.
+pub async fn assemble_backend_business_router_with_pool(
+    pool: &DatabasePool,
+) -> Result<BusinessRouterAssembly, String> {
+    let host = Arc::new(MembershipServiceHost::from_pool(pool).await?);
+    Ok(assemble_backend_business_router(host).await)
+}
+
 pub async fn assemble_app_api_contribution() -> Result<ApiAssemblyContribution, String> {
     let host = Arc::new(MembershipServiceHost::from_env().await?);
     assemble_app_api_contribution_with_host(host)
