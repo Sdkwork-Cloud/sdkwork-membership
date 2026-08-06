@@ -118,11 +118,39 @@ unlimited: string;
     renewFailed: string;
     signInRequired: string;
     upgradeFailed: string;
+    rechargeFailed: string;
   };
   status: {
     active: string;
     free: string;
     guest: string;
+  };
+  quota: {
+    title: string;
+    description: string;
+    quantityLabel: string;
+    quantityPlaceholder: string;
+    amountLabel: string;
+    amountPlaceholder: string;
+    submit: string;
+    submitting: string;
+    error: string;
+    onlyForMembers: string;
+  };
+  gates: {
+    title: string;
+    description: string;
+    requiredLevel: string;
+    unlocked: string;
+    locked: string;
+    statusUnavailable: string;
+    labels: {
+      aiChat: string;
+      imageGeneration: string;
+      prioritySpeedUp: string;
+      priorityQueue: string;
+      exclusiveModel: string;
+    };
   };
 }
 
@@ -285,11 +313,39 @@ unlimited: "Unlimited",
     renewFailed: "Failed to renew membership.",
     signInRequired: "Please sign in to manage memberships.",
     upgradeFailed: "Failed to upgrade membership.",
+    rechargeFailed: "Failed to recharge membership quota.",
   },
   status: {
     active: "Active",
     free: "Free",
     guest: "Guest",
+  },
+  quota: {
+    title: "Quota Recharge",
+    description: "Add AI quota to your current membership period. Recharged quota stays valid until the subscription expires.",
+    quantityLabel: "Quota units",
+    quantityPlaceholder: "e.g. 1000",
+    amountLabel: "Amount (CNY)",
+    amountPlaceholder: "e.g. 10.00",
+    submit: "Recharge",
+    submitting: "Recharging...",
+    error: "Enter a positive quota quantity and amount.",
+    onlyForMembers: "Quota recharge is available for active members only.",
+  },
+  gates: {
+    title: "Member Features",
+    description: "Some features are unlocked by membership level.",
+    requiredLevel: "Required level",
+    unlocked: "Unlocked",
+    locked: "Locked",
+    statusUnavailable: "Unavailable",
+    labels: {
+      aiChat: "AI Chat",
+      imageGeneration: "Image Generation",
+      prioritySpeedUp: "Priority Speed-up",
+      priorityQueue: "Priority Queue",
+      exclusiveModel: "Exclusive Model",
+    },
   },
 };
 
@@ -407,11 +463,39 @@ unlimited: "不限",
     renewFailed: "续费会员失败。",
     signInRequired: "请先登录后再管理会员。",
     upgradeFailed: "升级会员失败。",
+    rechargeFailed: "会员额度充值失败。",
   },
   status: {
     active: "生效中",
     free: "免费",
     guest: "游客",
+  },
+  quota: {
+    title: "额度充值",
+    description: "向当前订阅期追加 AI 额度，充值额度有效期不超过订阅到期日。",
+    quantityLabel: "充值数量",
+    quantityPlaceholder: "如 1000",
+    amountLabel: "金额（元）",
+    amountPlaceholder: "如 10.00",
+    submit: "立即充值",
+    submitting: "充值中...",
+    error: "请输入大于 0 的充值数量与金额。",
+    onlyForMembers: "仅生效中的会员可进行额度充值。",
+  },
+  gates: {
+    title: "会员功能",
+    description: "部分功能需要满足对应会员等级才能使用。",
+    requiredLevel: "所需等级",
+    unlocked: "已解锁",
+    locked: "未解锁",
+    statusUnavailable: "暂不可用",
+    labels: {
+      aiChat: "AI 对话",
+      imageGeneration: "AI 画图",
+      prioritySpeedUp: "加速通道",
+      priorityQueue: "优先队列",
+      exclusiveModel: "专属模型",
+    },
   },
 };
 

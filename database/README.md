@@ -116,6 +116,14 @@ Regenerate the contract from the PostgreSQL baseline after DDL changes:
 pnpm run db:materialize:contract
 ```
 
+## Initialization state
+
+This module is in **initialization state** for greenfield deployments:
+
+1. **Baseline** — `database/ddl/baseline/{engine}/0001_membership_baseline.sql` contains the full DDL snapshot.
+2. **Migrations** — `database/migrations/{engine}/` is reserved for post-GA incremental schema changes only. It is intentionally empty at initialization.
+3. **Drift** — run `pnpm db:drift:check` before release.
+
 ## Commands
 
 ```bash
@@ -127,18 +135,4 @@ pnpm run db:migrate
 pnpm run db:seed
 pnpm run db:status
 pnpm run db:drift:check
-pnpm run db:bootstrap
-```
-
-`db:validate` delegates to `../sdkwork-specs/tools/check-database-framework-standard.mjs`. Runtime lifecycle commands delegate to `sdkwork-database-cli`.
-
-## Verification
-
-Before completing database or repository boundary changes, run:
-
-```bash
-pnpm run db:materialize:contract
-pnpm run db:validate
-cargo test -p sdkwork-membership-repository-sqlx --test membership_sqlx_standard -- --nocapture
-node --test --test-reporter=spec --experimental-strip-types tests/static/membership-standards-regression.test.mjs
 ```

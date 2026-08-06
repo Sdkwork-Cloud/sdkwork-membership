@@ -22,6 +22,9 @@ pub type CouponSubscriptionFulfillmentFuture<'a> = Pin<
 pub type SubscriptionQuotaConsumptionFuture<'a> = Pin<
     Box<dyn Future<Output = AppMembershipResult<SubscriptionQuotaConsumptionOutcome>> + Send + 'a>,
 >;
+pub type SubscriptionQuotaRechargeFuture<'a> = Pin<
+    Box<dyn Future<Output = AppMembershipResult<SubscriptionQuotaRechargeOutcome>> + Send + 'a>,
+>;
 pub type AdminMembershipFuture<'a, T> =
     Pin<Box<dyn Future<Output = AppMembershipResult<T>> + Send + 'a>>;
 
@@ -403,6 +406,64 @@ pub struct SubscriptionQuotaConsumptionOutcome {
     pub remaining_total_quota: i64,
 }
 
+/// 会员订阅生命周期扫描结果（到期即过期处理）。
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct MembershipLifecycleSweepOutcome {
+    pub expired_subscriptions: i64,
+    pub expired_periods: i64,
+    pub expired_grants: i64,
+    pub expired_accounts: i64,
+    /// true 表示本轮被 advisory lock 跳过（另一实例正在执行）。
+    pub skipped: bool,
+}
+
+/// 订阅期权益额度充值命令（订单结算后由 order 通过端口调用）。
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct RechargeSubscriptionQuotaCommand {
+    pub subject: AppMembershipSubject,
+    pub order_id: String,
+    pub quantity: i64,
+    pub request_no: String,
+    pub idempotency_key: String,
+    pub requested_at: String,
+}
+
+/// 订阅期权益额度充值结果。
+#[derive(Debug, Clone, Default, Serialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct SubscriptionQuotaRechargeOutcome {
+    pub accepted: bool,
+    pub replayed: bool,
+    pub subscription_id: String,
+    pub benefit_code: String,
+    pub recharged_quantity: i64,
+    pub balance_after: i64,
+    pub expires_at: String,
+}
+
+/// 会员功能等级门槛校验查询。
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct FeatureAccessCheckQuery {
+    pub subject: AppMembershipSubject,
+    /// 功能码；缺省时按显式 required_rank 校验。
+    pub feature_code: Option<String>,
+    /// 显式所需等级；缺省时按功能码解析。
+    pub required_rank: Option<i64>,
+}
+
+/// 会员功能等级门槛校验结果。
+#[derive(Debug, Clone, Default, Serialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct FeatureAccessCheckOutcome {
+    pub allowed: bool,
+    pub active: bool,
+    pub current_rank: i64,
+    pub required_rank: i64,
+    pub status: String,
+    pub expires_at: Option<String>,
+    pub reason: Option<String>,
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct RetrieveAdminMembershipMemberQuery {
     pub subject: AdminMembershipSubject,
@@ -648,6 +709,20 @@ pub trait AppMembershipStore {
         &'a self,
         command: ConsumeSubscriptionQuotaCommand,
     ) -> SubscriptionQuotaConsumptionFuture<'a>;
+
+    fn recharge_subscription_quota<'a>(
+        &'a self,
+        command: RechargeSubscriptionQuotaCommand,
+    ) -> SubscriptionQuotaRechargeFuture<'a>;
+
+    fn expire_due_memberships<'a>(
+        &'a self,
+    ) -> AppMembershipReadFuture<'a, MembershipLifecycleSweepOutcome>;
+
+    fn check_feature_access<'a>(
+        &'a self,
+        query: FeatureAccessCheckQuery,
+    ) -> AppMembershipReadFuture<'a, FeatureAccessCheckOutcome>;
 }
 
 pub trait AdminMembershipStore {

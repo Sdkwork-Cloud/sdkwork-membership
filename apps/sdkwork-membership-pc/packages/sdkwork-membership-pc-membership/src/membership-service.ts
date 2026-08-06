@@ -82,8 +82,12 @@ export interface SdkworkMembershipDashboardData {
 
 export interface SdkworkMembershipMutationInput {
   couponId?: string;
-  packageId: number;
+  packageId?: number;
   paymentMethod?: string;
+  /** 订阅期额度充值数量（仅 action=recharge）。 */
+  grantQuantity?: number;
+  /** 订阅期额度充值金额（仅 action=recharge，货币金额字符串）。 */
+  amountCny?: string;
 }
 
 export interface SdkworkMembershipPurchaseResult {
@@ -101,8 +105,31 @@ export interface SdkworkMembershipPurchaseResult {
 }
 
 export interface SdkworkMembershipCheckoutRequest extends SdkworkMembershipMutationInput {
-  action: "purchase" | "renew" | "upgrade";
+  action: "purchase" | "renew" | "upgrade" | "recharge";
 }
+
+/** 会员功能门槛校验结果。 */
+export interface SdkworkMembershipFeatureGate {
+  allowed: boolean;
+  active: boolean;
+  currentLevel: number | null;
+  featureCode: string;
+  requiredLevel: number;
+  status: string;
+  expiresAt?: string | null;
+  reason?: string | null;
+}
+
+/** 注册的功能门槛清单（对齐服务端功能码）。 */
+export const SDKWORK_MEMBERSHIP_FEATURE_CODES = [
+  "ai_chat",
+  "image_generation",
+  "priority_speed_up",
+  "priority_queue",
+  "exclusive_model",
+] as const;
+
+export type SdkworkMembershipFeatureCode = (typeof SDKWORK_MEMBERSHIP_FEATURE_CODES)[number];
 
 export interface SdkworkMembershipCheckoutPort {
   createCheckout(input: SdkworkMembershipCheckoutRequest): Promise<SdkworkMembershipPurchaseResult>;
@@ -123,6 +150,10 @@ export interface SdkworkMembershipService {
   purchaseMembership(input: SdkworkMembershipMutationInput): Promise<SdkworkMembershipPurchaseResult>;
   renewMembership(input: SdkworkMembershipMutationInput): Promise<SdkworkMembershipPurchaseResult>;
   upgradeMembership(input: SdkworkMembershipMutationInput): Promise<SdkworkMembershipPurchaseResult>;
+  /** 订阅期额度充值：向当前有效订阅追加权益额度。 */
+  rechargeQuota(input: SdkworkMembershipMutationInput): Promise<SdkworkMembershipPurchaseResult>;
+  /** 按功能码校验会员等级门槛；匿名会话全部返回未解锁。 */
+  checkFeatureAccess(featureCodes: string[]): Promise<SdkworkMembershipFeatureGate[]>;
 }
 
 interface RemoteMembershipBenefit {
@@ -164,6 +195,16 @@ interface RemoteMembershipStatus {
   expireTime?: string;
   pointBalance?: number | string;
   planRank?: number | string;
+}
+
+interface RemoteMembershipFeatureGate {
+  allowed?: boolean;
+  active?: boolean;
+  currentLevel?: number | string;
+  requiredLevel?: number | string;
+  status?: string;
+  expiresAt?: string;
+  reason?: string;
 }
 
 interface RemoteMembershipPackage {
@@ -278,9 +319,37 @@ function mapBenefits(benefits: RemoteMembershipBenefit[]): SdkworkMembershipBene
   })));
 }
 
+function mapFeatureGate(
+  featureCode: string,
+  gate: RemoteMembershipFeatureGate,
+): SdkworkMembershipFeatureGate {
+  return {
+    allowed: Boolean(gate.allowed),
+    active: Boolean(gate.active),
+    currentLevel: toNullableSdkworkMembershipNumber(gate.currentLevel),
+    featureCode,
+    requiredLevel: toSdkworkMembershipNumber(gate.requiredLevel),
+    status: toSdkworkMembershipOptionalString(gate.status) ?? "unavailable",
+    expiresAt: gate.expiresAt,
+    reason: gate.reason,
+  };
+}
+
+function deniedFeatureGates(featureCodes: string[]): SdkworkMembershipFeatureGate[] {
+  return featureCodes.map((featureCode) => ({
+    allowed: false,
+    active: false,
+    currentLevel: null,
+    featureCode,
+    requiredLevel: 0,
+    status: "free",
+    reason: "membership is not active",
+  }));
+}
+
 async function runPurchaseMutation(
   copy: SdkworkMembershipMessages["service"],
-  action: "purchase" | "renew" | "upgrade",
+  action: "purchase" | "renew" | "upgrade" | "recharge",
   input: SdkworkMembershipMutationInput,
   checkoutPort: SdkworkMembershipCheckoutPort | undefined,
 ): Promise<SdkworkMembershipPurchaseResult> {
@@ -386,6 +455,34 @@ export function createSdkworkMembershipService(
 
     async upgradeMembership(input) {
       return runPurchaseMutation(copy.service, "upgrade", input, options.checkoutPort);
+    },
+
+    async rechargeQuota(input) {
+      return runPurchaseMutation(copy.service, "recharge", input, options.checkoutPort);
+    },
+
+    async checkFeatureAccess(featureCodes) {
+      const membershipAppService = getCommerceService();
+      if (!hasSdkworkMembershipSession()) {
+        return deniedFeatureGates(featureCodes);
+      }
+      const results = await Promise.all(
+        featureCodes.map((featureCode) =>
+          membershipAppService.memberships.access.checks
+            .create({ featureCode })
+            .then((gate) => mapFeatureGate(featureCode, gate))
+            .catch(() => ({
+              allowed: false,
+              active: false,
+              currentLevel: null,
+              featureCode,
+              requiredLevel: 0,
+              status: "unavailable",
+              reason: "feature access check is unavailable",
+            })),
+        ),
+      );
+      return results;
     },
   };
 }

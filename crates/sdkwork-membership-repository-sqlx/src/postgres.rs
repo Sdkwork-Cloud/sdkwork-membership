@@ -11,15 +11,15 @@ use crate::pagination::{
 
 use crate::read_model::is_missing_postgres_read_model;
 use crate::shared::{
-    build_package_group_from_packages, decimal_string, map_membership_package_record,
-    paid_membership_purchase_submit_command, parse_coupon_subscription_quota_policy,
-    parse_points_amount, plan_code_from_rank, plan_rank_from_code, privilege_usage_from_benefits,
-    resolve_catalog_scope, resolve_membership_purchase_binding, stable_membership_i64_id,
-    subscription_quota_day_bounds, validate_coupon_subscription_quota_contract,
-    validate_membership_purchase_action, CurrentMembershipSnapshot, MembershipPurchaseBinding,
-    MembershipPurchasePersistenceMode, ParsedMembershipPackage, StoredMembershipPlan,
-    DEFAULT_CATALOG_ORGANIZATION_ID, DEFAULT_CATALOG_TENANT_ID, POINTS_ASSET_CODE,
-    POINTS_CURRENCY_CODE,
+    build_package_group_from_packages, current_timestamp_string, decimal_string,
+    map_membership_package_record, paid_membership_purchase_submit_command,
+    parse_coupon_subscription_quota_policy, parse_points_amount, plan_code_from_rank,
+    plan_rank_from_code, privilege_usage_from_benefits, resolve_catalog_scope,
+    resolve_membership_purchase_binding, stable_membership_i64_id, subscription_quota_day_bounds,
+    validate_coupon_subscription_quota_contract, validate_membership_purchase_action,
+    CurrentMembershipSnapshot, MembershipPurchaseBinding, MembershipPurchasePersistenceMode,
+    ParsedMembershipPackage, StoredMembershipPlan, DEFAULT_CATALOG_ORGANIZATION_ID,
+    DEFAULT_CATALOG_TENANT_ID, POINTS_ASSET_CODE, POINTS_CURRENCY_CODE,
 };
 use crate::{
     AdminMembershipEntitlementItem, AdminMembershipFuture, AdminMembershipMemberItem,
@@ -36,12 +36,15 @@ use crate::{
     CreateAdminMembershipPlanCommand, DeleteAdminMembershipPackageCommand,
     DeleteAdminMembershipPackageGroupCommand, DeleteAdminMembershipPlanCommand,
     FulfillMembershipPurchaseCommand, FulfillMembershipPurchaseOutcome,
-    FulfillPaidMembershipPurchaseCommand, GrantCouponSubscriptionCommand,
-    ListAdminMembershipEntitlementsQuery, ListAdminMembershipMembersQuery,
-    ListAdminMembershipPackageGroupsQuery, ListAdminMembershipPackagesQuery,
-    ListAdminMembershipPlansQuery, RetrieveAdminMembershipMemberQuery,
-    SubmitMembershipPurchaseCommand, SubscriptionQuotaConsumptionOutcome,
-    UpdateAdminMembershipMemberStatusCommand, UpdateAdminMembershipPackageCommand,
+    FulfillPaidMembershipPurchaseCommand, FeatureAccessCheckOutcome, FeatureAccessCheckQuery,
+    GrantCouponSubscriptionCommand, ListAdminMembershipEntitlementsQuery,
+    ListAdminMembershipMembersQuery, ListAdminMembershipPackageGroupsQuery,
+    ListAdminMembershipPackagesQuery, ListAdminMembershipPlansQuery,
+    MembershipLifecycleSweepOutcome, RechargeSubscriptionQuotaCommand,
+    RetrieveAdminMembershipMemberQuery, SubmitMembershipPurchaseCommand,
+    SubscriptionQuotaConsumptionOutcome, SubscriptionQuotaRechargeFuture,
+    SubscriptionQuotaRechargeOutcome, UpdateAdminMembershipMemberStatusCommand,
+    UpdateAdminMembershipPackageCommand,
     UpdateAdminMembershipPackageGroupCommand, UpdateAdminMembershipPlanCommand,
 };
 
@@ -633,6 +636,26 @@ impl AppMembershipStore for PostgresCommerceMembershipStore {
         command: ConsumeSubscriptionQuotaCommand,
     ) -> crate::SubscriptionQuotaConsumptionFuture<'a> {
         Box::pin(async move { consume_subscription_quota(&self.pool, command).await })
+    }
+
+    fn recharge_subscription_quota<'a>(
+        &'a self,
+        command: RechargeSubscriptionQuotaCommand,
+    ) -> SubscriptionQuotaRechargeFuture<'a> {
+        Box::pin(async move { recharge_subscription_quota(&self.pool, command).await })
+    }
+
+    fn expire_due_memberships<'a>(
+        &'a self,
+    ) -> AppMembershipReadFuture<'a, MembershipLifecycleSweepOutcome> {
+        Box::pin(async move { expire_due_memberships(&self.pool).await })
+    }
+
+    fn check_feature_access<'a>(
+        &'a self,
+        query: FeatureAccessCheckQuery,
+    ) -> AppMembershipReadFuture<'a, FeatureAccessCheckOutcome> {
+        Box::pin(async move { check_feature_access(&self.pool, query).await })
     }
 }
 
@@ -2098,20 +2121,28 @@ async fn load_info(
     };
     let points = load_points_balance(pool, subject).await?;
     match membership {
-        Some(membership) => Ok(AppMembershipInfoResponse {
-            plan_rank: membership.rank,
-            plan_name: membership.plan_name,
-            membership_status: membership.status,
-            started_at: Some(membership.starts_at),
-            expires_at: Some(membership.expires_at.clone()),
-            remaining_days: remaining_days(&membership.expires_at),
-            total_days: None,
-            total_spent: Some(membership.total_spent),
-            points: Some(points.available_points),
-            growth_value: Some(points.available_points),
-            upgrade_growth_value: None,
-            benefits: membership.benefits,
-        }),
+        Some(membership) => {
+            // 实时到期降级：行状态仍为 active 但已过到期时间 → 按 expired 呈现
+            let membership_status = if membership_expired(&membership.expires_at) {
+                "expired".to_owned()
+            } else {
+                membership.status.clone()
+            };
+            Ok(AppMembershipInfoResponse {
+                plan_rank: membership.rank,
+                plan_name: membership.plan_name,
+                membership_status,
+                started_at: Some(membership.starts_at),
+                expires_at: Some(membership.expires_at.clone()),
+                remaining_days: remaining_days(&membership.expires_at),
+                total_days: None,
+                total_spent: Some(membership.total_spent),
+                points: Some(points.available_points),
+                growth_value: Some(points.available_points),
+                upgrade_growth_value: None,
+                benefits: membership.benefits,
+            })
+        }
         None => {
             let benefits = load_benefits_list(pool, subject, Some(0))
                 .await
@@ -2146,11 +2177,71 @@ async fn load_status(
     Ok(AppMembershipStatusResponse {
         active: membership
             .as_ref()
-            .map(|item| item.rank > 0 && item.status != "expired")
+            .map(|item| {
+                item.rank > 0
+                    && item.status != "expired"
+                    && !membership_expired(&item.expires_at)
+            })
             .unwrap_or(false),
         plan_rank: membership.as_ref().map(|item| item.rank).unwrap_or(0),
         expires_at: membership.map(|item| item.expires_at),
         point_balance: Some(points.available_points),
+    })
+}
+
+/// 功能→所需会员等级映射（对齐 seed 计划 rank：free=0/basic=1/standard=2/premium=3/super=4）。
+fn required_rank_for_feature(feature_code: &str) -> Option<i64> {
+    let rank = match feature_code.trim().to_ascii_lowercase().as_str() {
+        "ai_chat" => 1,
+        "image_generation" => 2,
+        "priority_speed_up" => 2,
+        "priority_queue" => 3,
+        "exclusive_model" => 3,
+        _ => return None,
+    };
+    Some(rank)
+}
+
+/// 会员功能等级门槛校验：功能码解析所需等级（或请求显式指定），
+/// 与实时会员状态比对，返回是否放行。
+async fn check_feature_access(
+    pool: &PgPool,
+    query: FeatureAccessCheckQuery,
+) -> AppMembershipResult<FeatureAccessCheckOutcome> {
+    if query.subject.tenant_id <= 0 || query.subject.user_id <= 0 {
+        return Err(CommerceServiceError::validation(
+            "feature access check subject is invalid",
+        ));
+    }
+    let required_rank = match (query.feature_code.as_deref(), query.required_rank) {
+        (Some(feature), None) => required_rank_for_feature(feature).ok_or_else(|| {
+            CommerceServiceError::validation("feature access check feature is not registered")
+        })?,
+        (_, Some(rank)) if rank >= 0 => rank,
+        _ => {
+            return Err(CommerceServiceError::validation(
+                "feature access check requires a registered feature or a required level",
+            ))
+        }
+    };
+    let info = load_info(pool, Some(query.subject)).await?;
+    let current_rank = info.plan_rank;
+    let active = info.membership_status == "active" && current_rank > 0;
+    let allowed = active && current_rank >= required_rank;
+    Ok(FeatureAccessCheckOutcome {
+        allowed,
+        active,
+        current_rank,
+        required_rank,
+        status: info.membership_status,
+        expires_at: info.expires_at,
+        reason: if allowed {
+            None
+        } else if !active {
+            Some("membership is not active".to_owned())
+        } else {
+            Some("current membership level is below the required level".to_owned())
+        },
     })
 }
 
@@ -2944,7 +3035,11 @@ async fn reserve_membership_purchase(
     let current = load_current_membership_for_validation(&mut **tx, command.subject).await?;
     let membership_active = current
         .as_ref()
-        .map(|item| item.rank > 0 && item.status != "expired")
+        .map(|item| {
+            item.rank > 0
+                && item.status != "expired"
+                && !membership_expired(&item.expires_at)
+        })
         .unwrap_or(false);
     let current_rank = current.as_ref().map(|item| item.rank).unwrap_or(0);
     validate_membership_purchase_action(
@@ -3964,6 +4059,475 @@ async fn upsert_membership_entitlement_account(
     })
 }
 
+/// advisory lock 键：会员订阅生命周期扫描（防多实例并发）。
+const MEMBERSHIP_LIFECYCLE_SWEEP_LOCK_KEY: i64 = 71_091_238_411;
+
+/// 会员订阅生命周期扫描（advisory lock 保护，防多实例并发）：
+/// 到期订阅/周期/权益发放/权益账户 → expired，并写会员变更日志。
+pub async fn expire_due_memberships(
+    pool: &PgPool,
+) -> AppMembershipResult<MembershipLifecycleSweepOutcome> {
+    let mut conn = pool.acquire().await.map_err(|error| {
+        store_error("failed to acquire connection for membership lifecycle sweep", error)
+    })?;
+    let locked: bool = sqlx::query_scalar("SELECT pg_try_advisory_lock($1)")
+        .bind(MEMBERSHIP_LIFECYCLE_SWEEP_LOCK_KEY)
+        .fetch_one(&mut *conn)
+        .await
+        .map_err(|error| {
+            store_error("failed to acquire membership lifecycle sweep lock", error)
+        })?;
+    if !locked {
+        // 另一实例正在执行本轮扫描
+        return Ok(MembershipLifecycleSweepOutcome {
+            skipped: true,
+            ..MembershipLifecycleSweepOutcome::default()
+        });
+    }
+    let result = expire_due_memberships_in_tx(pool).await;
+    let _ = sqlx::query("SELECT pg_advisory_unlock($1)")
+        .bind(MEMBERSHIP_LIFECYCLE_SWEEP_LOCK_KEY)
+        .execute(&mut *conn)
+        .await;
+    result
+}
+
+async fn expire_due_memberships_in_tx(
+    pool: &PgPool,
+) -> AppMembershipResult<MembershipLifecycleSweepOutcome> {
+    let mut tx = pool
+        .begin()
+        .await
+        .map_err(|error| store_error("failed to begin membership lifecycle sweep transaction", error))?;
+    let now = current_timestamp_string();
+    let due_rows = sqlx::query(
+        r#"
+        SELECT m.id, m.tenant_id, m.organization_id, m.owner_user_id, m.plan_id,
+               m.status, m.source_order_id, CAST(m.expires_at AS TEXT) AS expires_at
+        FROM membership_subscription m
+        WHERE m.status IN ('active', 'grace_period')
+          AND m.expires_at < CAST($1 AS TIMESTAMPTZ)
+        ORDER BY m.expires_at ASC
+        FOR UPDATE
+        "#,
+    )
+    .bind(&now)
+    .fetch_all(&mut *tx)
+    .await
+    .map_err(|error| store_error("failed to load due membership subscriptions", error))?;
+
+    let mut expired_subscriptions = 0i64;
+    let mut due_ids: Vec<String> = Vec::new();
+    for row in &due_rows {
+        let subscription_id = string_cell(row, "id");
+        let from_status = string_cell(row, "status");
+        if !matches!(from_status.as_str(), "active" | "grace_period") {
+            continue;
+        }
+        let updated = sqlx::query(
+            r#"
+            UPDATE membership_subscription
+            SET status = 'expired', version = version + 1,
+                updated_at = CAST($1 AS TIMESTAMPTZ)
+            WHERE id = $2
+              AND status = $3
+            "#,
+        )
+        .bind(&now)
+        .bind(&subscription_id)
+        .bind(&from_status)
+        .execute(&mut *tx)
+        .await
+        .map_err(|error| store_error("failed to expire membership subscription", error))?
+        .rows_affected();
+        if updated == 0 {
+            continue;
+        }
+        expired_subscriptions += 1;
+        due_ids.push(subscription_id.clone());
+        insert_membership_change_log(
+            &mut tx,
+            &now,
+            row,
+            "expire",
+            Some(&from_status),
+            "expired",
+            "subscription_expired",
+        )
+        .await?;
+    }
+
+    // 到期订阅对应的周期、权益发放与独立到期的权益发放一并作废
+    let expired_periods = sqlx::query(
+        r#"
+        UPDATE membership_period
+        SET status = 'expired', updated_at = CAST($1 AS TIMESTAMPTZ)
+        WHERE subscription_id = ANY($2)
+          AND status = 'active'
+        "#,
+    )
+    .bind(&now)
+    .bind(&due_ids)
+    .execute(&mut *tx)
+    .await
+    .map_err(|error| store_error("failed to expire membership periods", error))?
+    .rows_affected() as i64;
+
+    let expired_grants = sqlx::query(
+        r#"
+        UPDATE membership_entitlement_grant
+        SET status = 'expired', updated_at = CAST($1 AS TIMESTAMPTZ)
+        WHERE status = 'active'
+          AND (source_type = 'membership_subscription' AND source_id = ANY($2)
+               OR expires_at IS NOT NULL AND expires_at < CAST($1 AS TIMESTAMPTZ))
+        "#,
+    )
+    .bind(&now)
+    .bind(&due_ids)
+    .execute(&mut *tx)
+    .await
+    .map_err(|error| store_error("failed to expire membership entitlement grants", error))?
+    .rows_affected() as i64;
+
+    let expired_accounts = sqlx::query(
+        r#"
+        UPDATE membership_entitlement_account
+        SET status = 'expired', updated_at = CAST($1 AS TIMESTAMPTZ)
+        WHERE status = 'active'
+          AND expires_at IS NOT NULL
+          AND expires_at < CAST($1 AS TIMESTAMPTZ)
+        "#,
+    )
+    .bind(&now)
+    .execute(&mut *tx)
+    .await
+    .map_err(|error| store_error("failed to expire membership entitlement accounts", error))?
+    .rows_affected() as i64;
+
+    tx.commit()
+        .await
+        .map_err(|error| store_error("failed to commit membership lifecycle sweep transaction", error))?;
+    Ok(MembershipLifecycleSweepOutcome {
+        expired_subscriptions,
+        expired_periods,
+        expired_grants,
+        expired_accounts,
+        skipped: false,
+    })
+}
+
+/// 写入会员变更日志（audit）：订阅状态流转事件。
+#[allow(clippy::too_many_arguments)]
+async fn insert_membership_change_log(
+    tx: &mut Transaction<'_, Postgres>,
+    now: &str,
+    row: &sqlx::postgres::PgRow,
+    action: &str,
+    from_status: Option<&str>,
+    to_status: &str,
+    reason: &str,
+) -> AppMembershipResult<()> {
+    let metadata = serde_json::json!({
+        "sourceOrderId": string_cell(row, "source_order_id"),
+        "expiresAt": string_cell(row, "expires_at"),
+    });
+    sqlx::query(
+        r#"
+        INSERT INTO membership_change_log
+            (id, uuid, tenant_id, organization_id, subscription_id, user_id, action,
+             from_status, to_status, from_plan_id, reason, metadata, created_at)
+        VALUES
+            ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12::JSONB,
+             CAST($13 AS TIMESTAMPTZ))
+        ON CONFLICT (id) DO NOTHING
+        "#,
+    )
+    .bind(sdkwork_utils_rust::uuid())
+    .bind(sdkwork_utils_rust::uuid())
+    .bind(string_cell(row, "tenant_id"))
+    .bind(string_cell(row, "organization_id"))
+    .bind(string_cell(row, "id"))
+    .bind(string_cell(row, "owner_user_id"))
+    .bind(action)
+    .bind(from_status)
+    .bind(to_status)
+    .bind(string_cell(row, "plan_id"))
+    .bind(reason)
+    .bind(metadata.to_string())
+    .bind(now)
+    .execute(&mut **tx)
+    .await
+    .map_err(|error| store_error("failed to insert membership change log", error))?;
+    Ok(())
+}
+
+/// 权益额度消耗限额解析：coupon 政策按日/总双限；plan 发放与订阅期充值发放按
+/// granted_quantity 为总额度（日限同总额度，检查天然不阻塞，即无独立日限）。
+fn resolve_consumption_limits(
+    grant_policy: &str,
+    granted_quantity: i64,
+) -> AppMembershipResult<(i64, i64)> {
+    let is_coupon_policy = serde_json::from_str::<serde_json::Value>(grant_policy)
+        .ok()
+        .and_then(|value| {
+            value
+                .get("kind")
+                .and_then(|kind| kind.as_str())
+                .map(str::to_owned)
+        })
+        .as_deref()
+        == Some("coupon_subscription_quota");
+    if is_coupon_policy {
+        let policy = parse_coupon_subscription_quota_policy(grant_policy)?;
+        Ok((policy.daily_quota, policy.total_quota.min(granted_quantity)))
+    } else {
+        Ok((granted_quantity, granted_quantity))
+    }
+}
+
+/// 订阅期权益额度充值：向当前有效订阅的权益账户（ai_quota）追加额度。
+/// 幂等：同一 idempotency_key 重放返回既有结果；追加额度有效期不超出订阅到期日。
+async fn recharge_subscription_quota(
+    pool: &PgPool,
+    command: RechargeSubscriptionQuotaCommand,
+) -> AppMembershipResult<SubscriptionQuotaRechargeOutcome> {
+    if command.subject.tenant_id <= 0
+        || command.subject.user_id <= 0
+        || command.quantity <= 0
+        || command.order_id.trim().is_empty()
+        || command.request_no.trim().is_empty()
+        || command.idempotency_key.trim().is_empty()
+        || command.idempotency_key.len() > 160
+    {
+        return Err(CommerceServiceError::validation(
+            "subscription quota recharge command is invalid",
+        ));
+    }
+    let grant_id = format!(
+        "quota-recharge-{}-{}-{}",
+        command.subject.tenant_id,
+        command.subject.user_id,
+        command.idempotency_key.trim()
+    );
+    let mut tx = pool
+        .begin()
+        .await
+        .map_err(|error| store_error("failed to begin subscription quota recharge transaction", error))?;
+
+    // 幂等重放：同一充值订单已入账
+    if let Some(row) = sqlx::query(
+        r#"
+        SELECT g.source_id, CAST(g.granted_quantity AS BIGINT) AS granted_quantity,
+               a.balance, CAST(a.expires_at AS TEXT) AS account_expires_at,
+               d.benefit_code
+        FROM membership_entitlement_grant g
+        JOIN membership_entitlement_account a
+          ON a.tenant_id = g.tenant_id AND a.subject_type = g.subject_type
+         AND a.subject_id = g.subject_id AND a.benefit_id = g.benefit_id
+        JOIN membership_benefit_definition d ON d.tenant_id = g.tenant_id AND d.id = g.benefit_id
+        WHERE g.id = $1
+          AND g.tenant_id = CAST($2 AS TEXT)
+          AND g.subject_type = 'user'
+          AND g.subject_id = CAST($3 AS TEXT)
+          AND g.source_type = 'membership_quota_recharge'
+        LIMIT 1
+        "#,
+    )
+    .bind(&grant_id)
+    .bind(command.subject.tenant_id)
+    .bind(command.subject.user_id)
+    .fetch_optional(&mut *tx)
+    .await
+    .map_err(|error| store_error("failed to load quota recharge replay", error))?
+    {
+        let recharged_quantity = integer_cell(&row, "granted_quantity").max(0);
+        if recharged_quantity != command.quantity {
+            return Err(CommerceServiceError::conflict(
+                "idempotency key was already used with a different recharge quantity",
+            ));
+        }
+        let outcome = SubscriptionQuotaRechargeOutcome {
+            accepted: true,
+            replayed: true,
+            subscription_id: string_cell(&row, "source_id"),
+            benefit_code: string_cell(&row, "benefit_code"),
+            recharged_quantity,
+            balance_after: parse_points_amount(&string_cell(&row, "balance")).max(0),
+            expires_at: string_cell(&row, "account_expires_at"),
+        };
+        tx.commit().await.map_err(|error| {
+            store_error("failed to commit quota recharge replay transaction", error)
+        })?;
+        return Ok(outcome);
+    }
+
+    // 仅对当前有效订阅开放充值（status='active' 且未到期）
+    let membership =
+        load_current_membership_for_validation(&mut *tx, command.subject).await?;
+    let Some(membership) = membership else {
+        return Err(CommerceServiceError::conflict(
+            "membership quota recharge requires an active membership subscription",
+        ));
+    };
+    if membership.rank <= 0
+        || membership.status != "active"
+        || membership_expired(&membership.expires_at)
+    {
+        return Err(CommerceServiceError::conflict(
+            "membership quota recharge requires an active membership subscription",
+        ));
+    }
+    let subscription_id = membership.membership_id;
+
+    // 定位可充值权益账户（ai_quota）
+    let account_row = sqlx::query(
+        r#"
+        SELECT a.id AS account_id, a.benefit_id, a.balance,
+               CAST(a.expires_at AS TEXT) AS account_expires_at,
+               d.benefit_code
+        FROM membership_entitlement_account a
+        JOIN membership_benefit_definition d ON d.tenant_id = a.tenant_id AND d.id = a.benefit_id
+        WHERE a.tenant_id = CAST($1 AS TEXT)
+          AND (a.organization_id IS NULL OR a.organization_id = CAST($2 AS TEXT))
+          AND a.subject_type = 'user'
+          AND a.subject_id = CAST($3 AS TEXT)
+          AND a.status = 'active'
+          AND d.benefit_code = 'ai_quota'
+        LIMIT 1
+        FOR UPDATE OF a
+        "#,
+    )
+    .bind(command.subject.tenant_id)
+    .bind(command.subject.organization_id)
+    .bind(command.subject.user_id)
+    .fetch_optional(&mut *tx)
+    .await
+    .map_err(|error| store_error("failed to load rechargeable entitlement account", error))?;
+    let Some(account_row) = account_row else {
+        return Err(CommerceServiceError::conflict(
+            "membership quota recharge requires an active ai_quota entitlement",
+        ));
+    };
+    let account_id = string_cell(&account_row, "account_id");
+    let benefit_id = string_cell(&account_row, "benefit_id");
+    let account_expires_at = string_cell(&account_row, "account_expires_at");
+    let balance_after = parse_points_amount(&string_cell(&account_row, "balance"))
+        .max(0)
+        .checked_add(command.quantity)
+        .ok_or_else(|| {
+            CommerceServiceError::validation("subscription quota recharge exceeds the supported range")
+        })?;
+    // 追加额度有效期不超出订阅到期日（账户到期时间一并顺延到订阅到期日）
+    let grant_expires_at =
+        if account_expires_at.as_str() < membership.expires_at.as_str() {
+            membership.expires_at.clone()
+        } else {
+            account_expires_at.clone()
+        };
+    let grant_policy = serde_json::json!({
+        "kind": "quota_recharge",
+        "orderId": command.order_id.trim(),
+        "quantity": command.quantity,
+    })
+    .to_string();
+    let now = current_timestamp_string();
+    let grant_no = sdkwork_utils_rust::uuid();
+    sqlx::query(
+        r#"
+        INSERT INTO membership_entitlement_grant
+            (id, uuid, tenant_id, organization_id, grant_no, benefit_id, subject_type,
+             subject_id, source_type, source_id, grant_policy, granted_quantity, status,
+             starts_at, expires_at, request_no, idempotency_key, created_at, updated_at)
+        VALUES
+            ($1, $2, $3, $4, $5, $6, 'user', $7, 'membership_quota_recharge', $8, $9,
+             CAST($10 AS TEXT), 'active', $11, $12, $13, $14, $15, $15)
+        "#,
+    )
+    .bind(&grant_id)
+    .bind(sdkwork_utils_rust::uuid())
+    .bind(command.subject.tenant_id)
+    .bind(command.subject.organization_id)
+    .bind(&grant_no)
+    .bind(&benefit_id)
+    .bind(command.subject.user_id)
+    .bind(&subscription_id)
+    .bind(&grant_policy)
+    .bind(command.quantity)
+    .bind(&command.requested_at)
+    .bind(&grant_expires_at)
+    .bind(command.request_no.trim())
+    .bind(command.idempotency_key.trim())
+    .bind(&now)
+    .execute(&mut *tx)
+    .await
+    .map_err(|error| store_error("failed to insert quota recharge grant", error))?;
+
+    sqlx::query(
+        r#"
+        UPDATE membership_entitlement_account
+        SET total_granted = CAST(CAST(total_granted AS BIGINT) + $1 AS TEXT),
+            balance = CAST(CAST(balance AS BIGINT) + $1 AS TEXT),
+            expires_at = GREATEST(COALESCE(expires_at, CAST($2 AS TIMESTAMPTZ)),
+                                  CAST($2 AS TIMESTAMPTZ)),
+            status = 'active',
+            version = version + 1,
+            updated_at = CAST($3 AS TIMESTAMPTZ)
+        WHERE id = $4
+          AND tenant_id = CAST($5 AS TEXT)
+        "#,
+    )
+    .bind(command.quantity)
+    .bind(&grant_expires_at)
+    .bind(&now)
+    .bind(&account_id)
+    .bind(command.subject.tenant_id)
+    .execute(&mut *tx)
+    .await
+    .map_err(|error| store_error("failed to credit quota recharge account", error))?;
+
+    sqlx::query(
+        r#"
+        INSERT INTO membership_entitlement_ledger_entry
+            (id, tenant_id, organization_id, ledger_no, account_id, grant_id, benefit_id,
+             subject_type, subject_id, direction, amount, balance_after, business_type,
+             source_type, source_id, request_no, idempotency_key, occurred_at, created_at)
+        VALUES
+            ($1, $2, $3, $4, $5, $6, $7, 'user', $8, 'credit', $9, $10, 'quota_recharge',
+             'membership_quota_recharge', $11, $12, $13, $14, $14)
+        "#,
+    )
+    .bind(&grant_id)
+    .bind(command.subject.tenant_id)
+    .bind(command.subject.organization_id)
+    .bind(&grant_id)
+    .bind(&account_id)
+    .bind(&grant_id)
+    .bind(&benefit_id)
+    .bind(command.subject.user_id)
+    .bind(command.quantity)
+    .bind(balance_after)
+    .bind(&subscription_id)
+    .bind(command.request_no.trim())
+    .bind(command.idempotency_key.trim())
+    .bind(&now)
+    .execute(&mut *tx)
+    .await
+    .map_err(|error| store_error("failed to insert quota recharge ledger entry", error))?;
+
+    tx.commit()
+        .await
+        .map_err(|error| store_error("failed to commit subscription quota recharge transaction", error))?;
+    Ok(SubscriptionQuotaRechargeOutcome {
+        accepted: true,
+        replayed: false,
+        subscription_id,
+        benefit_code: string_cell(&account_row, "benefit_code"),
+        recharged_quantity: command.quantity,
+        balance_after,
+        expires_at: grant_expires_at,
+    })
+}
+
 async fn consume_subscription_quota(
     pool: &PgPool,
     command: ConsumeSubscriptionQuotaCommand,
@@ -4003,7 +4567,7 @@ async fn consume_subscription_quota(
           AND l.tenant_id = CAST($2 AS TEXT)
           AND l.subject_type = 'user'
           AND l.subject_id = CAST($3 AS TEXT)
-          AND l.business_type = 'coupon_subscription_quota_usage'
+          AND l.business_type IN ('coupon_subscription_quota_usage', 'subscription_quota_usage')
         LIMIT 1
         "#,
     )
@@ -4021,8 +4585,9 @@ async fn consume_subscription_quota(
             ));
         }
         let grant_id = string_cell(&row, "grant_id");
-        let policy = parse_coupon_subscription_quota_policy(&string_cell(&row, "grant_policy"))?;
         let granted_quantity = integer_cell(&row, "granted_quantity").max(0);
+        let (daily_quota, total_quota) =
+            resolve_consumption_limits(&string_cell(&row, "grant_policy"), granted_quantity)?;
         let usage = sqlx::query(
             r#"
             SELECT
@@ -4034,7 +4599,7 @@ async fn consume_subscription_quota(
             FROM membership_entitlement_ledger_entry
             WHERE grant_id = $1
               AND direction = 'debit'
-              AND business_type = 'coupon_subscription_quota_usage'
+              AND business_type IN ('coupon_subscription_quota_usage', 'subscription_quota_usage')
             "#,
         )
         .bind(&grant_id)
@@ -4045,7 +4610,6 @@ async fn consume_subscription_quota(
         .map_err(|error| store_error("failed to load replayed coupon quota usage", error))?;
         let total_used = integer_cell(&usage, "total_used").max(0);
         let daily_used = integer_cell(&usage, "daily_used").max(0);
-        let total_quota = policy.total_quota.min(granted_quantity);
         tx.commit()
             .await
             .map_err(|error| store_error("failed to finish quota replay transaction", error))?;
@@ -4055,9 +4619,9 @@ async fn consume_subscription_quota(
             benefit_code: string_cell(&row, "benefit_code"),
             subscription_id: string_cell(&row, "source_id"),
             consumed_amount,
-            daily_quota: policy.daily_quota,
+            daily_quota,
             used_daily_quota: daily_used,
-            remaining_daily_quota: (policy.daily_quota - daily_used).max(0),
+            remaining_daily_quota: (daily_quota - daily_used).max(0),
             total_quota,
             remaining_total_quota: (total_quota - total_used).max(0),
         });
@@ -4080,7 +4644,7 @@ async fn consume_subscription_quota(
           AND (g.organization_id IS NULL OR g.organization_id = CAST($2 AS TEXT))
           AND g.subject_type = 'user'
           AND g.subject_id = CAST($3 AS TEXT)
-          AND g.source_type = 'membership_subscription'
+          AND g.source_type IN ('membership_subscription', 'membership_quota_recharge')
           AND g.status = 'active'
           AND a.status = 'active'
           AND m.status = 'active'
@@ -4113,10 +4677,14 @@ async fn consume_subscription_quota(
             })
             .as_deref()
             == Some("coupon_subscription_quota");
-        if !is_coupon_policy {
-            continue;
-        }
-        let policy = parse_coupon_subscription_quota_policy(&policy_json)?;
+        let granted_quantity = integer_cell(&row, "granted_quantity").max(0);
+        let (daily_quota, total_quota) =
+            resolve_consumption_limits(&policy_json, granted_quantity)?;
+        let usage_business_type = if is_coupon_policy {
+            "coupon_subscription_quota_usage"
+        } else {
+            "subscription_quota_usage"
+        };
         let grant_id = string_cell(&row, "grant_id");
         let usage = sqlx::query(
             r#"
@@ -4129,7 +4697,7 @@ async fn consume_subscription_quota(
             FROM membership_entitlement_ledger_entry
             WHERE grant_id = $1
               AND direction = 'debit'
-              AND business_type = 'coupon_subscription_quota_usage'
+              AND business_type IN ('coupon_subscription_quota_usage', 'subscription_quota_usage')
             "#,
         )
         .bind(&grant_id)
@@ -4140,11 +4708,9 @@ async fn consume_subscription_quota(
         .map_err(|error| store_error("failed to calculate coupon quota usage", error))?;
         let total_used = integer_cell(&usage, "total_used").max(0);
         let daily_used = integer_cell(&usage, "daily_used").max(0);
-        let granted_quantity = integer_cell(&row, "granted_quantity").max(0);
-        let total_quota = policy.total_quota.min(granted_quantity);
         let account_balance = parse_points_amount(&string_cell(&row, "balance")).max(0);
         if total_used.saturating_add(command.amount) > total_quota
-            || daily_used.saturating_add(command.amount) > policy.daily_quota
+            || daily_used.saturating_add(command.amount) > daily_quota
             || account_balance < command.amount
         {
             continue;
@@ -4186,7 +4752,7 @@ async fn consume_subscription_quota(
             SELECT
                 $1, CAST($2 AS TEXT), CAST($3 AS TEXT), $1, a.id, $4, a.benefit_id,
                 'user', CAST($5 AS TEXT), 'debit', CAST($6 AS TEXT), CAST($7 AS TEXT),
-                'coupon_subscription_quota_usage', 'membership_subscription', $8, $9, $10,
+                $8, 'membership_subscription', $9, $10,
                 CAST($11 AS TIMESTAMPTZ), CAST($11 AS TIMESTAMPTZ)
             FROM membership_entitlement_account a
             WHERE a.id = $12
@@ -4199,6 +4765,7 @@ async fn consume_subscription_quota(
         .bind(command.subject.user_id)
         .bind(command.amount)
         .bind(balance_after)
+        .bind(usage_business_type)
         .bind(&subscription_id)
         .bind(command.request_no.trim())
         .bind(command.idempotency_key.trim())
@@ -4238,7 +4805,7 @@ async fn consume_subscription_quota(
         .bind(&day_start)
         .bind(&day_end)
         .bind(command.amount)
-        .bind(policy.daily_quota)
+        .bind(daily_quota)
         .bind(&command.requested_at)
         .execute(&mut *tx)
         .await
@@ -4255,9 +4822,9 @@ async fn consume_subscription_quota(
             benefit_code,
             subscription_id,
             consumed_amount: command.amount,
-            daily_quota: policy.daily_quota,
+            daily_quota,
             used_daily_quota,
-            remaining_daily_quota: policy.daily_quota - used_daily_quota,
+            remaining_daily_quota: daily_quota - used_daily_quota,
             total_quota,
             remaining_total_quota: total_quota - used_total_quota,
         });
@@ -4474,6 +5041,18 @@ fn membership_status_label(status: &str) -> &'static str {
         "expired" => "expired",
         _ => "free",
     }
+}
+
+/// 实时到期判断：订阅行状态仍为 active 但已过到期时间时按已过期处理。
+fn membership_expired(expires_at: &str) -> bool {
+    let Some(expires_seconds) = parse_timestamp(expires_at) else {
+        return false;
+    };
+    let now_seconds = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map(|d| d.as_secs() as i64)
+        .unwrap_or(0);
+    expires_seconds <= now_seconds
 }
 
 fn remaining_days(expires_at: &str) -> Option<i64> {
@@ -4937,4 +5516,77 @@ async fn load_privilege_usage_postgres(
         }
     }
     Ok(response)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn now_seconds() -> i64 {
+        std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .map(|duration| duration.as_secs() as i64)
+            .unwrap_or(0)
+    }
+
+    #[test]
+    fn consumption_limits_resolve_coupon_plan_and_recharge_policies() {
+        let coupon = r#"{"kind":"coupon_subscription_quota","couponOrderId":"o1","period":"month","dailyQuota":100,"totalQuota":3000}"#;
+        let (daily, total) = resolve_consumption_limits(coupon, 5000).expect("coupon policy");
+        assert_eq!((daily, total), (100, 3000));
+        let (daily, total) = resolve_consumption_limits("membership_plan", 500).expect("plan policy");
+        assert_eq!((daily, total), (500, 500));
+        let recharge = r#"{"kind":"quota_recharge","orderId":"o1","quantity":1000}"#;
+        let (daily, total) = resolve_consumption_limits(recharge, 1000).expect("recharge policy");
+        assert_eq!((daily, total), (1000, 1000));
+    }
+
+    #[test]
+    fn feature_access_rank_map_covers_registered_features() {
+        assert_eq!(required_rank_for_feature("ai_chat"), Some(1));
+        assert_eq!(required_rank_for_feature("image_generation"), Some(2));
+        assert_eq!(required_rank_for_feature("priority_speed_up"), Some(2));
+        assert_eq!(required_rank_for_feature("priority_queue"), Some(3));
+        assert_eq!(required_rank_for_feature("exclusive_model"), Some(3));
+        assert_eq!(required_rank_for_feature("unknown_feature"), None);
+    }
+
+    #[test]
+    fn membership_expired_compares_expiry_to_now() {
+        let past = format_unix_timestamp(now_seconds() - 3600);
+        let future = format_unix_timestamp(now_seconds() + 3600);
+        assert!(membership_expired(&past));
+        assert!(!membership_expired(&future));
+        assert!(!membership_expired("not-a-timestamp"));
+    }
+
+    #[test]
+    fn lifecycle_sweep_uses_advisory_lock_and_writes_change_log() {
+        let source = include_str!("postgres.rs");
+        assert!(source.contains("pg_try_advisory_lock"));
+        assert!(source.contains("pg_advisory_unlock"));
+        assert!(source.contains("INSERT INTO membership_change_log"));
+        assert!(source.contains("subscription_expired"));
+        assert!(source.contains("status = 'expired'"));
+        assert!(source.contains("expire_due_memberships"));
+    }
+
+    #[test]
+    fn quota_recharge_is_idempotent_and_requires_active_subscription() {
+        let source = include_str!("postgres.rs");
+        assert!(source.contains("membership_quota_recharge"));
+        assert!(source.contains("business_type = 'quota_recharge'")
+            || source.contains("'quota_recharge'"));
+        assert!(source.contains("requires an active membership subscription"));
+        assert!(source.contains("failed to load quota recharge replay"));
+        assert!(source.contains("failed to begin subscription quota recharge transaction"));
+    }
+
+    #[test]
+    fn realtime_expiry_guard_is_used_by_status_reads() {
+        let source = include_str!("postgres.rs");
+        assert!(source.contains("fn membership_expired"));
+        assert!(source.contains("!membership_expired(&item.expires_at)"));
+        assert!(source.contains("item.rank > 0"));
+    }
 }

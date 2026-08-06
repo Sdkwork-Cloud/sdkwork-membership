@@ -1,8 +1,33 @@
 import { appApiPath } from './paths';
 import type { ApiRequestOptions, HttpClient } from '../http/client';
 
-import type { AppMembershipDailyRewardResponse, AppMembershipDailyRewardStatusResponse, AppMembershipInfoResponse, AppMembershipPackageGroupItem, AppMembershipPackageItem, AppMembershipPointsBalanceResponse, AppMembershipPrivilegeUsageResponse, AppMembershipPurchaseOutcome, AppMembershipStatusResponse, CommerceOperationCommand, SdkWorkCommandData, SdkWorkPageDataBenefits, SdkWorkPageDataPackageGroups, SdkWorkPageDataPackages, SdkWorkPageDataPlans, SdkWorkPageDataPointsHistory } from '../types';
+import type { AppMembershipDailyRewardResponse, AppMembershipDailyRewardStatusResponse, AppMembershipInfoResponse, AppMembershipPackageGroupItem, AppMembershipPackageItem, AppMembershipPointsBalanceResponse, AppMembershipPrivilegeUsageResponse, AppMembershipPurchaseOutcome, AppMembershipStatusResponse, CommerceOperationCommand, MembershipFeatureAccessCheckCommand, MembershipFeatureAccessCheckResult, SdkWorkCommandData, SdkWorkPageDataBenefits, SdkWorkPageDataPackageGroups, SdkWorkPageDataPackages, SdkWorkPageDataPlans, SdkWorkPageDataPointsHistory } from '../types';
 
+
+export class MembershipsAccessChecksApi {
+  private client: HttpClient;
+
+  constructor(client: HttpClient) {
+    this.client = client;
+  }
+
+
+/** Check whether the current member level grants access to a feature. */
+  async create(body: MembershipFeatureAccessCheckCommand, requestOptions?: ApiRequestOptions): Promise<MembershipFeatureAccessCheckResult> {
+    return this.client.request<MembershipFeatureAccessCheckResult>(appApiPath(`/memberships/access/checks`), { signal: requestOptions?.signal, timeout: requestOptions?.timeout, method: 'POST' as any, body, contentType: 'application/json', sdkworkUnwrapKind: 'item' });
+  }
+}
+
+export class MembershipsAccessApi {
+  private client: HttpClient;
+  public readonly checks: MembershipsAccessChecksApi;
+
+  constructor(client: HttpClient) {
+    this.client = client;
+    this.checks = new MembershipsAccessChecksApi(client);
+  }
+
+}
 
 export class MembershipsPrivilegesSpeedUpsApi {
   private client: HttpClient;
@@ -352,6 +377,7 @@ export class MembershipsApi {
   public readonly purchases: MembershipsPurchasesApi;
   public readonly points: MembershipsPointsApi;
   public readonly privileges: MembershipsPrivilegesApi;
+  public readonly access: MembershipsAccessApi;
 
   constructor(client: HttpClient) {
     this.client = client;
@@ -363,6 +389,7 @@ export class MembershipsApi {
     this.purchases = new MembershipsPurchasesApi(client);
     this.points = new MembershipsPointsApi(client);
     this.privileges = new MembershipsPrivilegesApi(client);
+    this.access = new MembershipsAccessApi(client);
   }
 
 }

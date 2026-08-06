@@ -34,6 +34,8 @@ impl ReadinessCheck for MembershipReadiness {
 }
 
 pub async fn assemble_api_router(host: Arc<MembershipServiceHost>) -> Result<ApiAssembly, String> {
+    // 会员订阅生命周期 worker（advisory lock 防多实例；Once 防重复 spawn）
+    host.spawn_membership_lifecycle_worker();
     let router = Router::new()
         .merge(sdkwork_routes_membership_app_api::gateway_mount(host.clone()).await)
         .merge(sdkwork_routes_membership_backend_api::gateway_mount(host.clone()).await);
@@ -108,6 +110,8 @@ pub async fn assemble_app_api_contribution_with_pool(
 fn assemble_app_api_contribution_with_host(
     host: Arc<MembershipServiceHost>,
 ) -> Result<ApiAssemblyContribution, String> {
+    // 会员订阅生命周期 worker（advisory lock 防多实例；Once 防重复 spawn）
+    host.spawn_membership_lifecycle_worker();
     ApiAssemblyContribution::from_manifest(
         "sdkwork-membership",
         "SDKWork Membership App API",

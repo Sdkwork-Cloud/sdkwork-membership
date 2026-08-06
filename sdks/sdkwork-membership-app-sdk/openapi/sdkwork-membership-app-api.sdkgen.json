@@ -2274,6 +2274,113 @@
           }
         }
       }
+    },
+    "/app/v3/api/memberships/access/checks": {
+      "post": {
+        "tags": [
+          "memberships"
+        ],
+        "summary": "Check whether the current member level grants access to a feature.",
+        "operationId": "memberships.access.checks.create",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/SdkWorkApiResponse"
+                    },
+                    {
+                      "type": "object",
+                      "required": [
+                        "data"
+                      ],
+                      "properties": {
+                        "data": {
+                          "type": "object",
+                          "required": [
+                            "item"
+                          ],
+                          "properties": {
+                            "item": {
+                              "$ref": "#/components/schemas/MembershipFeatureAccessCheckResult"
+                            }
+                          }
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetail"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetail"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetail"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetail"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "AuthToken": [],
+            "AccessToken": []
+          }
+        ],
+        "x-sdkwork-owner": "sdkwork-membership",
+        "x-sdkwork-api-authority": "sdkwork-membership-app-api",
+        "x-sdkwork-domain": "commerce",
+        "x-sdkwork-resource": "memberships.access.checks",
+        "x-sdkwork-request-context": "WebRequestContext",
+        "x-sdkwork-api-surface": "app-api",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MembershipFeatureAccessCheckCommand"
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -3268,6 +3375,58 @@
         "properties": {
           "item": {
             "$ref": "#/components/schemas/SdkWorkCommandData"
+          }
+        }
+      },
+      "MembershipFeatureAccessCheckCommand": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "featureCode": {
+            "type": "string",
+            "description": "Registered feature code (ai_chat, image_generation, priority_speed_up, priority_queue, exclusive_model). Required when requiredLevel is omitted."
+          },
+          "requiredLevel": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Explicit required member level; overrides the feature registry when provided."
+          }
+        }
+      },
+      "MembershipFeatureAccessCheckResult": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "allowed",
+          "active",
+          "currentLevel",
+          "requiredLevel",
+          "status"
+        ],
+        "description": "Membership feature access check result.",
+        "properties": {
+          "allowed": {
+            "type": "boolean"
+          },
+          "active": {
+            "type": "boolean"
+          },
+          "currentLevel": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "requiredLevel": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "status": {
+            "type": "string"
+          },
+          "expiresAt": {
+            "type": "string"
+          },
+          "reason": {
+            "type": "string"
           }
         }
       }

@@ -45,7 +45,7 @@ sdkwork-database-config = { path = "../sdkwork-database/crates/sdkwork-database-
 sdkwork-database-lifecycle = { path = "../sdkwork-database/crates/sdkwork-database-lifecycle" }
 sdkwork-database-history = { path = "../sdkwork-database/crates/sdkwork-database-history" }
 sdkwork-database-spi = { path = "../sdkwork-database/crates/sdkwork-database-spi" }
-sdkwork-database-sqlx = { path = "../sdkwork-database/crates/sdkwork-database-sqlx", features = ["postgres", "sqlite"] }
+sdkwork-database-sqlx = { path = "../sdkwork-database/crates/sdkwork-database-sqlx", features = ["postgres"] }
 sdkwork_membership_service = { path = "crates/sdkwork-membership-service", package = "sdkwork-membership-service" }
 sdkwork_membership_repository_sqlx = { path = "crates/sdkwork-membership-repository-sqlx", package = "sdkwork-membership-repository-sqlx" }
 sdkwork_routes_membership_app_api = { path = "crates/sdkwork-routes-membership-app-api", package = "sdkwork-routes-membership-app-api" }

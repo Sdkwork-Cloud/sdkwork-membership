@@ -38,6 +38,8 @@ export type { SdkWorkPageDataPackages } from './sdk-work-page-data-packages';
 export type { SdkWorkPageDataPackageGroups } from './sdk-work-page-data-package-groups';
 export type { SdkWorkPageDataPointsHistory } from './sdk-work-page-data-points-history';
 export type { SdkWorkResourceDataCommand } from './sdk-work-resource-data-command';
+export type { MembershipFeatureAccessCheckCommand } from './membership-feature-access-check-command';
+export type { MembershipFeatureAccessCheckResult } from './membership-feature-access-check-result';
 export type { CurrentRetrieveResponse } from './current-retrieve-response';
 export type { CurrentStatusRetrieveResponse } from './current-status-retrieve-response';
 export type { BenefitsListResponse } from './benefits-list-response';
@@ -56,3 +58,4 @@ export type { PointsDailyRewardsCreateResponse201 } from './points-daily-rewards
 export type { PointsDailyRewardsStatusRetrieveResponse } from './points-daily-rewards-status-retrieve-response';
 export type { PrivilegesUsageRetrieveResponse } from './privileges-usage-retrieve-response';
 export type { PrivilegesSpeedUpsCreateResponse201 } from './privileges-speed-ups-create-response201';
+export type { MembershipsAccessChecksCreateResponse } from './memberships-access-checks-create-response';

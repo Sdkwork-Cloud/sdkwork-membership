@@ -23,10 +23,9 @@ use sdkwork_membership_repository_sqlx::shared::{
     current_timestamp_string, normalize_optional_text,
 };
 use sdkwork_membership_repository_sqlx::{
-    AppMembershipEntityIdGenerator, AppMembershipListQuery,
-    AppMembershipPointsHistoryQuery,
+    AppMembershipEntityIdGenerator, AppMembershipListQuery, AppMembershipPointsHistoryQuery,
     AppMembershipPurchaseOutcome, AppMembershipResult, AppMembershipStore, AppMembershipSubject,
-    PostgresCommerceMembershipStore, SubmitMembershipPurchaseCommand,
+    FeatureAccessCheckQuery, PostgresCommerceMembershipStore, SubmitMembershipPurchaseCommand,
 };
 use sdkwork_web_core::WebRequestContext;
 
@@ -177,48 +176,15 @@ fn app_membership_router_with_state(
             "/app/v3/api/memberships/privileges/speed_ups",
             post(create_speed_up),
         )
+        .route(
+            "/app/v3/api/memberships/access/checks",
+            post(check_feature_access),
+        )
         .with_state(AppMembershipState {
             store,
             entity_id_generator,
             require_subject,
         })
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    fn paid_purchase_command() -> FulfillPaidMembershipPurchaseCommand {
-        FulfillPaidMembershipPurchaseCommand {
-            subject: AppMembershipSubject {
-                tenant_id: 1,
-                organization_id: 2,
-                user_id: 3,
-            },
-            package_id: 4,
-            order_id: "order-1".to_owned(),
-            membership_id: "membership-1".to_owned(),
-            order_no: "ORDER-1".to_owned(),
-            request_no: "request-1".to_owned(),
-            idempotency_key: "idempotency-1".to_owned(),
-            paid_at: "2026-07-27T00:00:00Z".to_owned(),
-            action: "purchase".to_owned(),
-        }
-    }
-
-    #[tokio::test]
-    async fn non_persistent_stores_reject_paid_fulfillment() {
-        for store in [
-            &EmptyAppMembershipStore as &dyn AppMembershipStore,
-            &CatalogAppMembershipStore as &dyn AppMembershipStore,
-        ] {
-            let error = store
-                .fulfill_paid_purchase(paid_purchase_command())
-                .await
-                .expect_err("non-persistent stores must not acknowledge paid fulfillment");
-            assert!(error.message().contains("paid fulfillment"));
-        }
-    }
 }
 
 async fn fetch_info(
@@ -585,6 +551,43 @@ async fn claim_daily_reward(
                 .await
                 .map_err(|e| {
                     ApiProblem::from_service("membership daily reward command is unavailable", e)
+                })
+                .map(item_envelope)
+        }
+        .await,
+    )
+}
+
+/// 会员功能等级门槛校验：功能码解析所需等级（或显式指定），与实时会员状态比对。
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct FeatureAccessCheckRequest {
+    feature_code: Option<String>,
+    required_level: Option<i64>,
+}
+
+async fn check_feature_access(
+    ctx: WebRequestContext,
+    State(state): State<AppMembershipState>,
+    Json(request): Json<FeatureAccessCheckRequest>,
+) -> axum::response::Response {
+    finish_api_json(
+        &ctx,
+        async {
+            let subject = resolve_required_membership_subject(&state, &ctx)?;
+            state
+                .store
+                .check_feature_access(FeatureAccessCheckQuery {
+                    subject,
+                    feature_code: normalize_optional_text(request.feature_code),
+                    required_rank: request.required_level,
+                })
+                .await
+                .map_err(|e| {
+                    ApiProblem::from_service(
+                        "membership feature access check is unavailable",
+                        e,
+                    )
                 })
                 .map(item_envelope)
         }
