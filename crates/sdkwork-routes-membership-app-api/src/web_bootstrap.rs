@@ -14,10 +14,7 @@ pub async fn wrap_router_with_web_framework_from_env(router: Router) -> Router {
                 "SDKWORK_LIFECYCLE_ENVIRONMENT",
                 "SDKWORK_ENV",
             ],
-            &[
-                "SDKWORK_CORS_ALLOWED_ORIGINS",
-                "SDKWORK_MEMBERSHIP_CORS_ALLOWED_ORIGINS",
-            ],
+            &["SDKWORK_CORS_ALLOWED_ORIGINS"],
         );
     let layer = WebFrameworkLayer::new(resolver)
         .with_profile(WebRequestContextProfile {

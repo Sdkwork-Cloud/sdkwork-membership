@@ -33,7 +33,13 @@ function redirectToDefaultLogin(): void {
   if (typeof window === "undefined") {
     return;
   }
-  const returnPath = `${window.location.pathname}${window.location.search}${window.location.hash}`;
+  const { pathname, search, hash } = window.location;
+  // Already on the auth surface: re-wrapping the whole current URL would nest
+  // the redirect param one level deeper on every bounce. Stay put instead.
+  if (pathname === "/auth" || pathname.startsWith("/auth/")) {
+    return;
+  }
+  const returnPath = `${pathname}${search}${hash}`;
   window.location.assign(`/auth/login?redirect=${encodeURIComponent(returnPath || "/")}`);
 }
 
