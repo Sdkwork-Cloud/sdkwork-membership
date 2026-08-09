@@ -79,9 +79,9 @@ LEFT JOIN membership_plan l
 LEFT JOIN commerce_product_sku s
     ON s.id = p.sku_id
 WHERE (p.tenant_id = CAST($1 AS TEXT) OR p.tenant_id IS NULL)
-  AND (p.organization_id = CAST($2 AS TEXT) OR p.organization_id IS NULL)
+  AND (p.organization_id = CAST($2 AS TEXT) OR p.organization_id = '0')
   AND (g.tenant_id = CAST($1 AS TEXT) OR g.tenant_id IS NULL)
-  AND (g.organization_id = CAST($2 AS TEXT) OR g.organization_id IS NULL)
+  AND (g.organization_id = CAST($2 AS TEXT) OR g.organization_id = '0')
   AND p.status = 'active'
   AND g.status = 'active'
 "#;
@@ -117,9 +117,9 @@ LEFT JOIN membership_plan l
 LEFT JOIN commerce_product_sku s
     ON s.id = p.sku_id
 WHERE (p.tenant_id = CAST($1 AS TEXT) OR p.tenant_id = CAST($4 AS TEXT) OR p.tenant_id IS NULL)
-  AND (p.organization_id = CAST($2 AS TEXT) OR p.organization_id = CAST($5 AS TEXT) OR p.organization_id IS NULL)
+  AND (p.organization_id = CAST($2 AS TEXT) OR p.organization_id = CAST($5 AS TEXT) OR p.organization_id = '0')
   AND (g.tenant_id = CAST($1 AS TEXT) OR g.tenant_id = CAST($4 AS TEXT) OR g.tenant_id IS NULL)
-  AND (g.organization_id = CAST($2 AS TEXT) OR g.organization_id = CAST($5 AS TEXT) OR g.organization_id IS NULL)
+  AND (g.organization_id = CAST($2 AS TEXT) OR g.organization_id = CAST($5 AS TEXT) OR g.organization_id = '0')
   AND p.external_id = $3
   AND p.status = 'active'
   AND g.status = 'active'
@@ -162,7 +162,7 @@ LEFT JOIN membership_benefit_definition d
     ON d.id = b.benefit_id
    AND d.tenant_id = b.tenant_id
 WHERE (p.tenant_id = CAST($1 AS TEXT) OR p.tenant_id IS NULL)
-  AND (p.organization_id = CAST($2 AS TEXT) OR p.organization_id IS NULL)
+  AND (p.organization_id = CAST($2 AS TEXT) OR p.organization_id = '0')
   AND p.status = 'active'
   AND CAST(p.rank AS INTEGER) = $3
 ORDER BY b.sort_weight ASC, b.id ASC
@@ -2284,7 +2284,7 @@ async fn load_benefits_page(
            AND b.tenant_id = p.tenant_id
            AND b.status = 'active'
         WHERE (p.tenant_id = CAST($1 AS TEXT) OR p.tenant_id IS NULL)
-          AND (p.organization_id = CAST($2 AS TEXT) OR p.organization_id IS NULL)
+          AND (p.organization_id = CAST($2 AS TEXT) OR p.organization_id = '0')
           AND p.status = 'active'
           AND CAST(p.rank AS INTEGER) = $3
         "#,
@@ -2319,7 +2319,7 @@ async fn load_benefits_page(
             ON d.id = b.benefit_id
            AND d.tenant_id = b.tenant_id
         WHERE (p.tenant_id = CAST($1 AS TEXT) OR p.tenant_id IS NULL)
-          AND (p.organization_id = CAST($2 AS TEXT) OR p.organization_id IS NULL)
+          AND (p.organization_id = CAST($2 AS TEXT) OR p.organization_id = '0')
           AND p.status = 'active'
           AND CAST(p.rank AS INTEGER) = $3
         ORDER BY b.sort_weight ASC, b.id ASC
@@ -2376,7 +2376,7 @@ async fn load_plans_page(
         SELECT COUNT(*)
         FROM membership_plan p
         WHERE (p.tenant_id = CAST($1 AS TEXT) OR p.tenant_id IS NULL)
-          AND (p.organization_id = CAST($2 AS TEXT) OR p.organization_id IS NULL)
+          AND (p.organization_id = CAST($2 AS TEXT) OR p.organization_id = '0')
           AND p.status = 'active'
         "#,
     )
@@ -2391,7 +2391,7 @@ async fn load_plans_page(
         SELECT p.id
         FROM membership_plan p
         WHERE (p.tenant_id = CAST($1 AS TEXT) OR p.tenant_id IS NULL)
-          AND (p.organization_id = CAST($2 AS TEXT) OR p.organization_id IS NULL)
+          AND (p.organization_id = CAST($2 AS TEXT) OR p.organization_id = '0')
           AND p.status = 'active'
         ORDER BY p.rank ASC, p.plan_no ASC
         LIMIT $3 OFFSET $4
@@ -2682,7 +2682,7 @@ async fn load_package_groups_page(
         SELECT COUNT(*)
         FROM membership_package_group g
         WHERE (g.tenant_id = CAST($1 AS TEXT) OR g.tenant_id IS NULL)
-          AND (g.organization_id = CAST($2 AS TEXT) OR g.organization_id IS NULL)
+          AND (g.organization_id = CAST($2 AS TEXT) OR g.organization_id = '0')
           AND g.status = 'active'
           AND EXISTS (
             SELECT 1
@@ -2690,7 +2690,7 @@ async fn load_package_groups_page(
             LEFT JOIN membership_plan l ON l.id = p.plan_id
             WHERE p.package_group_id = g.id
               AND (p.tenant_id = CAST($1 AS TEXT) OR p.tenant_id IS NULL)
-              AND (p.organization_id = CAST($2 AS TEXT) OR p.organization_id IS NULL)
+              AND (p.organization_id = CAST($2 AS TEXT) OR p.organization_id = '0')
               AND ($3 = false OR p.recommended != 0)
               AND ($4::bigint IS NULL OR l.rank = $4)
           )
@@ -2713,7 +2713,7 @@ async fn load_package_groups_page(
             CAST(COALESCE(g.sort_weight, 0) AS INTEGER) AS sort_weight
         FROM membership_package_group g
         WHERE (g.tenant_id = CAST($1 AS TEXT) OR g.tenant_id IS NULL)
-          AND (g.organization_id = CAST($2 AS TEXT) OR g.organization_id IS NULL)
+          AND (g.organization_id = CAST($2 AS TEXT) OR g.organization_id = '0')
           AND g.status = 'active'
           AND EXISTS (
             SELECT 1
@@ -2721,7 +2721,7 @@ async fn load_package_groups_page(
             LEFT JOIN membership_plan l ON l.id = p.plan_id
             WHERE p.package_group_id = g.id
               AND (p.tenant_id = CAST($1 AS TEXT) OR p.tenant_id IS NULL)
-              AND (p.organization_id = CAST($2 AS TEXT) OR p.organization_id IS NULL)
+              AND (p.organization_id = CAST($2 AS TEXT) OR p.organization_id = '0')
               AND ($5 = false OR p.recommended != 0)
               AND ($6::bigint IS NULL OR l.rank = $6)
           )
@@ -2783,7 +2783,7 @@ async fn load_package_group_by_id(
             CAST(COALESCE(g.sort_weight, 0) AS INTEGER) AS sort_weight
         FROM membership_package_group g
         WHERE (g.tenant_id = CAST($1 AS TEXT) OR g.tenant_id IS NULL)
-          AND (g.organization_id = CAST($2 AS TEXT) OR g.organization_id IS NULL)
+          AND (g.organization_id = CAST($2 AS TEXT) OR g.organization_id = '0')
           AND g.external_id = $3
           AND g.status = 'active'
         LIMIT 1
@@ -3586,7 +3586,7 @@ async fn validate_coupon_package_postgres(
         JOIN commerce_product_spu product
           ON product.tenant_id = s.tenant_id AND product.id = s.spu_id
         WHERE (p.tenant_id = CAST($1 AS TEXT) OR p.tenant_id IS NULL)
-          AND (p.organization_id = CAST($2 AS TEXT) OR p.organization_id IS NULL)
+          AND (p.organization_id = CAST($2 AS TEXT) OR p.organization_id = '0')
           AND p.external_id = $3
           AND p.duration_days = $4
           AND p.status = 'active'
