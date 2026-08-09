@@ -134,7 +134,7 @@ The membership database lifecycle initializes 18 membership capability tables:
 
 | Category | Tables |
 | --- | --- |
-| Catalog | `membership_product_spu`, `membership_product_sku`, `membership_plan`, `membership_plan_version`, `membership_benefit_definition`, `membership_plan_benefit`, `membership_package_group`, `membership_package` |
+| Catalog | `membership_plan`, `membership_plan_version`, `membership_benefit_definition`, `membership_plan_benefit`, `membership_package_group`, `membership_package` (product SKUs resolve through `commerce_product_sku` owned by sdkwork-merchandise) |
 | Subscription | `membership_subscription`, `membership_period` |
 | Entitlements | `membership_entitlement_account`, `membership_entitlement_grant`, `membership_entitlement_ledger_entry` |
 | Points projection | `membership_points_account`, `membership_points_ledger` |

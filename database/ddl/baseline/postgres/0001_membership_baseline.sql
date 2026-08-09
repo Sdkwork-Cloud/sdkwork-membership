@@ -15,45 +15,6 @@
 
 -- 0. Local support tables required by membership catalog, entitlement, and
 -- authenticated frontend flows.
-CREATE TABLE IF NOT EXISTS membership_product_spu (
-    id              TEXT NOT NULL,
-    tenant_id       TEXT NOT NULL,
-    organization_id TEXT NOT NULL DEFAULT '0',
-    spu_no          TEXT NOT NULL,
-    name            TEXT,
-    title           TEXT,
-    sales_status    TEXT NOT NULL DEFAULT 'active',
-    status          TEXT NOT NULL DEFAULT 'active',
-    created_at      TIMESTAMPTZ NOT NULL,
-    updated_at      TIMESTAMPTZ NOT NULL,
-    CONSTRAINT pk_membership_product_spu PRIMARY KEY (id),
-    CONSTRAINT uk_membership_product_spu_tenant_no UNIQUE (tenant_id, organization_id, spu_no)
-);
-
-CREATE TABLE IF NOT EXISTS membership_product_sku (
-    id                    TEXT NOT NULL,
-    tenant_id             TEXT NOT NULL,
-    organization_id       TEXT NOT NULL DEFAULT '0',
-    spu_id                TEXT NOT NULL,
-    sku_no                TEXT NOT NULL,
-    name                  TEXT,
-    title                 TEXT,
-    price_amount          TEXT,
-    original_price_amount TEXT,
-    currency_code         TEXT,
-    fulfillment_type      TEXT,
-    inventory_tracking    TEXT,
-    sales_status          TEXT NOT NULL DEFAULT 'active',
-    status                TEXT NOT NULL DEFAULT 'active',
-    spec_json             TEXT NOT NULL DEFAULT '{}',
-    created_at            TIMESTAMPTZ NOT NULL,
-    updated_at            TIMESTAMPTZ NOT NULL,
-    CONSTRAINT pk_membership_product_sku PRIMARY KEY (id),
-    CONSTRAINT uk_membership_product_sku_tenant_no UNIQUE (tenant_id, organization_id, sku_no)
-);
-
-CREATE INDEX IF NOT EXISTS idx_membership_product_sku_spu
-    ON membership_product_sku (tenant_id, spu_id, status);
 
 CREATE TABLE IF NOT EXISTS membership_plan (
     id              TEXT NOT NULL,

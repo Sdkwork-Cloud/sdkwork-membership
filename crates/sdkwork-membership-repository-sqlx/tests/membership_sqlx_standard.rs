@@ -91,8 +91,6 @@ fn fulfillment_stays_order_led_and_transactionally_idempotent() {
 #[test]
 fn postgres_baseline_covers_membership_tables_only() {
     for table in [
-        "membership_product_spu",
-        "membership_product_sku",
         "membership_plan",
         "membership_plan_version",
         "membership_benefit_definition",

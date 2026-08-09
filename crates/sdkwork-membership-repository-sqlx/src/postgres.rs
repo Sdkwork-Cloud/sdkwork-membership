@@ -76,7 +76,7 @@ JOIN membership_package_group g
     ON g.id = p.package_group_id
 LEFT JOIN membership_plan l
     ON l.id = p.plan_id
-LEFT JOIN membership_product_sku s
+LEFT JOIN commerce_product_sku s
     ON s.id = p.sku_id
 WHERE (p.tenant_id = CAST($1 AS TEXT) OR p.tenant_id IS NULL)
   AND (p.organization_id = CAST($2 AS TEXT) OR p.organization_id IS NULL)
@@ -114,7 +114,7 @@ JOIN membership_package_group g
     ON g.id = p.package_group_id
 LEFT JOIN membership_plan l
     ON l.id = p.plan_id
-LEFT JOIN membership_product_sku s
+LEFT JOIN commerce_product_sku s
     ON s.id = p.sku_id
 WHERE (p.tenant_id = CAST($1 AS TEXT) OR p.tenant_id = CAST($4 AS TEXT) OR p.tenant_id IS NULL)
   AND (p.organization_id = CAST($2 AS TEXT) OR p.organization_id = CAST($5 AS TEXT) OR p.organization_id IS NULL)
@@ -1237,7 +1237,7 @@ async fn create_admin_membership_package(
     .await?;
     sqlx::query(
         r#"
-        INSERT INTO membership_product_sku
+        INSERT INTO commerce_product_sku
             (id, tenant_id, organization_id, spu_id, sku_no, name, title, price_amount, original_price_amount, currency_code, fulfillment_type, inventory_tracking, status, spec_json, created_at, updated_at)
         VALUES
             ($1, $2, $3, 'seed-product-membership', $4, $5, $5, $6, NULL, $7, 'membership_activation', 'untracked', $8, '{}', $9, $9)
@@ -1331,7 +1331,7 @@ async fn update_admin_membership_package(
     .await?;
     sqlx::query(
         r#"
-        INSERT INTO membership_product_sku
+        INSERT INTO commerce_product_sku
             (id, tenant_id, organization_id, spu_id, sku_no, name, title, price_amount, original_price_amount, currency_code, fulfillment_type, inventory_tracking, status, spec_json, created_at, updated_at)
         VALUES
             ($1, $2, $3, 'seed-product-membership', $4, $5, $5, $6, NULL, $7, 'membership_activation', 'untracked', $8, '{}', $9, $9)
@@ -3581,9 +3581,9 @@ async fn validate_coupon_package_postgres(
         r#"
         SELECT COUNT(1)
         FROM membership_package p
-        JOIN membership_product_sku s
+        JOIN commerce_product_sku s
           ON s.tenant_id = p.tenant_id AND s.id = p.sku_id
-        JOIN membership_product_spu product
+        JOIN commerce_product_spu product
           ON product.tenant_id = s.tenant_id AND product.id = s.spu_id
         WHERE (p.tenant_id = CAST($1 AS TEXT) OR p.tenant_id IS NULL)
           AND (p.organization_id = CAST($2 AS TEXT) OR p.organization_id IS NULL)

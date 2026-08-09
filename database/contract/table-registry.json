@@ -3,18 +3,6 @@
   "kind": "sdkwork.database.table-registry",
   "tables": [
     {
-      "table_name": "membership_product_spu",
-      "owner": "sdkwork-membership",
-      "compliance_level": "L2",
-      "lifecycle_status": "active"
-    },
-    {
-      "table_name": "membership_product_sku",
-      "owner": "sdkwork-membership",
-      "compliance_level": "L2",
-      "lifecycle_status": "active"
-    },
-    {
       "table_name": "membership_plan",
       "owner": "sdkwork-membership",
       "compliance_level": "L2",

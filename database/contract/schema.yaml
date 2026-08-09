@@ -9,12 +9,6 @@ engines:
   - postgres
 table_prefix: membership_
 tables:
-  - name: membership_product_spu
-    lifecycle_status: active
-    owner: sdkwork-membership
-  - name: membership_product_sku
-    lifecycle_status: active
-    owner: sdkwork-membership
   - name: membership_plan
     lifecycle_status: active
     owner: sdkwork-membership

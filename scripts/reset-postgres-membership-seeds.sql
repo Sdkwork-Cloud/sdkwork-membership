@@ -68,8 +68,8 @@ WHERE module_id = 'membership';
 -- TRUNCATE TABLE membership_benefit_definition CASCADE;
 -- TRUNCATE TABLE membership_plan_version CASCADE;
 -- TRUNCATE TABLE membership_plan CASCADE;
--- TRUNCATE TABLE membership_product_sku CASCADE;
--- TRUNCATE TABLE membership_product_spu CASCADE;
+-- TRUNCATE TABLE commerce_product_sku CASCADE;
+-- TRUNCATE TABLE commerce_product_spu CASCADE;
 
 -- ---------------------------------------------------------------------------
 -- Verification: Check remaining seed history for membership.
