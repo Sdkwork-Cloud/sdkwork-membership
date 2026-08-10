@@ -216,7 +216,7 @@ LEFT JOIN membership_plan l
 LEFT JOIN membership_package pkg
     ON pkg.id = m.package_id
 WHERE m.tenant_id = CAST($1 AS TEXT)
-  AND (m.organization_id IS NULL OR m.organization_id = CAST($2 AS TEXT))
+  AND (m.organization_id IS NULL OR m.organization_id = '0' OR m.organization_id = CAST($2 AS TEXT))
   AND m.subject_type = 'user'
   AND m.subject_id = CAST($3 AS TEXT)
 ORDER BY m.created_at DESC, m.id DESC
@@ -229,7 +229,7 @@ SELECT
     CAST(frozen_amount AS TEXT) AS frozen_amount
 FROM membership_points_account
 WHERE tenant_id = CAST($1 AS BIGINT)
-  AND (organization_id IS NULL OR organization_id = CAST($2 AS BIGINT))
+  AND (organization_id IS NULL OR organization_id = 0 OR organization_id = CAST($2 AS BIGINT))
   AND owner_type = 'USER'
   AND owner_id = CAST($3 AS BIGINT)
   AND asset_code = $4
@@ -251,7 +251,7 @@ SELECT
     CAST(created_at AS TEXT) AS created_at
 FROM membership_points_ledger
 WHERE tenant_id = CAST($1 AS BIGINT)
-  AND (organization_id IS NULL OR organization_id = CAST($2 AS BIGINT))
+  AND (organization_id IS NULL OR organization_id = 0 OR organization_id = CAST($2 AS BIGINT))
   AND owner_type = 'USER'
   AND owner_id = CAST($3 AS BIGINT)
   AND asset_code = $4
@@ -271,7 +271,7 @@ SELECT
     CAST(created_at AS TEXT) AS created_at
 FROM membership_points_ledger
 WHERE tenant_id = CAST($1 AS BIGINT)
-  AND (organization_id IS NULL OR organization_id = CAST($2 AS BIGINT))
+  AND (organization_id IS NULL OR organization_id = 0 OR organization_id = CAST($2 AS BIGINT))
   AND owner_type = 'USER'
   AND owner_id = CAST($3 AS BIGINT)
   AND asset_code = $4
@@ -3126,7 +3126,7 @@ async fn load_purchase_outcome_by_idempotency(
             ms.status AS subscription_status
         FROM membership_subscription ms
         WHERE ms.tenant_id = CAST($1 AS TEXT)
-          AND (ms.organization_id IS NULL OR ms.organization_id = CAST($2 AS TEXT))
+          AND (ms.organization_id IS NULL OR ms.organization_id = '0' OR ms.organization_id = CAST($2 AS TEXT))
           AND ms.owner_user_id = CAST($3 AS TEXT)
           AND ms.idempotency_key = $4
         ORDER BY ms.created_at DESC
@@ -3277,7 +3277,7 @@ async fn fulfill_paid_purchase_by_order(
               ON ms.tenant_id = mp.tenant_id
              AND ms.id = mp.subscription_id
             WHERE ms.tenant_id = CAST($1 AS TEXT)
-              AND (ms.organization_id IS NULL OR ms.organization_id = CAST($2 AS TEXT))
+              AND (ms.organization_id IS NULL OR ms.organization_id = '0' OR ms.organization_id = CAST($2 AS TEXT))
               AND ms.owner_user_id = CAST($3 AS TEXT)
               AND mp.source_order_id = $4
         )
@@ -3342,7 +3342,7 @@ async fn activate_membership_purchase(
           ON ms.tenant_id = mp.tenant_id
          AND ms.id = mp.subscription_id
         WHERE ms.tenant_id = CAST($1 AS TEXT)
-          AND (ms.organization_id IS NULL OR ms.organization_id = CAST($2 AS TEXT))
+          AND (ms.organization_id IS NULL OR ms.organization_id = '0' OR ms.organization_id = CAST($2 AS TEXT))
           AND ms.owner_user_id = CAST($3 AS TEXT)
           AND mp.source_order_id = $4
         ORDER BY mp.created_at DESC
@@ -3736,7 +3736,7 @@ async fn load_fulfillment_outcome_by_idempotency(
           ON ms.tenant_id = mp.tenant_id
          AND ms.id = mp.subscription_id
         WHERE ms.tenant_id = CAST($1 AS TEXT)
-          AND (ms.organization_id IS NULL OR ms.organization_id = CAST($2 AS TEXT))
+          AND (ms.organization_id IS NULL OR ms.organization_id = '0' OR ms.organization_id = CAST($2 AS TEXT))
           AND ms.owner_user_id = CAST($3 AS TEXT)
           AND mp.source_order_id = $4
           AND mp.status = 'active'
@@ -3829,7 +3829,7 @@ async fn persist_membership_subscription(
                 updated_at = $11
             WHERE id = $12
               AND tenant_id = CAST($13 AS TEXT)
-              AND (organization_id IS NULL OR organization_id = CAST($14 AS TEXT))
+              AND (organization_id IS NULL OR organization_id = '0' OR organization_id = CAST($14 AS TEXT))
               AND subject_type = 'user'
               AND subject_id = CAST($15 AS TEXT)
             "#,
@@ -4388,7 +4388,7 @@ async fn recharge_subscription_quota(
         FROM membership_entitlement_account a
         JOIN membership_benefit_definition d ON d.tenant_id = a.tenant_id AND d.id = a.benefit_id
         WHERE a.tenant_id = CAST($1 AS TEXT)
-          AND (a.organization_id IS NULL OR a.organization_id = CAST($2 AS TEXT))
+          AND (a.organization_id IS NULL OR a.organization_id = '0' OR a.organization_id = CAST($2 AS TEXT))
           AND a.subject_type = 'user'
           AND a.subject_id = CAST($3 AS TEXT)
           AND a.status = 'active'
@@ -4641,7 +4641,7 @@ async fn consume_subscription_quota(
         JOIN membership_benefit_definition d ON d.tenant_id = g.tenant_id AND d.id = g.benefit_id
         JOIN membership_subscription m ON m.tenant_id = g.tenant_id AND m.id = g.source_id
         WHERE g.tenant_id = CAST($1 AS TEXT)
-          AND (g.organization_id IS NULL OR g.organization_id = CAST($2 AS TEXT))
+          AND (g.organization_id IS NULL OR g.organization_id = '0' OR g.organization_id = CAST($2 AS TEXT))
           AND g.subject_type = 'user'
           AND g.subject_id = CAST($3 AS TEXT)
           AND g.source_type IN ('membership_subscription', 'membership_quota_recharge')
@@ -4867,7 +4867,7 @@ async fn consume_speed_up(
           ON m.id = g.source_id
          AND m.tenant_id = a.tenant_id
         WHERE a.tenant_id = CAST($1 AS TEXT)
-          AND (a.organization_id IS NULL OR a.organization_id = CAST($2 AS TEXT))
+          AND (a.organization_id IS NULL OR a.organization_id = '0' OR a.organization_id = CAST($2 AS TEXT))
           AND a.subject_type = 'user'
           AND a.subject_id = CAST($3 AS TEXT)
           AND a.status = 'active'
@@ -5445,7 +5445,7 @@ async fn load_membership_entitlement_account_usage_postgres(
         JOIN membership_benefit_definition d
           ON d.id = a.benefit_id
         WHERE a.tenant_id = CAST($1 AS TEXT)
-          AND (a.organization_id IS NULL OR a.organization_id = CAST($2 AS TEXT))
+          AND (a.organization_id IS NULL OR a.organization_id = '0' OR a.organization_id = CAST($2 AS TEXT))
           AND a.subject_type = 'user'
           AND a.subject_id = CAST($3 AS TEXT)
           AND a.status = 'active'

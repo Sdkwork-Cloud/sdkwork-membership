@@ -10,8 +10,8 @@ export const VipBanner: React.FC = () => {
       <div className="flex items-center gap-4 text-[#8A5A19]">
         <Crown className="w-10 h-10 drop-shadow-md" strokeWidth={1.5} />
         <div>
-          <h2 className="text-2xl font-bold">{t('vip.auto_70e3199d', '超级会员 VIP')}</h2>
-          <p className="text-sm opacity-90 mt-1">{t('vip.auto_4ecfdde3', '尊享特权，体验飞升')}</p>
+          <h2 className="text-2xl font-bold">{t("vip.banner_title", "超级会员 VIP")}</h2>
+          <p className="text-sm opacity-90 mt-1">{t("vip.banner_desc", "尊享特权，体验飞升")}</p>
         </div>
       </div>
     </div>

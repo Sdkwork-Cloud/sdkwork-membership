@@ -1,7 +1,9 @@
 import React from "react";
+import { useTranslation } from "react-i18next";
 
 export interface CouponItem {
   id: string;
+  nameKey?: string;
   name: string;
   discount: number;
   minSpend: number;
@@ -14,6 +16,7 @@ interface CouponTabContentProps {
 }
 
 export const CouponTabContent: React.FC<CouponTabContentProps> = ({ coupons, onPay }) => {
+  const { t } = useTranslation();
   return (
     <div className="space-y-4">
       {coupons.map((coupon) => (
@@ -25,12 +28,14 @@ export const CouponTabContent: React.FC<CouponTabContentProps> = ({ coupons, onP
           <div className="absolute -right-3 top-1/2 -translate-y-1/2 w-6 h-6 bg-white dark:bg-black rounded-full" />
           
           <div className="flex-1 pl-4 border-r border-orange-200 dark:border-orange-800 border-dashed pr-4">
-             <div className="text-[18px] font-bold text-orange-600 dark:text-orange-400 mb-1">{coupon.name}</div>
+             <div className="text-[18px] font-bold text-orange-600 dark:text-orange-400 mb-1">{t(coupon.nameKey ?? "", coupon.name)}</div>
              <div className="text-[12px] text-orange-600/70 dark:text-orange-400/70">
-               {coupon.minSpend > 0 ? `满 ${coupon.minSpend} 元可用` : '无门槛使用'}
+               {coupon.minSpend > 0
+                 ? t("vip.min_spend", "满 {{amount}} 元可用", { amount: coupon.minSpend })
+                 : t("vip.no_threshold", "无门槛使用")}
              </div>
              <div className="text-[10px] text-orange-600/50 dark:text-orange-400/50 mt-2">
-               有效期至 {coupon.validTo}
+               {t("vip.valid_until", "有效期至 {{date}}", { date: coupon.validTo })}
              </div>
           </div>
           <div className="w-[100px] flex flex-col items-center justify-center gap-2">
@@ -42,7 +47,7 @@ export const CouponTabContent: React.FC<CouponTabContentProps> = ({ coupons, onP
                 className="bg-gradient-to-r from-orange-500 to-red-500 text-white text-[12px] px-3 py-1 rounded-full active:scale-95"
                 onClick={() => onPay(coupon, 'coupon')}
              >
-               立即领取
+               {t("vip.receive_now", "立即领取")}
              </button>
           </div>
         </div>

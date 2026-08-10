@@ -18,66 +18,82 @@
 
 BEGIN;
 
+ALTER TABLE membership_plan ADD COLUMN IF NOT EXISTS organization_id TEXT NOT NULL DEFAULT '0';
 UPDATE membership_plan SET organization_id = '0' WHERE organization_id IS NULL;
 ALTER TABLE membership_plan ALTER COLUMN organization_id SET DEFAULT '0';
 ALTER TABLE membership_plan ALTER COLUMN organization_id SET NOT NULL;
 
+ALTER TABLE membership_plan_version ADD COLUMN IF NOT EXISTS organization_id TEXT NOT NULL DEFAULT '0';
 UPDATE membership_plan_version SET organization_id = '0' WHERE organization_id IS NULL;
 ALTER TABLE membership_plan_version ALTER COLUMN organization_id SET DEFAULT '0';
 ALTER TABLE membership_plan_version ALTER COLUMN organization_id SET NOT NULL;
 
+ALTER TABLE membership_benefit_definition ADD COLUMN IF NOT EXISTS organization_id TEXT NOT NULL DEFAULT '0';
 UPDATE membership_benefit_definition SET organization_id = '0' WHERE organization_id IS NULL;
 ALTER TABLE membership_benefit_definition ALTER COLUMN organization_id SET DEFAULT '0';
 ALTER TABLE membership_benefit_definition ALTER COLUMN organization_id SET NOT NULL;
 
+ALTER TABLE membership_plan_benefit ADD COLUMN IF NOT EXISTS organization_id TEXT NOT NULL DEFAULT '0';
 UPDATE membership_plan_benefit SET organization_id = '0' WHERE organization_id IS NULL;
 ALTER TABLE membership_plan_benefit ALTER COLUMN organization_id SET DEFAULT '0';
 ALTER TABLE membership_plan_benefit ALTER COLUMN organization_id SET NOT NULL;
 
+ALTER TABLE membership_package_group ADD COLUMN IF NOT EXISTS organization_id TEXT NOT NULL DEFAULT '0';
 UPDATE membership_package_group SET organization_id = '0' WHERE organization_id IS NULL;
 ALTER TABLE membership_package_group ALTER COLUMN organization_id SET DEFAULT '0';
 ALTER TABLE membership_package_group ALTER COLUMN organization_id SET NOT NULL;
 
+ALTER TABLE membership_package ADD COLUMN IF NOT EXISTS organization_id TEXT NOT NULL DEFAULT '0';
 UPDATE membership_package SET organization_id = '0' WHERE organization_id IS NULL;
 ALTER TABLE membership_package ALTER COLUMN organization_id SET DEFAULT '0';
 ALTER TABLE membership_package ALTER COLUMN organization_id SET NOT NULL;
 
+ALTER TABLE membership_subscription ADD COLUMN IF NOT EXISTS organization_id TEXT NOT NULL DEFAULT '0';
 UPDATE membership_subscription SET organization_id = '0' WHERE organization_id IS NULL;
 ALTER TABLE membership_subscription ALTER COLUMN organization_id SET DEFAULT '0';
 ALTER TABLE membership_subscription ALTER COLUMN organization_id SET NOT NULL;
 
+ALTER TABLE membership_period ADD COLUMN IF NOT EXISTS organization_id TEXT NOT NULL DEFAULT '0';
 UPDATE membership_period SET organization_id = '0' WHERE organization_id IS NULL;
 ALTER TABLE membership_period ALTER COLUMN organization_id SET DEFAULT '0';
 ALTER TABLE membership_period ALTER COLUMN organization_id SET NOT NULL;
 
+ALTER TABLE membership_entitlement_account ADD COLUMN IF NOT EXISTS organization_id TEXT NOT NULL DEFAULT '0';
 UPDATE membership_entitlement_account SET organization_id = '0' WHERE organization_id IS NULL;
 ALTER TABLE membership_entitlement_account ALTER COLUMN organization_id SET DEFAULT '0';
 ALTER TABLE membership_entitlement_account ALTER COLUMN organization_id SET NOT NULL;
 
+ALTER TABLE membership_entitlement_grant ADD COLUMN IF NOT EXISTS organization_id TEXT NOT NULL DEFAULT '0';
 UPDATE membership_entitlement_grant SET organization_id = '0' WHERE organization_id IS NULL;
 ALTER TABLE membership_entitlement_grant ALTER COLUMN organization_id SET DEFAULT '0';
 ALTER TABLE membership_entitlement_grant ALTER COLUMN organization_id SET NOT NULL;
 
+ALTER TABLE membership_entitlement_ledger_entry ADD COLUMN IF NOT EXISTS organization_id TEXT NOT NULL DEFAULT '0';
 UPDATE membership_entitlement_ledger_entry SET organization_id = '0' WHERE organization_id IS NULL;
 ALTER TABLE membership_entitlement_ledger_entry ALTER COLUMN organization_id SET DEFAULT '0';
 ALTER TABLE membership_entitlement_ledger_entry ALTER COLUMN organization_id SET NOT NULL;
 
+ALTER TABLE membership_points_account ADD COLUMN IF NOT EXISTS organization_id BIGINT NOT NULL DEFAULT 0;
 UPDATE membership_points_account SET organization_id = 0 WHERE organization_id IS NULL;
 ALTER TABLE membership_points_account ALTER COLUMN organization_id SET DEFAULT 0;
 ALTER TABLE membership_points_account ALTER COLUMN organization_id SET NOT NULL;
 
+ALTER TABLE membership_points_ledger ADD COLUMN IF NOT EXISTS organization_id BIGINT NOT NULL DEFAULT 0;
 UPDATE membership_points_ledger SET organization_id = 0 WHERE organization_id IS NULL;
 ALTER TABLE membership_points_ledger ALTER COLUMN organization_id SET DEFAULT 0;
 ALTER TABLE membership_points_ledger ALTER COLUMN organization_id SET NOT NULL;
 
+ALTER TABLE membership_daily_reward ADD COLUMN IF NOT EXISTS organization_id BIGINT NOT NULL DEFAULT 0;
 UPDATE membership_daily_reward SET organization_id = 0 WHERE organization_id IS NULL;
 ALTER TABLE membership_daily_reward ALTER COLUMN organization_id SET DEFAULT 0;
 ALTER TABLE membership_daily_reward ALTER COLUMN organization_id SET NOT NULL;
 
+ALTER TABLE membership_privilege_usage ADD COLUMN IF NOT EXISTS organization_id BIGINT NOT NULL DEFAULT 0;
 UPDATE membership_privilege_usage SET organization_id = 0 WHERE organization_id IS NULL;
 ALTER TABLE membership_privilege_usage ALTER COLUMN organization_id SET DEFAULT 0;
 ALTER TABLE membership_privilege_usage ALTER COLUMN organization_id SET NOT NULL;
 
+ALTER TABLE membership_change_log ADD COLUMN IF NOT EXISTS organization_id BIGINT NOT NULL DEFAULT 0;
 UPDATE membership_change_log SET organization_id = 0 WHERE organization_id IS NULL;
 ALTER TABLE membership_change_log ALTER COLUMN organization_id SET DEFAULT 0;
 ALTER TABLE membership_change_log ALTER COLUMN organization_id SET NOT NULL;

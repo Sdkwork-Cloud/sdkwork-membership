@@ -3,10 +3,13 @@ import { useTranslation } from "react-i18next";
 
 export interface VipPlan {
   id: string;
+  nameKey?: string;
   name: string;
   price: string;
   originalPrice: string;
+  descKey?: string;
   desc: string;
+  badgeKey?: string;
   badge?: string;
 }
 
@@ -27,7 +30,7 @@ export const VipPlanSelector: React.FC<VipPlanSelectorProps> = ({
   return (
     <div className="bg-white dark:bg-[#1A1A1A] rounded-2xl p-5 shadow-sm border border-[#EBEBEB] dark:border-[#333]">
       <h3 className="text-[16px] font-bold text-text-main mb-4">
-        {t('vip.auto_7cbfa07c', '选择订阅套餐')}
+        {t("vip.plan_title", "选择订阅套餐")}
       </h3>
       <div className="grid grid-cols-3 gap-3">
         {plans.map((plan) => (
@@ -42,11 +45,11 @@ export const VipPlanSelector: React.FC<VipPlanSelectorProps> = ({
           >
             {plan.badge && (
               <div className="absolute -top-2 left-1/2 -translate-x-1/2 bg-[#FF4C4C] text-white text-[10px] px-2 py-0.5 rounded-full whitespace-nowrap z-10">
-                {plan.badge}
+                {t(plan.badgeKey ?? "", plan.badge)}
               </div>
             )}
             <div className="text-[13px] text-text-sub font-medium mb-1 whitespace-nowrap">
-              {plan.name}
+              {t(plan.nameKey ?? "", plan.name)}
             </div>
             <div className="text-[#D4AF37] font-bold text-xl leading-none flex items-baseline">
               <span className="text-[12px] font-normal mr-0.5">¥</span>
@@ -61,7 +64,7 @@ export const VipPlanSelector: React.FC<VipPlanSelectorProps> = ({
 
       {currentPlan && (
         <div className="mt-4 p-3 bg-gray-50 dark:bg-white/5 rounded-lg">
-          <p className="text-[12px] text-text-sub text-center">{currentPlan.desc}</p>
+          <p className="text-[12px] text-text-sub text-center">{t(currentPlan.descKey ?? "", currentPlan.desc)}</p>
         </div>
       )}
     </div>
