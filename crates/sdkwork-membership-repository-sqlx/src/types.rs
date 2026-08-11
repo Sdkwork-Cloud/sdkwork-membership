@@ -276,6 +276,7 @@ pub struct AdminMembershipPackageItem {
     pub price_amount: String,
     pub currency_code: String,
     pub duration_days: i64,
+    pub discount: i64,
     pub status: String,
 }
 
@@ -499,6 +500,7 @@ pub struct AdminMembershipPackageMutation {
     pub price_amount: String,
     pub currency_code: String,
     pub duration_days: i64,
+    pub discount: i64,
     pub status: String,
 }
 

@@ -149,6 +149,7 @@ CREATE TABLE IF NOT EXISTS membership_package (
     original_price_amount TEXT,
     currency_code         TEXT NOT NULL DEFAULT 'CNY',
     point_amount          INTEGER NOT NULL DEFAULT 0,
+    discount              BIGINT NOT NULL DEFAULT 100,
     duration_days         INTEGER NOT NULL,
     recurrence_cycle      TEXT,
     sort_weight           INTEGER NOT NULL DEFAULT 0,
@@ -162,7 +163,8 @@ CREATE TABLE IF NOT EXISTS membership_package (
     created_at            TIMESTAMPTZ NOT NULL,
     updated_at            TIMESTAMPTZ NOT NULL,
     CONSTRAINT pk_membership_package PRIMARY KEY (id),
-    CONSTRAINT uk_membership_package_tenant_no UNIQUE (tenant_id, organization_id, package_no)
+    CONSTRAINT uk_membership_package_tenant_no UNIQUE (tenant_id, organization_id, package_no),
+    CONSTRAINT ck_membership_package_discount_range CHECK (discount >= 1 AND discount <= 100)
 );
 
 CREATE UNIQUE INDEX IF NOT EXISTS uk_membership_package_uuid
@@ -573,6 +575,20 @@ BEGIN
         WHERE table_schema = current_schema() AND table_name = 'membership_package' AND column_name = 'tags'
     ) THEN
         ALTER TABLE membership_package ADD COLUMN tags JSONB NOT NULL DEFAULT '[]'::jsonb;
+    END IF;
+END $$;
+
+-- Add discount column to membership_package if missing (100 = no discount)
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_schema = current_schema() AND table_name = 'membership_package' AND column_name = 'discount'
+    ) THEN
+        ALTER TABLE membership_package ADD COLUMN discount BIGINT NOT NULL DEFAULT 100;
+        ALTER TABLE membership_package
+            ADD CONSTRAINT ck_membership_package_discount_range
+            CHECK (discount >= 1 AND discount <= 100);
     END IF;
 END $$;
 

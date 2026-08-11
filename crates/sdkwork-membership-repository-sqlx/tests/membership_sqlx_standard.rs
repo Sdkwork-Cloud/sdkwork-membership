@@ -13,6 +13,10 @@ const BACKEND_ROUTER_SOURCE: &str =
     include_str!("../../sdkwork-routes-membership-backend-api/src/admin_router.rs");
 const POSTGRES_BASELINE: &str =
     include_str!("../../../database/ddl/baseline/postgres/0001_membership_baseline.sql");
+const PACKAGE_DISCOUNT_MIGRATION_UP: &str =
+    include_str!("../../../database/migrations/postgres/0002_membership_package_discount.up.sql");
+const PACKAGE_DISCOUNT_MIGRATION_DOWN: &str =
+    include_str!("../../../database/migrations/postgres/0002_membership_package_discount.down.sql");
 
 #[test]
 fn repository_exposes_only_the_authoritative_postgres_store() {
@@ -126,6 +130,38 @@ fn postgres_baseline_covers_membership_tables_only() {
             "Membership baseline must not create external table {table}",
         );
     }
+}
+
+#[test]
+fn membership_package_discount_column_is_persisted_and_validated() {
+    assert!(
+        POSTGRES_BASELINE.contains("discount              BIGINT NOT NULL DEFAULT 100"),
+        "membership baseline must declare the package discount column with a 100 default"
+    );
+    assert!(
+        POSTGRES_BASELINE.contains("ck_membership_package_discount_range"),
+        "membership baseline must constrain the package discount to 1-100"
+    );
+    assert!(
+        POSTGRES_BASELINE.contains("ADD COLUMN discount BIGINT NOT NULL DEFAULT 100"),
+        "membership baseline must backfill the discount column for existing installs"
+    );
+    assert!(
+        POSTGRES_SOURCE.contains("COALESCE(discount, 100)::bigint AS discount"),
+        "admin package reads must fall back to no discount (100) for legacy rows"
+    );
+    assert!(
+        PACKAGE_DISCOUNT_MIGRATION_UP.contains("ADD COLUMN IF NOT EXISTS discount"),
+        "the 0002 up migration must add the discount column idempotently"
+    );
+    assert!(
+        PACKAGE_DISCOUNT_MIGRATION_DOWN.contains("DROP COLUMN IF EXISTS discount"),
+        "the 0002 down migration must remove the discount column"
+    );
+    assert!(
+        PACKAGE_DISCOUNT_MIGRATION_DOWN.contains("DROP CONSTRAINT IF EXISTS ck_membership_package_discount_range"),
+        "the 0002 down migration must drop the discount range constraint"
+    );
 }
 
 #[test]

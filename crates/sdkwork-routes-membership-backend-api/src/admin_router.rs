@@ -120,6 +120,7 @@ struct AdminMembershipPackageMutationRequest {
     price_amount: Option<String>,
     currency_code: Option<String>,
     duration_days: Option<i64>,
+    discount: Option<i64>,
     status: Option<String>,
 }
 
@@ -906,8 +907,24 @@ fn normalize_package_mutation(
         )?,
         currency_code,
         duration_days,
+        discount: normalize_package_discount(request.discount, "membership package discount")?,
         status: normalize_status(request.status.as_deref())?,
     })
+}
+
+fn normalize_package_discount(
+    value: Option<i64>,
+    field_name: &str,
+) -> Result<i64, ApiProblem> {
+    let discount = value.ok_or_else(|| {
+        ApiProblem::bad_request(format!("{field_name} is required"))
+    })?;
+    if !(1..=100).contains(&discount) {
+        return Err(ApiProblem::bad_request(format!(
+            "{field_name} must be an integer between 1 and 100"
+        )));
+    }
+    Ok(discount)
 }
 
 fn normalize_package_group_mutation(

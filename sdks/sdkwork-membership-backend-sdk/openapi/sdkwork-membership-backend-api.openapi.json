@@ -2222,6 +2222,7 @@
           "priceAmount",
           "currencyCode",
           "durationDays",
+          "discount",
           "status"
         ],
         "properties": {
@@ -2249,6 +2250,13 @@
           "durationDays": {
             "type": "integer",
             "format": "int64"
+          },
+          "discount": {
+            "type": "integer",
+            "format": "int32",
+            "minimum": 1,
+            "maximum": 100,
+            "description": "Discount rate percentage: 100 means no discount, 90 means pay 90 percent of the price."
           },
           "status": {
             "type": "string"
@@ -2452,6 +2460,7 @@
           "priceAmount",
           "currencyCode",
           "durationDays",
+          "discount",
           "status"
         ],
         "properties": {
@@ -2478,6 +2487,13 @@
           "durationDays": {
             "type": "integer",
             "format": "int64"
+          },
+          "discount": {
+            "type": "integer",
+            "format": "int32",
+            "minimum": 1,
+            "maximum": 100,
+            "description": "Discount rate percentage: 100 means no discount, 90 means pay 90 percent of the price."
           },
           "status": {
             "type": "string"

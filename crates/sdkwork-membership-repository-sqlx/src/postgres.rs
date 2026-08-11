@@ -1044,7 +1044,7 @@ async fn list_admin_membership_packages(
     let rows = sqlx::query(
         r#"
         SELECT id, package_no, package_group_id AS package_group_id, plan_id AS plan_id, name, CAST(price_amount AS TEXT) AS price_amount,
-               currency_code, duration_days AS duration_days, status
+               currency_code, duration_days AS duration_days, COALESCE(discount, 100)::bigint AS discount, status
         FROM membership_package
         WHERE tenant_id = $1
           AND ($2 IS NULL OR package_group_id = $2)
@@ -1266,9 +1266,9 @@ async fn create_admin_membership_package(
     sqlx::query(
         r#"
         INSERT INTO membership_package
-            (id, tenant_id, organization_id, external_id, package_no, package_group_id, plan_id, plan_version_id, sku_id, name, description, price_amount, original_price_amount, currency_code, point_amount, duration_days, recurrence_cycle, sort_weight, recommended, status, starts_at, ends_at, created_at, updated_at)
+            (id, tenant_id, organization_id, external_id, package_no, package_group_id, plan_id, plan_version_id, sku_id, name, description, price_amount, original_price_amount, currency_code, point_amount, discount, duration_days, recurrence_cycle, sort_weight, recommended, status, starts_at, ends_at, created_at, updated_at)
         VALUES
-            ($1, $2, $3, $4, $5, $6, $7, $15, $8, $9, NULL, $10, NULL, $11, 0, $12, $14, $4, 0, $13, NULL, NULL, $16, $16)
+            ($1, $2, $3, $4, $5, $6, $7, $16, $8, $9, NULL, $10, NULL, $11, 0, $17, $12, $15, $4, 0, $13, NULL, NULL, $14, $14)
         "#,
     )
     .bind(&command.package_id)
@@ -1284,9 +1284,10 @@ async fn create_admin_membership_package(
     .bind(&command.input.currency_code)
     .bind(command.input.duration_days)
     .bind(&command.input.status)
+    .bind(&command.requested_at)
     .bind(recurrence_cycle_from_duration(command.input.duration_days))
     .bind(plan_version_id)
-    .bind(&command.requested_at)
+    .bind(command.input.discount)
     .execute(pool)
     .await
     .map_err(|error| store_error("failed to create membership package", error))?;
@@ -1369,10 +1370,11 @@ async fn update_admin_membership_package(
             price_amount = $7,
             currency_code = $8,
             duration_days = $9,
-            status = $10,
-            updated_at = $11
-        WHERE id = $12
-          AND tenant_id = $13
+            discount = $10,
+            status = $11,
+            updated_at = $12
+        WHERE id = $13
+          AND tenant_id = $14
         "#,
     )
     .bind(&command.input.code)
@@ -1384,6 +1386,7 @@ async fn update_admin_membership_package(
     .bind(&command.input.price_amount)
     .bind(&command.input.currency_code)
     .bind(command.input.duration_days)
+    .bind(command.input.discount)
     .bind(&command.input.status)
     .bind(&command.requested_at)
     .bind(&package_id)
@@ -1670,7 +1673,7 @@ async fn load_admin_membership_package(
     let row = sqlx::query(
         r#"
         SELECT id, package_no, package_group_id AS package_group_id, plan_id AS plan_id, name, CAST(price_amount AS TEXT) AS price_amount,
-               currency_code, duration_days AS duration_days, status
+               currency_code, duration_days AS duration_days, COALESCE(discount, 100)::bigint AS discount, status
         FROM membership_package
         WHERE tenant_id = $1
           AND (id = $2 OR package_no = $2)
@@ -2032,6 +2035,7 @@ fn admin_plans_from_rows(rows: &[sqlx::postgres::PgRow]) -> Vec<AdminMembershipP
 }
 
 fn map_admin_package(row: &sqlx::postgres::PgRow) -> AdminMembershipPackageItem {
+    let discount = integer_cell(row, "discount");
     AdminMembershipPackageItem {
         id: string_cell(row, "id"),
         code: string_cell(row, "package_no"),
@@ -2045,6 +2049,14 @@ fn map_admin_package(row: &sqlx::postgres::PgRow) -> AdminMembershipPackageItem 
         .unwrap_or_else(|_| string_cell(row, "price_amount")),
         currency_code: string_cell(row, "currency_code"),
         duration_days: integer_cell(row, "duration_days"),
+        // Reads fall back to no discount (100) whenever the column is missing
+        // or carries an out-of-range value; clamping to the range would
+        // silently turn bad data into a 1% price.
+        discount: if (1..=100).contains(&discount) {
+            discount
+        } else {
+            100
+        },
         status: string_cell(row, "status"),
     }
 }
