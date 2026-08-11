@@ -1043,7 +1043,7 @@ async fn list_admin_membership_packages(
 
     let rows = sqlx::query(
         r#"
-        SELECT id, package_no, package_group_id AS package_group_id, plan_id AS plan_id, name, CAST(price_amount AS TEXT) AS price_amount,
+        SELECT id, package_no, external_id AS external_id, package_group_id AS package_group_id, plan_id AS plan_id, name, CAST(price_amount AS TEXT) AS price_amount,
                currency_code, duration_days AS duration_days, COALESCE(discount, 100)::bigint AS discount, status
         FROM membership_package
         WHERE tenant_id = $1
@@ -1133,7 +1133,7 @@ async fn create_admin_membership_package_group(
         INSERT INTO membership_package_group
             (id, tenant_id, organization_id, external_id, group_no, name, description, billing_cycle, duration_days, display_channel, sort_weight, status, created_at, updated_at)
         VALUES
-            ($1, $2, $3, $4, $5, $6, $7, $8, $9, 'app', $10, $11, $12, $12)
+            ($1, $2, $3, $4, $5, $6, $7, $8, $9, 'app', $10, $11, $12::timestamptz, $12::timestamptz)
         "#,
     )
     .bind(&command.package_group_id)
@@ -1220,12 +1220,27 @@ async fn create_admin_membership_package(
     pool: &PgPool,
     command: CreateAdminMembershipPackageCommand,
 ) -> AppMembershipResult<AdminMembershipPackageItem> {
-    ensure_admin_plan_exists(pool, &command.input.plan_id).await?;
-    ensure_admin_package_group_exists(pool, &command.input.package_group_id).await?;
-    let external_id = next_admin_package_external_id(pool).await?;
-    let sku_id = format!("{}-sku", command.package_id);
     let tenant_id = tenant_id_text(command.subject.tenant_id);
     let organization_id = organization_id_text(command.subject.organization_id);
+    ensure_admin_plan_exists(
+        pool,
+        &tenant_id,
+        &organization_id,
+        &command.input.plan_id,
+        &command.requested_at,
+    )
+    .await?;
+    ensure_admin_package_group_exists(
+        pool,
+        &tenant_id,
+        &organization_id,
+        &command.input.package_group_id,
+        command.input.duration_days,
+        &command.requested_at,
+    )
+    .await?;
+    let external_id = next_admin_package_external_id(pool).await?;
+    let sku_id = format!("{}-sku", command.package_id);
     let plan_version_id = ensure_admin_membership_plan_version(
         pool,
         &tenant_id,
@@ -1240,7 +1255,7 @@ async fn create_admin_membership_package(
         INSERT INTO commerce_product_sku
             (id, tenant_id, organization_id, spu_id, sku_no, name, title, price_amount, original_price_amount, currency_code, fulfillment_type, inventory_tracking, status, spec_json, created_at, updated_at)
         VALUES
-            ($1, $2, $3, 'seed-product-membership', $4, $5, $5, $6, NULL, $7, 'membership_activation', 'untracked', $8, '{}', $9, $9)
+            ($1, $2, $3, 'seed-product-membership', $4, $5, $5, $6, NULL, $7, 'membership_activation', 'untracked', $8, '{}', $9::timestamptz, $9::timestamptz)
         ON CONFLICT(id) DO UPDATE SET
             sku_no = excluded.sku_no,
             name = excluded.name,
@@ -1268,7 +1283,23 @@ async fn create_admin_membership_package(
         INSERT INTO membership_package
             (id, tenant_id, organization_id, external_id, package_no, package_group_id, plan_id, plan_version_id, sku_id, name, description, price_amount, original_price_amount, currency_code, point_amount, discount, duration_days, recurrence_cycle, sort_weight, recommended, status, starts_at, ends_at, created_at, updated_at)
         VALUES
-            ($1, $2, $3, $4, $5, $6, $7, $16, $8, $9, NULL, $10, NULL, $11, 0, $17, $12, $15, $4, 0, $13, NULL, NULL, $14, $14)
+            ($1, $2, $3, $4, $5, $6, $7, $16, $8, $9, NULL, $10, NULL, $11, 0, $17, $12, $15, $4, 0, $13, NULL, NULL, $14::timestamptz, $14::timestamptz)
+        ON CONFLICT (tenant_id, organization_id, package_no) DO UPDATE SET
+            package_group_id = excluded.package_group_id,
+            plan_id = excluded.plan_id,
+            plan_version_id = excluded.plan_version_id,
+            sku_id = excluded.sku_id,
+            name = excluded.name,
+            price_amount = excluded.price_amount,
+            currency_code = excluded.currency_code,
+            point_amount = excluded.point_amount,
+            discount = excluded.discount,
+            duration_days = excluded.duration_days,
+            recurrence_cycle = excluded.recurrence_cycle,
+            sort_weight = excluded.sort_weight,
+            recommended = excluded.recommended,
+            status = excluded.status,
+            updated_at = excluded.updated_at
         "#,
     )
     .bind(&command.package_id)
@@ -1291,17 +1322,42 @@ async fn create_admin_membership_package(
     .execute(pool)
     .await
     .map_err(|error| store_error("failed to create membership package", error))?;
-    load_admin_membership_package(pool, command.subject.tenant_id, &command.package_id).await
+    // The upsert keeps the existing row id on conflict, so resolve the stored
+    // id by package code before loading the persisted item.
+    let stored_id: String = sqlx::query_scalar(
+        "SELECT id FROM membership_package WHERE tenant_id = $1 AND package_no = $2",
+    )
+    .bind(&tenant_id)
+    .bind(&command.input.code)
+    .fetch_one(pool)
+    .await
+    .map_err(sql_error)?;
+    load_admin_membership_package(pool, command.subject.tenant_id, &stored_id).await
 }
 
 async fn update_admin_membership_package(
     pool: &PgPool,
     command: UpdateAdminMembershipPackageCommand,
 ) -> AppMembershipResult<AdminMembershipPackageItem> {
-    ensure_admin_plan_exists(pool, &command.input.plan_id).await?;
-    ensure_admin_package_group_exists(pool, &command.input.package_group_id).await?;
     let tenant_id = tenant_id_text(command.subject.tenant_id);
     let organization_id = organization_id_text(command.subject.organization_id);
+    ensure_admin_plan_exists(
+        pool,
+        &tenant_id,
+        &organization_id,
+        &command.input.plan_id,
+        &command.requested_at,
+    )
+    .await?;
+    ensure_admin_package_group_exists(
+        pool,
+        &tenant_id,
+        &organization_id,
+        &command.input.package_group_id,
+        command.input.duration_days,
+        &command.requested_at,
+    )
+    .await?;
     let current = sqlx::query(
         r#"
         SELECT sku_id
@@ -1335,7 +1391,7 @@ async fn update_admin_membership_package(
         INSERT INTO commerce_product_sku
             (id, tenant_id, organization_id, spu_id, sku_no, name, title, price_amount, original_price_amount, currency_code, fulfillment_type, inventory_tracking, status, spec_json, created_at, updated_at)
         VALUES
-            ($1, $2, $3, 'seed-product-membership', $4, $5, $5, $6, NULL, $7, 'membership_activation', 'untracked', $8, '{}', $9, $9)
+            ($1, $2, $3, 'seed-product-membership', $4, $5, $5, $6, NULL, $7, 'membership_activation', 'untracked', $8, '{}', $9::timestamptz, $9::timestamptz)
         ON CONFLICT(id) DO UPDATE SET
             sku_no = excluded.sku_no,
             name = excluded.name,
@@ -1672,7 +1728,7 @@ async fn load_admin_membership_package(
     let tenant_id = tenant_id_text(tenant_id);
     let row = sqlx::query(
         r#"
-        SELECT id, package_no, package_group_id AS package_group_id, plan_id AS plan_id, name, CAST(price_amount AS TEXT) AS price_amount,
+        SELECT id, package_no, external_id AS external_id, package_group_id AS package_group_id, plan_id AS plan_id, name, CAST(price_amount AS TEXT) AS price_amount,
                currency_code, duration_days AS duration_days, COALESCE(discount, 100)::bigint AS discount, status
         FROM membership_package
         WHERE tenant_id = $1
@@ -1740,16 +1796,54 @@ async fn load_admin_membership(
     Ok(map_admin_membership(&row))
 }
 
-async fn ensure_admin_plan_exists(pool: &PgPool, plan_id: &str) -> AppMembershipResult<()> {
-    let exists: Option<i64> =
+/// Ensures the membership plan referenced by an admin package mutation
+/// exists, creating it on first use (idempotent). External integrations
+/// (e.g. circle tier publishing) identify plans by their own stable code, so
+/// the backend provisions the plan and its published version instead of
+/// failing on a not-found.
+async fn ensure_admin_plan_exists(
+    pool: &PgPool,
+    tenant_id: &str,
+    organization_id: &str,
+    plan_id: &str,
+    requested_at: &str,
+) -> AppMembershipResult<()> {
+    let exists: Option<i32> =
         sqlx::query_scalar("SELECT 1 FROM membership_plan WHERE id = $1 OR plan_no = $1 LIMIT 1")
             .bind(plan_id)
             .fetch_optional(pool)
             .await
             .map_err(sql_error)?;
-    exists
-        .map(|_| ())
-        .ok_or_else(|| CommerceServiceError::not_found("membership target plan was not found"))
+    if exists.is_some() {
+        return Ok(());
+    }
+    sqlx::query(
+        r#"
+        INSERT INTO membership_plan
+            (id, tenant_id, organization_id, plan_no, plan_code, name, rank, description, status, created_at, updated_at)
+        VALUES
+            ($1, $2, $3, $4, $4, $4, 0, NULL, 'active', $5::timestamptz, $5::timestamptz)
+        ON CONFLICT (id) DO NOTHING
+        "#,
+    )
+    .bind(plan_id)
+    .bind(tenant_id)
+    .bind(organization_id)
+    .bind(plan_id)
+    .bind(requested_at)
+    .execute(pool)
+    .await
+    .map_err(|error| store_error("failed to provision membership plan", error))?;
+    upsert_admin_membership_plan_version(
+        pool,
+        tenant_id,
+        organization_id,
+        plan_id,
+        &admin_plan_version_id(plan_id),
+        plan_id,
+        requested_at,
+    )
+    .await
 }
 
 async fn ensure_admin_membership_plan_version(
@@ -1822,7 +1916,7 @@ async fn upsert_admin_membership_plan_version(
         INSERT INTO membership_plan_version
             (id, tenant_id, organization_id, plan_id, version_no, title, description, lifecycle_status, effective_from, effective_to, published_at, created_at, updated_at)
         VALUES
-            ($1, $2, $3, $4, 'v1', $5, NULL, 'published', $6, NULL, $6, $6, $6)
+            ($1, $2, $3, $4, 'v1', $5, NULL, 'published', $6::timestamptz, NULL, $6::timestamptz, $6::timestamptz, $6::timestamptz)
         ON CONFLICT(tenant_id, plan_id, version_no) DO UPDATE SET
             id = excluded.id,
             title = excluded.title,
@@ -1920,32 +2014,63 @@ async fn replace_admin_plan_benefits(
     Ok(())
 }
 
+/// Ensures the membership package group referenced by an admin package
+/// mutation exists, creating it on first use (idempotent), so external
+/// integrations can register packages under their own group code.
 async fn ensure_admin_package_group_exists(
     pool: &PgPool,
+    tenant_id: &str,
+    organization_id: &str,
     package_group_id: &str,
+    duration_days: i64,
+    requested_at: &str,
 ) -> AppMembershipResult<()> {
-    let exists: Option<i64> = sqlx::query_scalar(
+    let exists: Option<i32> = sqlx::query_scalar(
         "SELECT 1 FROM membership_package_group WHERE id = $1 OR group_no = $1 LIMIT 1",
     )
     .bind(package_group_id)
     .fetch_optional(pool)
     .await
     .map_err(sql_error)?;
-    exists
-        .map(|_| ())
-        .ok_or_else(|| CommerceServiceError::not_found("membership package group was not found"))
+    if exists.is_some() {
+        return Ok(());
+    }
+    let external_id = next_admin_package_group_external_id(pool).await?;
+    sqlx::query(
+        r#"
+        INSERT INTO membership_package_group
+            (id, tenant_id, organization_id, external_id, group_no, name, description, billing_cycle, duration_days, display_channel, sort_weight, status, created_at, updated_at)
+        VALUES
+            ($1, $2, $3, $4, $5, $5, NULL, $6, $7, 'app', 0, 'active', $8::timestamptz, $8::timestamptz)
+        ON CONFLICT (id) DO NOTHING
+        "#,
+    )
+    .bind(package_group_id)
+    .bind(tenant_id)
+    .bind(organization_id)
+    .bind(external_id)
+    .bind(package_group_id)
+    .bind(recurrence_cycle_from_duration(duration_days))
+    .bind(duration_days)
+    .bind(requested_at)
+    .execute(pool)
+    .await
+    .map_err(|error| store_error("failed to provision membership package group", error))?;
+    Ok(())
 }
 
-async fn next_admin_package_external_id(pool: &PgPool) -> AppMembershipResult<i64> {
-    let max_id: Option<i64> = sqlx::query_scalar("SELECT MAX(external_id) FROM membership_package")
+// The `external_id` columns are INT4: decode the MAX() result as i32 and
+// keep the value i32 so the INSERT bind stays INT4-compatible.
+async fn next_admin_package_external_id(pool: &PgPool) -> AppMembershipResult<i32> {
+    let max_id: Option<i32> = sqlx::query_scalar("SELECT MAX(external_id) FROM membership_package")
         .fetch_one(pool)
         .await
         .map_err(sql_error)?;
     Ok(max_id.unwrap_or(0) + 1)
 }
 
-async fn next_admin_package_group_external_id(pool: &PgPool) -> AppMembershipResult<i64> {
-    let max_id: Option<i64> =
+async fn next_admin_package_group_external_id(pool: &PgPool) -> AppMembershipResult<i32> {
+    let max_id: Option<i32> =
         sqlx::query_scalar("SELECT MAX(external_id) FROM membership_package_group")
             .fetch_one(pool)
             .await
@@ -2038,6 +2163,7 @@ fn map_admin_package(row: &sqlx::postgres::PgRow) -> AdminMembershipPackageItem 
     let discount = integer_cell(row, "discount");
     AdminMembershipPackageItem {
         id: string_cell(row, "id"),
+        external_id: integer_cell(row, "external_id"),
         code: string_cell(row, "package_no"),
         package_group_id: string_cell(row, "package_group_id"),
         plan_id: string_cell(row, "plan_id"),

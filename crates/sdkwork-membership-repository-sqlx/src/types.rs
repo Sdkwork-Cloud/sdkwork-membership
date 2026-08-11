@@ -269,6 +269,9 @@ pub struct AdminMembershipPlanItem {
 #[serde(rename_all = "camelCase")]
 pub struct AdminMembershipPackageItem {
     pub id: String,
+    /// Backend-assigned package external id (the `packageId` order creation
+    /// resolves by external id).
+    pub external_id: i64,
     pub code: String,
     pub package_group_id: String,
     pub plan_id: String,
