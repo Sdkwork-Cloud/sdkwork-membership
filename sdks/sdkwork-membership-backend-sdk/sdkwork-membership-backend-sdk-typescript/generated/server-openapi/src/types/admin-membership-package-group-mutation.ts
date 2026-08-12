@@ -1,3 +1,5 @@
+import type { MembershipCategory } from './membership-category';
+
 export interface AdminMembershipPackageGroupMutation {
   code: string;
   name: string;
@@ -5,5 +7,6 @@ export interface AdminMembershipPackageGroupMutation {
   billingCycle: string;
   durationDays: string;
   sortWeight: string;
-  status: string;
+  status: 'active' | 'inactive' | 'disabled';
+  category: MembershipCategory;
 }

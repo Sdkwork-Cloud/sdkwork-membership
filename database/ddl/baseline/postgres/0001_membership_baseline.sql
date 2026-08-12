@@ -21,18 +21,22 @@ CREATE TABLE IF NOT EXISTS membership_plan (
     uuid            VARCHAR(64),
     tenant_id       TEXT NOT NULL,
     organization_id TEXT NOT NULL DEFAULT '0',
+    category        TEXT NOT NULL DEFAULT 'token',
     plan_no         TEXT NOT NULL,
     plan_code       TEXT,
     name            TEXT NOT NULL,
     rank            INTEGER NOT NULL DEFAULT 0,
     description     TEXT,
+    sort_weight     INTEGER NOT NULL DEFAULT 0,
     status          TEXT NOT NULL DEFAULT 'active',
     version         BIGINT NOT NULL DEFAULT 0,
     deleted_at      TIMESTAMPTZ,
     created_at      TIMESTAMPTZ NOT NULL,
     updated_at      TIMESTAMPTZ NOT NULL,
     CONSTRAINT pk_membership_plan PRIMARY KEY (id),
-    CONSTRAINT uk_membership_plan_tenant_no UNIQUE (tenant_id, organization_id, plan_no)
+    CONSTRAINT uk_membership_plan_tenant_no UNIQUE (tenant_id, organization_id, plan_no),
+    CONSTRAINT ck_membership_plan_category CHECK (category IN ('token', 'community')),
+    CONSTRAINT ck_membership_plan_status CHECK (status IN ('active', 'inactive', 'disabled'))
 );
 
 CREATE UNIQUE INDEX IF NOT EXISTS uk_membership_plan_uuid
@@ -55,7 +59,8 @@ CREATE TABLE IF NOT EXISTS membership_plan_version (
     created_at       TIMESTAMPTZ NOT NULL,
     updated_at       TIMESTAMPTZ NOT NULL,
     CONSTRAINT pk_membership_plan_version PRIMARY KEY (id),
-    CONSTRAINT uk_membership_plan_version_tenant_plan_no UNIQUE (tenant_id, plan_id, version_no)
+    CONSTRAINT uk_membership_plan_version_tenant_plan_no UNIQUE (tenant_id, plan_id, version_no),
+    CONSTRAINT ck_membership_plan_version_lifecycle CHECK (lifecycle_status IN ('draft', 'published', 'archived'))
 );
 
 CREATE UNIQUE INDEX IF NOT EXISTS uk_membership_plan_version_uuid
@@ -79,7 +84,8 @@ CREATE TABLE IF NOT EXISTS membership_benefit_definition (
     created_at       TIMESTAMPTZ NOT NULL,
     updated_at       TIMESTAMPTZ NOT NULL,
     CONSTRAINT pk_membership_benefit_definition PRIMARY KEY (id),
-    CONSTRAINT uk_membership_benefit_definition_tenant_code UNIQUE (tenant_id, organization_id, benefit_code)
+    CONSTRAINT uk_membership_benefit_definition_tenant_code UNIQUE (tenant_id, organization_id, benefit_code),
+    CONSTRAINT ck_membership_benefit_definition_type CHECK (benefit_type IN ('points', 'feature', 'queue', 'quota', 'service'))
 );
 
 CREATE UNIQUE INDEX IF NOT EXISTS uk_membership_benefit_definition_uuid
@@ -112,6 +118,7 @@ CREATE TABLE IF NOT EXISTS membership_package_group (
     uuid            VARCHAR(64),
     tenant_id       TEXT NOT NULL,
     organization_id TEXT NOT NULL DEFAULT '0',
+    category        TEXT NOT NULL DEFAULT 'token',
     external_id     INTEGER,
     group_no        TEXT NOT NULL,
     name            TEXT NOT NULL,
@@ -126,7 +133,11 @@ CREATE TABLE IF NOT EXISTS membership_package_group (
     created_at      TIMESTAMPTZ NOT NULL,
     updated_at      TIMESTAMPTZ NOT NULL,
     CONSTRAINT pk_membership_package_group PRIMARY KEY (id),
-    CONSTRAINT uk_membership_package_group_tenant_no UNIQUE (tenant_id, organization_id, group_no)
+    CONSTRAINT uk_membership_package_group_tenant_no UNIQUE (tenant_id, organization_id, group_no),
+    CONSTRAINT ck_membership_package_group_category CHECK (category IN ('token', 'community')),
+    CONSTRAINT ck_membership_package_group_status CHECK (status IN ('active', 'inactive', 'disabled')),
+    CONSTRAINT ck_membership_package_group_billing_cycle CHECK (billing_cycle IS NULL OR billing_cycle IN ('once', 'day', 'week', 'month', 'quarter', 'year')),
+    CONSTRAINT ck_membership_package_group_display_channel CHECK (display_channel IS NULL OR display_channel IN ('app', 'pc', 'all'))
 );
 
 CREATE UNIQUE INDEX IF NOT EXISTS uk_membership_package_group_uuid
@@ -137,6 +148,7 @@ CREATE TABLE IF NOT EXISTS membership_package (
     uuid                  VARCHAR(64),
     tenant_id             TEXT NOT NULL,
     organization_id       TEXT NOT NULL DEFAULT '0',
+    category              TEXT NOT NULL DEFAULT 'token',
     external_id           INTEGER NOT NULL,
     package_no            TEXT NOT NULL,
     package_group_id      TEXT NOT NULL,
@@ -164,7 +176,10 @@ CREATE TABLE IF NOT EXISTS membership_package (
     updated_at            TIMESTAMPTZ NOT NULL,
     CONSTRAINT pk_membership_package PRIMARY KEY (id),
     CONSTRAINT uk_membership_package_tenant_no UNIQUE (tenant_id, organization_id, package_no),
-    CONSTRAINT ck_membership_package_discount_range CHECK (discount >= 1 AND discount <= 100)
+    CONSTRAINT ck_membership_package_discount_range CHECK (discount >= 1 AND discount <= 100),
+    CONSTRAINT ck_membership_package_category CHECK (category IN ('token', 'community')),
+    CONSTRAINT ck_membership_package_status CHECK (status IN ('active', 'inactive', 'disabled')),
+    CONSTRAINT ck_membership_package_recurrence_cycle CHECK (recurrence_cycle IS NULL OR recurrence_cycle IN ('once', 'day', 'week', 'month', 'quarter', 'year'))
 );
 
 CREATE UNIQUE INDEX IF NOT EXISTS uk_membership_package_uuid
@@ -177,6 +192,7 @@ CREATE TABLE IF NOT EXISTS membership_subscription (
     uuid                     VARCHAR(64),
     tenant_id                TEXT NOT NULL,
     organization_id          TEXT NOT NULL DEFAULT '0',
+    category                 TEXT NOT NULL DEFAULT 'token',
     subscription_no          TEXT NOT NULL,
     subject_type             TEXT NOT NULL,
     subject_id               TEXT NOT NULL,
@@ -198,7 +214,9 @@ CREATE TABLE IF NOT EXISTS membership_subscription (
     version                  BIGINT NOT NULL DEFAULT 0,
     created_at               TIMESTAMPTZ NOT NULL,
     updated_at               TIMESTAMPTZ NOT NULL,
-    CONSTRAINT pk_membership_subscription PRIMARY KEY (id)
+    CONSTRAINT pk_membership_subscription PRIMARY KEY (id),
+    CONSTRAINT ck_membership_subscription_category CHECK (category IN ('token', 'community')),
+    CONSTRAINT ck_membership_subscription_status CHECK (status IN ('pending', 'pending_activation', 'active', 'grace_period', 'expired', 'cancelled'))
 );
 
 CREATE UNIQUE INDEX IF NOT EXISTS uk_membership_subscription_uuid
@@ -213,6 +231,7 @@ CREATE TABLE IF NOT EXISTS membership_period (
     uuid                     VARCHAR(64),
     tenant_id                TEXT NOT NULL,
     organization_id          TEXT NOT NULL DEFAULT '0',
+    category                 TEXT NOT NULL DEFAULT 'token',
     period_no                TEXT NOT NULL,
     subscription_id          TEXT NOT NULL,
     subject_type             TEXT NOT NULL,
@@ -227,7 +246,9 @@ CREATE TABLE IF NOT EXISTS membership_period (
     idempotency_key          TEXT,
     created_at               TIMESTAMPTZ NOT NULL,
     updated_at               TIMESTAMPTZ NOT NULL,
-    CONSTRAINT pk_membership_period PRIMARY KEY (id)
+    CONSTRAINT pk_membership_period PRIMARY KEY (id),
+    CONSTRAINT ck_membership_period_category CHECK (category IN ('token', 'community')),
+    CONSTRAINT ck_membership_period_status CHECK (status IN ('pending', 'pending_activation', 'active', 'expired', 'cancelled'))
 );
 
 CREATE UNIQUE INDEX IF NOT EXISTS uk_membership_period_uuid
@@ -253,7 +274,8 @@ CREATE TABLE IF NOT EXISTS membership_entitlement_account (
     created_at      TIMESTAMPTZ NOT NULL,
     updated_at      TIMESTAMPTZ NOT NULL,
     CONSTRAINT pk_membership_entitlement_account PRIMARY KEY (id),
-    CONSTRAINT uk_membership_entitlement_account_subject_benefit UNIQUE (tenant_id, subject_type, subject_id, benefit_id)
+    CONSTRAINT uk_membership_entitlement_account_subject_benefit UNIQUE (tenant_id, subject_type, subject_id, benefit_id),
+    CONSTRAINT ck_membership_entitlement_account_status CHECK (status IN ('pending', 'active', 'expired', 'cancelled'))
 );
 
 CREATE UNIQUE INDEX IF NOT EXISTS uk_membership_entitlement_account_uuid
@@ -279,7 +301,8 @@ CREATE TABLE IF NOT EXISTS membership_entitlement_grant (
     idempotency_key  TEXT,
     created_at       TIMESTAMPTZ NOT NULL,
     updated_at       TIMESTAMPTZ NOT NULL,
-    CONSTRAINT pk_membership_entitlement_grant PRIMARY KEY (id)
+    CONSTRAINT pk_membership_entitlement_grant PRIMARY KEY (id),
+    CONSTRAINT ck_membership_entitlement_grant_status CHECK (status IN ('pending', 'active', 'expired', 'cancelled'))
 );
 
 CREATE UNIQUE INDEX IF NOT EXISTS uk_membership_entitlement_grant_uuid
@@ -718,6 +741,22 @@ CREATE INDEX IF NOT EXISTS idx_membership_entitlement_grant_expire
 CREATE INDEX IF NOT EXISTS idx_entitlement_ledger_account
     ON membership_entitlement_ledger_entry (account_id, occurred_at DESC);
 
+-- 5b. Category-aware catalog and entitlement indexes
+CREATE INDEX IF NOT EXISTS idx_membership_plan_tenant_category
+    ON membership_plan (tenant_id, organization_id, category, status, sort_weight);
+
+CREATE INDEX IF NOT EXISTS idx_membership_package_group_tenant_category
+    ON membership_package_group (tenant_id, organization_id, category, status, sort_weight);
+
+CREATE INDEX IF NOT EXISTS idx_membership_package_tenant_category
+    ON membership_package (tenant_id, organization_id, category, status, sort_weight);
+
+CREATE INDEX IF NOT EXISTS idx_membership_subscription_tenant_category
+    ON membership_subscription (tenant_id, organization_id, category, status, expires_at DESC);
+
+CREATE INDEX IF NOT EXISTS idx_membership_period_tenant_category
+    ON membership_period (tenant_id, organization_id, category, status, ends_at DESC);
+
 -- 6. updated_at maintenance triggers for membership-owned mutable tables
 CREATE OR REPLACE FUNCTION fn_membership_set_updated_at()
 RETURNS TRIGGER AS $$
@@ -759,3 +798,154 @@ ALTER TABLE membership_change_log
     ALTER COLUMN subscription_id TYPE TEXT USING subscription_id::TEXT,
     ALTER COLUMN user_id TYPE TEXT USING user_id::TEXT,
     ALTER COLUMN operator_id TYPE TEXT USING operator_id::TEXT;
+
+-- folded migration: migrations/postgres/0003_membership_category.up.sql
+-- sdkwork:migration
+-- id: 0003_membership_category
+-- engine: postgres
+-- module: sdkwork-membership
+-- purpose: Introduce the membership category classification dimension
+--   (token plans, community/circle plans, future extensions) on plan,
+--   package group, package, subscription, and period, and enforce the
+--   catalog enum vocabulary with CHECK constraints (status, billing and
+--   recurrence cycles, display channel, benefit type). Existing rows are
+--   backfilled to category 'token' (all pre-standard catalog data is
+--   token-plan data); subscription and period categories are snapshotted
+--   from their plan at write time by the application layer.
+-- reversible: true
+-- transactional: true
+
+-- 1. Category dimension (extensible enum: token | community | future values)
+ALTER TABLE membership_plan
+    ADD COLUMN IF NOT EXISTS category TEXT NOT NULL DEFAULT 'token';
+ALTER TABLE membership_plan
+    ADD COLUMN IF NOT EXISTS sort_weight INTEGER NOT NULL DEFAULT 0;
+ALTER TABLE membership_plan
+    DROP CONSTRAINT IF EXISTS ck_membership_plan_category;
+ALTER TABLE membership_plan
+    ADD CONSTRAINT ck_membership_plan_category
+    CHECK (category IN ('token', 'community'));
+
+ALTER TABLE membership_package_group
+    ADD COLUMN IF NOT EXISTS category TEXT NOT NULL DEFAULT 'token';
+ALTER TABLE membership_package_group
+    DROP CONSTRAINT IF EXISTS ck_membership_package_group_category;
+ALTER TABLE membership_package_group
+    ADD CONSTRAINT ck_membership_package_group_category
+    CHECK (category IN ('token', 'community'));
+
+ALTER TABLE membership_package
+    ADD COLUMN IF NOT EXISTS category TEXT NOT NULL DEFAULT 'token';
+ALTER TABLE membership_package
+    DROP CONSTRAINT IF EXISTS ck_membership_package_category;
+ALTER TABLE membership_package
+    ADD CONSTRAINT ck_membership_package_category
+    CHECK (category IN ('token', 'community'));
+
+ALTER TABLE membership_subscription
+    ADD COLUMN IF NOT EXISTS category TEXT NOT NULL DEFAULT 'token';
+ALTER TABLE membership_subscription
+    DROP CONSTRAINT IF EXISTS ck_membership_subscription_category;
+ALTER TABLE membership_subscription
+    ADD CONSTRAINT ck_membership_subscription_category
+    CHECK (category IN ('token', 'community'));
+
+ALTER TABLE membership_period
+    ADD COLUMN IF NOT EXISTS category TEXT NOT NULL DEFAULT 'token';
+ALTER TABLE membership_period
+    DROP CONSTRAINT IF EXISTS ck_membership_period_category;
+ALTER TABLE membership_period
+    ADD CONSTRAINT ck_membership_period_category
+    CHECK (category IN ('token', 'community'));
+
+-- 2. Catalog lifecycle status vocabulary (active | inactive | disabled)
+ALTER TABLE membership_plan
+    DROP CONSTRAINT IF EXISTS ck_membership_plan_status;
+ALTER TABLE membership_plan
+    ADD CONSTRAINT ck_membership_plan_status
+    CHECK (status IN ('active', 'inactive', 'disabled'));
+
+ALTER TABLE membership_package_group
+    DROP CONSTRAINT IF EXISTS ck_membership_package_group_status;
+ALTER TABLE membership_package_group
+    ADD CONSTRAINT ck_membership_package_group_status
+    CHECK (status IN ('active', 'inactive', 'disabled'));
+
+ALTER TABLE membership_package
+    DROP CONSTRAINT IF EXISTS ck_membership_package_status;
+ALTER TABLE membership_package
+    ADD CONSTRAINT ck_membership_package_status
+    CHECK (status IN ('active', 'inactive', 'disabled'));
+
+ALTER TABLE membership_plan_version
+    DROP CONSTRAINT IF EXISTS ck_membership_plan_version_lifecycle;
+ALTER TABLE membership_plan_version
+    ADD CONSTRAINT ck_membership_plan_version_lifecycle
+    CHECK (lifecycle_status IN ('draft', 'published', 'archived'));
+
+-- 3. Billing / recurrence cycle vocabulary (once | day | week | month | quarter | year)
+ALTER TABLE membership_package_group
+    DROP CONSTRAINT IF EXISTS ck_membership_package_group_billing_cycle;
+ALTER TABLE membership_package_group
+    ADD CONSTRAINT ck_membership_package_group_billing_cycle
+    CHECK (billing_cycle IN ('once', 'day', 'week', 'month', 'quarter', 'year'));
+
+ALTER TABLE membership_package
+    DROP CONSTRAINT IF EXISTS ck_membership_package_recurrence_cycle;
+ALTER TABLE membership_package
+    ADD CONSTRAINT ck_membership_package_recurrence_cycle
+    CHECK (recurrence_cycle IN ('once', 'day', 'week', 'month', 'quarter', 'year'));
+
+-- 4. Display channel and benefit type vocabulary
+ALTER TABLE membership_package_group
+    DROP CONSTRAINT IF EXISTS ck_membership_package_group_display_channel;
+ALTER TABLE membership_package_group
+    ADD CONSTRAINT ck_membership_package_group_display_channel
+    CHECK (display_channel IS NULL OR display_channel IN ('app', 'pc', 'all'));
+
+ALTER TABLE membership_benefit_definition
+    DROP CONSTRAINT IF EXISTS ck_membership_benefit_definition_type;
+ALTER TABLE membership_benefit_definition
+    ADD CONSTRAINT ck_membership_benefit_definition_type
+    CHECK (benefit_type IN ('points', 'feature', 'queue', 'quota', 'service'));
+
+-- 5. Subscription / period status vocabulary
+ALTER TABLE membership_subscription
+    DROP CONSTRAINT IF EXISTS ck_membership_subscription_status;
+ALTER TABLE membership_subscription
+    ADD CONSTRAINT ck_membership_subscription_status
+    CHECK (status IN ('pending', 'pending_activation', 'active', 'grace_period', 'expired', 'cancelled'));
+
+ALTER TABLE membership_period
+    DROP CONSTRAINT IF EXISTS ck_membership_period_status;
+ALTER TABLE membership_period
+    ADD CONSTRAINT ck_membership_period_status
+    CHECK (status IN ('pending', 'pending_activation', 'active', 'expired', 'cancelled'));
+
+ALTER TABLE membership_entitlement_account
+    DROP CONSTRAINT IF EXISTS ck_membership_entitlement_account_status;
+ALTER TABLE membership_entitlement_account
+    ADD CONSTRAINT ck_membership_entitlement_account_status
+    CHECK (status IN ('pending', 'active', 'expired', 'cancelled'));
+
+ALTER TABLE membership_entitlement_grant
+    DROP CONSTRAINT IF EXISTS ck_membership_entitlement_grant_status;
+ALTER TABLE membership_entitlement_grant
+    ADD CONSTRAINT ck_membership_entitlement_grant_status
+    CHECK (status IN ('pending', 'active', 'expired', 'cancelled'));
+
+-- 6. Category-aware catalog and entitlement indexes
+CREATE INDEX IF NOT EXISTS idx_membership_plan_tenant_category
+    ON membership_plan (tenant_id, organization_id, category, status, sort_weight);
+
+CREATE INDEX IF NOT EXISTS idx_membership_package_group_tenant_category
+    ON membership_package_group (tenant_id, organization_id, category, status, sort_weight);
+
+CREATE INDEX IF NOT EXISTS idx_membership_package_tenant_category
+    ON membership_package (tenant_id, organization_id, category, status, sort_weight);
+
+CREATE INDEX IF NOT EXISTS idx_membership_subscription_tenant_category
+    ON membership_subscription (tenant_id, organization_id, category, status, expires_at DESC);
+
+CREATE INDEX IF NOT EXISTS idx_membership_period_tenant_category
+    ON membership_period (tenant_id, organization_id, category, status, ends_at DESC);

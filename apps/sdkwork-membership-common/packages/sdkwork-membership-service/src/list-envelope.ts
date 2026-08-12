@@ -32,14 +32,20 @@ export interface SdkworkMembershipProblemDetail {
  * query string keys (`page_size`, `plan_id`).  Returning camelCase keys
  * here ensures the SDK correctly forwards pagination and filter
  * parameters to the backend.
+ *
+ * `category` filters the catalog to one plan family (`token` Token Plan,
+ * `community` 圈子/community).  Token surfaces pass `'token'` so community
+ * catalog data never leaks into the Token Plan purchase flow.
  */
 export function createSdkworkMembershipListQuery(
   page = 1,
   pageSize = SDKWORK_MEMBERSHIP_DEFAULT_LIST_PAGE_SIZE,
-): { page: number; pageSize: number } {
+  category?: "token" | "community",
+): { page: number; pageSize: number; category?: "token" | "community" } {
   return {
     page,
     pageSize,
+    ...(category ? { category } : {}),
   };
 }
 

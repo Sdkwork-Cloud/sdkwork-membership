@@ -35,8 +35,8 @@ use crate::{
     CreateAdminMembershipPackageCommand, CreateAdminMembershipPackageGroupCommand,
     CreateAdminMembershipPlanCommand, DeleteAdminMembershipPackageCommand,
     DeleteAdminMembershipPackageGroupCommand, DeleteAdminMembershipPlanCommand,
-    FulfillMembershipPurchaseCommand, FulfillMembershipPurchaseOutcome,
-    FulfillPaidMembershipPurchaseCommand, FeatureAccessCheckOutcome, FeatureAccessCheckQuery,
+    FeatureAccessCheckOutcome, FeatureAccessCheckQuery, FulfillMembershipPurchaseCommand,
+    FulfillMembershipPurchaseOutcome, FulfillPaidMembershipPurchaseCommand,
     GrantCouponSubscriptionCommand, ListAdminMembershipEntitlementsQuery,
     ListAdminMembershipMembersQuery, ListAdminMembershipPackageGroupsQuery,
     ListAdminMembershipPackagesQuery, ListAdminMembershipPlansQuery,
@@ -44,8 +44,8 @@ use crate::{
     RetrieveAdminMembershipMemberQuery, SubmitMembershipPurchaseCommand,
     SubscriptionQuotaConsumptionOutcome, SubscriptionQuotaRechargeFuture,
     SubscriptionQuotaRechargeOutcome, UpdateAdminMembershipMemberStatusCommand,
-    UpdateAdminMembershipPackageCommand,
-    UpdateAdminMembershipPackageGroupCommand, UpdateAdminMembershipPlanCommand,
+    UpdateAdminMembershipPackageCommand, UpdateAdminMembershipPackageGroupCommand,
+    UpdateAdminMembershipPlanCommand,
 };
 
 const LOAD_MEMBERSHIP_PACKAGES_BASE: &str = r#"
@@ -70,7 +70,8 @@ SELECT
     CAST(COALESCE(g.sort_weight, 0) AS INTEGER) AS group_sort_weight,
     l.plan_no AS plan_no,
     l.name AS plan_name,
-    CAST(l.rank AS INTEGER) AS rank
+    CAST(l.rank AS INTEGER) AS rank,
+    p.category AS package_category
 FROM membership_package p
 JOIN membership_package_group g
     ON g.id = p.package_group_id
@@ -108,7 +109,8 @@ SELECT
     CAST(COALESCE(g.sort_weight, 0) AS INTEGER) AS group_sort_weight,
     l.plan_no AS plan_no,
     l.name AS plan_name,
-    CAST(l.rank AS INTEGER) AS rank
+    CAST(l.rank AS INTEGER) AS rank,
+    p.category AS package_category
 FROM membership_package p
 JOIN membership_package_group g
     ON g.id = p.package_group_id
@@ -142,6 +144,7 @@ SELECT
     p.name,
     CAST(p.rank AS INTEGER) AS rank,
     p.description,
+    p.category AS category,
     b.id AS plan_benefit_id,
     b.benefit_code,
     CAST(b.grant_quantity AS TEXT) AS grant_quantity,
@@ -175,6 +178,7 @@ SELECT
     p.name,
     CAST(p.rank AS INTEGER) AS rank,
     p.description,
+    p.category AS category,
     b.id AS plan_benefit_id,
     b.benefit_code,
     CAST(b.grant_quantity AS TEXT) AS grant_quantity,
@@ -781,6 +785,7 @@ async fn list_admin_membership_plans(
         page: query.page,
         page_size: query.page_size,
         cursor: query.cursor.clone(),
+        category: query.category.clone(),
     }
     .offset_params();
     let page_size = params.page_size;
@@ -792,10 +797,12 @@ async fn list_admin_membership_plans(
         SELECT COUNT(*)
         FROM membership_plan p
         WHERE p.tenant_id = $1
-          AND ($2 IS NULL OR p.status = $2)
+          AND ($2 IS NULL OR p.category = $2)
+          AND ($3 IS NULL OR p.status = $3)
         "#,
     )
     .bind(&tenant_id)
+    .bind(query.category.as_deref())
     .bind(query.status.as_deref())
     .fetch_one(pool)
     .await
@@ -806,12 +813,14 @@ async fn list_admin_membership_plans(
         SELECT p.id
         FROM membership_plan p
         WHERE p.tenant_id = $1
-          AND ($2 IS NULL OR p.status = $2)
+          AND ($2 IS NULL OR p.category = $2)
+          AND ($3 IS NULL OR p.status = $3)
         ORDER BY p.rank ASC, p.plan_no ASC
-        LIMIT $3 OFFSET $4
+        LIMIT $4 OFFSET $5
         "#,
     )
     .bind(&tenant_id)
+    .bind(query.category.as_deref())
     .bind(query.status.as_deref())
     .bind(page_size)
     .bind(offset)
@@ -837,6 +846,9 @@ async fn list_admin_membership_plans(
             p.name,
             CAST(p.rank AS INTEGER) AS rank,
             p.status,
+            p.category AS category,
+            CAST(p.created_at AS TEXT) AS created_at,
+            CAST(p.updated_at AS TEXT) AS updated_at,
             b.id AS plan_benefit_id,
             b.benefit_code,
             CAST(b.grant_quantity AS TEXT) AS grant_quantity,
@@ -879,14 +891,15 @@ async fn create_admin_membership_plan(
     sqlx::query(
         r#"
         INSERT INTO membership_plan
-            (id, tenant_id, organization_id, plan_no, plan_code, name, rank, description, status, created_at, updated_at)
+            (id, tenant_id, organization_id, category, plan_no, plan_code, name, rank, description, status, created_at, updated_at)
         VALUES
-            ($1, $2, $3, $4, $4, $5, $6, NULL, $7, $8, $8)
+            ($1, $2, $3, $4, $5, $5, $6, $7, NULL, $8, $9, $9)
         "#,
     )
     .bind(&command.plan_id)
     .bind(&tenant_id)
     .bind(&organization_id)
+    .bind(&command.input.category)
     .bind(&command.input.code)
     .bind(&command.input.name)
     .bind(command.input.rank)
@@ -958,15 +971,17 @@ async fn update_admin_membership_plan(
             name = $2,
             rank = $3,
             status = $4,
-            updated_at = $5
-        WHERE id = $6
-          AND tenant_id = $7
+            category = $5,
+            updated_at = $6
+        WHERE id = $7
+          AND tenant_id = $8
         "#,
     )
     .bind(&command.input.code)
     .bind(&command.input.name)
     .bind(command.input.rank)
     .bind(&command.input.status)
+    .bind(&command.input.category)
     .bind(&command.requested_at)
     .bind(&plan_id)
     .bind(&tenant_id)
@@ -1019,6 +1034,7 @@ async fn list_admin_membership_packages(
         page: query.page,
         page_size: query.page_size,
         cursor: query.cursor.clone(),
+        category: query.category.clone(),
     }
     .offset_params();
     let tenant_id = tenant_id_text(query.subject.tenant_id);
@@ -1028,12 +1044,14 @@ async fn list_admin_membership_packages(
         SELECT COUNT(*)
         FROM membership_package
         WHERE tenant_id = $1
-          AND ($2 IS NULL OR package_group_id = $2)
-          AND ($3 IS NULL OR plan_id = $3)
-          AND ($4 IS NULL OR status = $4)
+          AND ($2 IS NULL OR category = $2)
+          AND ($3 IS NULL OR package_group_id = $3)
+          AND ($4 IS NULL OR plan_id = $4)
+          AND ($5 IS NULL OR status = $5)
         "#,
     )
     .bind(&tenant_id)
+    .bind(query.category.as_deref())
     .bind(query.package_group_id.as_deref())
     .bind(query.plan_id.as_deref())
     .bind(query.status.as_deref())
@@ -1043,18 +1061,21 @@ async fn list_admin_membership_packages(
 
     let rows = sqlx::query(
         r#"
-        SELECT id, package_no, external_id AS external_id, package_group_id AS package_group_id, plan_id AS plan_id, name, CAST(price_amount AS TEXT) AS price_amount,
-               currency_code, duration_days AS duration_days, COALESCE(discount, 100)::bigint AS discount, status
+        SELECT id, category, package_no, external_id AS external_id, package_group_id AS package_group_id, plan_id AS plan_id, name, CAST(price_amount AS TEXT) AS price_amount,
+               currency_code, duration_days AS duration_days, COALESCE(discount, 100)::bigint AS discount, status,
+               CAST(created_at AS TEXT) AS created_at, CAST(updated_at AS TEXT) AS updated_at
         FROM membership_package
         WHERE tenant_id = $1
-          AND ($2 IS NULL OR package_group_id = $2)
-          AND ($3 IS NULL OR plan_id = $3)
-          AND ($4 IS NULL OR status = $4)
+          AND ($2 IS NULL OR category = $2)
+          AND ($3 IS NULL OR package_group_id = $3)
+          AND ($4 IS NULL OR plan_id = $4)
+          AND ($5 IS NULL OR status = $5)
         ORDER BY sort_weight ASC, external_id ASC, id ASC
-        LIMIT $5 OFFSET $6
+        LIMIT $6 OFFSET $7
         "#,
     )
     .bind(&tenant_id)
+    .bind(query.category.as_deref())
     .bind(query.package_group_id.as_deref())
     .bind(query.plan_id.as_deref())
     .bind(query.status.as_deref())
@@ -1078,6 +1099,7 @@ async fn list_admin_membership_package_groups(
         page: query.page,
         page_size: query.page_size,
         cursor: query.cursor.clone(),
+        category: query.category.clone(),
     }
     .offset_params();
     let tenant_id = tenant_id_text(query.subject.tenant_id);
@@ -1087,10 +1109,12 @@ async fn list_admin_membership_package_groups(
         SELECT COUNT(*)
         FROM membership_package_group
         WHERE tenant_id = $1
-          AND ($2 IS NULL OR status = $2)
+          AND ($2 IS NULL OR category = $2)
+          AND ($3 IS NULL OR status = $3)
         "#,
     )
     .bind(&tenant_id)
+    .bind(query.category.as_deref())
     .bind(query.status.as_deref())
     .fetch_one(pool)
     .await
@@ -1098,16 +1122,18 @@ async fn list_admin_membership_package_groups(
 
     let rows = sqlx::query(
         r#"
-        SELECT id, group_no, name, description, billing_cycle, duration_days,
+        SELECT id, category, group_no, name, description, billing_cycle, duration_days,
                sort_weight, status
         FROM membership_package_group
         WHERE tenant_id = $1
-          AND ($2 IS NULL OR status = $2)
+          AND ($2 IS NULL OR category = $2)
+          AND ($3 IS NULL OR status = $3)
         ORDER BY sort_weight ASC, external_id ASC, id ASC
-        LIMIT $3 OFFSET $4
+        LIMIT $4 OFFSET $5
         "#,
     )
     .bind(&tenant_id)
+    .bind(query.category.as_deref())
     .bind(query.status.as_deref())
     .bind(params.page_size)
     .bind(params.offset)
@@ -1131,14 +1157,15 @@ async fn create_admin_membership_package_group(
     sqlx::query(
         r#"
         INSERT INTO membership_package_group
-            (id, tenant_id, organization_id, external_id, group_no, name, description, billing_cycle, duration_days, display_channel, sort_weight, status, created_at, updated_at)
+            (id, tenant_id, organization_id, category, external_id, group_no, name, description, billing_cycle, duration_days, display_channel, sort_weight, status, created_at, updated_at)
         VALUES
-            ($1, $2, $3, $4, $5, $6, $7, $8, $9, 'app', $10, $11, $12::timestamptz, $12::timestamptz)
+            ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, 'app', $11, $12, $13::timestamptz, $13::timestamptz)
         "#,
     )
     .bind(&command.package_group_id)
     .bind(&tenant_id)
     .bind(&organization_id)
+    .bind(&command.input.category)
     .bind(external_id)
     .bind(&command.input.code)
     .bind(&command.input.name)
@@ -1172,9 +1199,10 @@ async fn update_admin_membership_package_group(
             duration_days = $5,
             sort_weight = $6,
             status = $7,
-            updated_at = $8
-        WHERE id = $9
-          AND tenant_id = $10
+            category = $8,
+            updated_at = $9
+        WHERE id = $10
+          AND tenant_id = $11
         "#,
     )
     .bind(&command.input.code)
@@ -1184,6 +1212,7 @@ async fn update_admin_membership_package_group(
     .bind(command.input.duration_days)
     .bind(command.input.sort_weight)
     .bind(&command.input.status)
+    .bind(&command.input.category)
     .bind(&command.requested_at)
     .bind(&package_group_id)
     .bind(&tenant_id)
@@ -1239,6 +1268,14 @@ async fn create_admin_membership_package(
         &command.requested_at,
     )
     .await?;
+    validate_package_category_consistency(
+        pool,
+        &tenant_id,
+        &command.input.package_group_id,
+        &command.input.plan_id,
+        &command.input.category,
+    )
+    .await?;
     let external_id = next_admin_package_external_id(pool).await?;
     let sku_id = format!("{}-sku", command.package_id);
     let plan_version_id = ensure_admin_membership_plan_version(
@@ -1281,10 +1318,11 @@ async fn create_admin_membership_package(
     sqlx::query(
         r#"
         INSERT INTO membership_package
-            (id, tenant_id, organization_id, external_id, package_no, package_group_id, plan_id, plan_version_id, sku_id, name, description, price_amount, original_price_amount, currency_code, point_amount, discount, duration_days, recurrence_cycle, sort_weight, recommended, status, starts_at, ends_at, created_at, updated_at)
+            (id, tenant_id, organization_id, category, external_id, package_no, package_group_id, plan_id, plan_version_id, sku_id, name, description, price_amount, original_price_amount, currency_code, point_amount, discount, duration_days, recurrence_cycle, sort_weight, recommended, status, starts_at, ends_at, created_at, updated_at)
         VALUES
-            ($1, $2, $3, $4, $5, $6, $7, $16, $8, $9, NULL, $10, NULL, $11, 0, $17, $12, $15, $4, 0, $13, NULL, NULL, $14::timestamptz, $14::timestamptz)
+            ($1, $2, $3, $18, $4, $5, $6, $7, $16, $8, $9, NULL, $10, NULL, $11, 0, $17, $12, $15, $4, 0, $13, NULL, NULL, $14::timestamptz, $14::timestamptz)
         ON CONFLICT (tenant_id, organization_id, package_no) DO UPDATE SET
+            category = excluded.category,
             package_group_id = excluded.package_group_id,
             plan_id = excluded.plan_id,
             plan_version_id = excluded.plan_version_id,
@@ -1319,6 +1357,7 @@ async fn create_admin_membership_package(
     .bind(recurrence_cycle_from_duration(command.input.duration_days))
     .bind(plan_version_id)
     .bind(command.input.discount)
+    .bind(&command.input.category)
     .execute(pool)
     .await
     .map_err(|error| store_error("failed to create membership package", error))?;
@@ -1356,6 +1395,14 @@ async fn update_admin_membership_package(
         &command.input.package_group_id,
         command.input.duration_days,
         &command.requested_at,
+    )
+    .await?;
+    validate_package_category_consistency(
+        pool,
+        &tenant_id,
+        &command.input.package_group_id,
+        &command.input.plan_id,
+        &command.input.category,
     )
     .await?;
     let current = sqlx::query(
@@ -1428,9 +1475,10 @@ async fn update_admin_membership_package(
             duration_days = $9,
             discount = $10,
             status = $11,
-            updated_at = $12
-        WHERE id = $13
-          AND tenant_id = $14
+            category = $12,
+            updated_at = $13
+        WHERE id = $14
+          AND tenant_id = $15
         "#,
     )
     .bind(&command.input.code)
@@ -1444,6 +1492,7 @@ async fn update_admin_membership_package(
     .bind(command.input.duration_days)
     .bind(command.input.discount)
     .bind(&command.input.status)
+    .bind(&command.input.category)
     .bind(&command.requested_at)
     .bind(&package_id)
     .bind(&tenant_id)
@@ -1484,6 +1533,7 @@ async fn list_admin_membership_members(
         page: query.page,
         page_size: query.page_size,
         cursor: query.cursor.clone(),
+        category: None,
     }
     .offset_params();
 
@@ -1585,6 +1635,7 @@ async fn list_admin_membership_entitlements(
         page: query.page,
         page_size: query.page_size,
         cursor: query.cursor.clone(),
+        category: None,
     }
     .offset_params();
     let status_filter = query.status.as_deref();
@@ -1685,6 +1736,9 @@ async fn load_admin_membership_plan(
             p.name,
             CAST(p.rank AS INTEGER) AS rank,
             p.status,
+            p.category AS category,
+            CAST(p.created_at AS TEXT) AS created_at,
+            CAST(p.updated_at AS TEXT) AS updated_at,
             b.id AS plan_benefit_id,
             b.benefit_code,
             CAST(b.grant_quantity AS TEXT) AS grant_quantity,
@@ -1728,8 +1782,9 @@ async fn load_admin_membership_package(
     let tenant_id = tenant_id_text(tenant_id);
     let row = sqlx::query(
         r#"
-        SELECT id, package_no, external_id AS external_id, package_group_id AS package_group_id, plan_id AS plan_id, name, CAST(price_amount AS TEXT) AS price_amount,
-               currency_code, duration_days AS duration_days, COALESCE(discount, 100)::bigint AS discount, status
+        SELECT id, category, package_no, external_id AS external_id, package_group_id AS package_group_id, plan_id AS plan_id, name, CAST(price_amount AS TEXT) AS price_amount,
+               currency_code, duration_days AS duration_days, COALESCE(discount, 100)::bigint AS discount, status,
+               CAST(created_at AS TEXT) AS created_at, CAST(updated_at AS TEXT) AS updated_at
         FROM membership_package
         WHERE tenant_id = $1
           AND (id = $2 OR package_no = $2)
@@ -1753,7 +1808,7 @@ async fn load_admin_membership_package_group(
     let tenant_id = tenant_id_text(tenant_id);
     let row = sqlx::query(
         r#"
-        SELECT id, group_no, name, description, billing_cycle, duration_days,
+        SELECT id, category, group_no, name, description, billing_cycle, duration_days,
                sort_weight, status
         FROM membership_package_group
         WHERE tenant_id = $1
@@ -1769,7 +1824,6 @@ async fn load_admin_membership_package_group(
     .ok_or_else(|| CommerceServiceError::not_found("membership package group was not found"))?;
     Ok(map_admin_package_group(&row))
 }
-
 async fn load_admin_membership(
     pool: &PgPool,
     query: &RetrieveAdminMembershipMemberQuery,
@@ -2059,6 +2113,48 @@ async fn ensure_admin_package_group_exists(
     Ok(())
 }
 
+/// Validates that a package's category is consistent with its package group
+/// and plan categories. Catalog classification must stay coherent within a
+/// plan family, so mismatches are rejected instead of silently mixing
+/// families on one package.
+async fn validate_package_category_consistency(
+    pool: &PgPool,
+    tenant_id: &str,
+    package_group_id: &str,
+    plan_id: &str,
+    category: &str,
+) -> AppMembershipResult<()> {
+    let row = sqlx::query(
+        r#"
+        SELECT g.category AS group_category, p.category AS plan_category
+        FROM membership_package_group g
+        CROSS JOIN membership_plan p
+        WHERE g.tenant_id = $1
+          AND (g.id = $2 OR g.group_no = $2)
+          AND p.tenant_id = $1
+          AND (p.id = $3 OR p.plan_no = $3)
+        LIMIT 1
+        "#,
+    )
+    .bind(tenant_id)
+    .bind(package_group_id)
+    .bind(plan_id)
+    .fetch_optional(pool)
+    .await
+    .map_err(sql_error)?;
+    let Some(row) = row else {
+        return Ok(());
+    };
+    let group_category = string_cell(&row, "group_category");
+    let plan_category = string_cell(&row, "plan_category");
+    if group_category != category || plan_category != category {
+        return Err(CommerceServiceError::validation(format!(
+            "membership package category `{category}` must match its package group (`{group_category}`) and plan (`{plan_category}`)"
+        )));
+    }
+    Ok(())
+}
+
 // The `external_id` columns are INT4: decode the MAX() result as i32 and
 // keep the value i32 so the INSERT bind stays INT4-compatible.
 async fn next_admin_package_external_id(pool: &PgPool) -> AppMembershipResult<i32> {
@@ -2134,6 +2230,7 @@ fn admin_plans_from_rows(rows: &[sqlx::postgres::PgRow]) -> Vec<AdminMembershipP
             .entry(id.clone())
             .or_insert_with(|| AdminMembershipPlanItem {
                 id,
+                category: string_cell(row, "category"),
                 code: code.clone(),
                 name: string_cell(row, "name"),
                 rank: if rank == 0 {
@@ -2143,6 +2240,8 @@ fn admin_plans_from_rows(rows: &[sqlx::postgres::PgRow]) -> Vec<AdminMembershipP
                 },
                 benefits: Vec::new(),
                 status: string_cell(row, "status"),
+                created_at: string_cell(row, "created_at"),
+                updated_at: string_cell(row, "updated_at"),
             });
         if let Some(benefit) = plan_benefit_from_row(row, (plan.benefits.len() + 1) as i64) {
             if !plan
@@ -2163,6 +2262,7 @@ fn map_admin_package(row: &sqlx::postgres::PgRow) -> AdminMembershipPackageItem 
     let discount = integer_cell(row, "discount");
     AdminMembershipPackageItem {
         id: string_cell(row, "id"),
+        category: string_cell(row, "category"),
         external_id: integer_cell(row, "external_id"),
         code: string_cell(row, "package_no"),
         package_group_id: string_cell(row, "package_group_id"),
@@ -2184,12 +2284,15 @@ fn map_admin_package(row: &sqlx::postgres::PgRow) -> AdminMembershipPackageItem 
             100
         },
         status: string_cell(row, "status"),
+        created_at: string_cell(row, "created_at"),
+        updated_at: string_cell(row, "updated_at"),
     }
 }
 
 fn map_admin_package_group(row: &sqlx::postgres::PgRow) -> AdminMembershipPackageGroupItem {
     AdminMembershipPackageGroupItem {
         id: string_cell(row, "id"),
+        category: string_cell(row, "category"),
         code: string_cell(row, "group_no"),
         name: string_cell(row, "name"),
         description: optional_string_cell(row, "description"),
@@ -2316,9 +2419,7 @@ async fn load_status(
         active: membership
             .as_ref()
             .map(|item| {
-                item.rank > 0
-                    && item.status != "expired"
-                    && !membership_expired(&item.expires_at)
+                item.rank > 0 && item.status != "expired" && !membership_expired(&item.expires_at)
             })
             .unwrap_or(false),
         plan_rank: membership.as_ref().map(|item| item.rank).unwrap_or(0),
@@ -2516,10 +2617,12 @@ async fn load_plans_page(
         WHERE (p.tenant_id = CAST($1 AS TEXT) OR p.tenant_id IS NULL)
           AND (p.organization_id = CAST($2 AS TEXT) OR p.organization_id = '0')
           AND p.status = 'active'
+          AND ($3 IS NULL OR p.category = $3)
         "#,
     )
     .bind(tenant_id)
     .bind(organization_id)
+    .bind(query.category.as_deref())
     .fetch_one(pool)
     .await
     .map_err(sql_error)?;
@@ -2531,12 +2634,14 @@ async fn load_plans_page(
         WHERE (p.tenant_id = CAST($1 AS TEXT) OR p.tenant_id IS NULL)
           AND (p.organization_id = CAST($2 AS TEXT) OR p.organization_id = '0')
           AND p.status = 'active'
+          AND ($3 IS NULL OR p.category = $3)
         ORDER BY p.rank ASC, p.plan_no ASC
-        LIMIT $3 OFFSET $4
+        LIMIT $4 OFFSET $5
         "#,
     )
     .bind(tenant_id)
     .bind(organization_id)
+    .bind(query.category.as_deref())
     .bind(page_size)
     .bind(offset)
     .fetch_all(pool)
@@ -2561,6 +2666,7 @@ async fn load_plans_page(
             p.name,
             CAST(p.rank AS INTEGER) AS rank,
             p.description,
+            p.category AS category,
             b.id AS plan_benefit_id,
             b.benefit_code,
             CAST(b.grant_quantity AS TEXT) AS grant_quantity,
@@ -2624,6 +2730,7 @@ fn stored_plans_from_rows(rows: &[sqlx::postgres::PgRow]) -> Vec<StoredMembershi
                 plan_no: plan_no.clone(),
                 item: AppMembershipPlanItem {
                     id: rank,
+                    category: string_cell(row, "category"),
                     name: string_cell(row, "name"),
                     rank,
                     required_points: Some(plan_required_points(&plan_no)),
@@ -2715,6 +2822,10 @@ async fn load_package_rows(
 
     let mut sql = String::from(LOAD_MEMBERSHIP_PACKAGES_BASE);
     let mut next_param = 3;
+    if query.category.is_some() {
+        sql.push_str(&format!("  AND p.category = ${next_param}\n"));
+        next_param += 1;
+    }
     if package_group_id.is_some() {
         sql.push_str(&format!("  AND g.external_id = ${next_param}\n"));
         next_param += 1;
@@ -2729,7 +2840,12 @@ async fn load_package_rows(
     sql.push_str("ORDER BY g.sort_weight ASC, p.sort_weight ASC, p.external_id ASC\n");
     sql.push_str(&format!("LIMIT ${next_param} OFFSET ${}\n", next_param + 1));
 
-    let mut db_query = sqlx::query(sqlx::AssertSqlSafe(sql.as_str())).bind(tenant_id).bind(organization_id);
+    let mut db_query = sqlx::query(sqlx::AssertSqlSafe(sql.as_str()))
+        .bind(tenant_id)
+        .bind(organization_id);
+    if let Some(category) = query.category.as_deref() {
+        db_query = db_query.bind(category);
+    }
     if let Some(group_id) = package_group_id {
         db_query = db_query.bind(group_id);
     }
@@ -2796,6 +2912,7 @@ fn map_package(row: &sqlx::postgres::PgRow) -> Option<ParsedMembershipPackage> {
         optional_string_cell(row, "plan_no"),
         integer_cell(row, "rank"),
         optional_string_cell(row, "sku_id"),
+        string_cell(row, "package_category"),
     )
 }
 
@@ -2822,6 +2939,7 @@ async fn load_package_groups_page(
         WHERE (g.tenant_id = CAST($1 AS TEXT) OR g.tenant_id IS NULL)
           AND (g.organization_id = CAST($2 AS TEXT) OR g.organization_id = '0')
           AND g.status = 'active'
+          AND ($5 IS NULL OR g.category = $5)
           AND EXISTS (
             SELECT 1
             FROM membership_package p
@@ -2838,6 +2956,7 @@ async fn load_package_groups_page(
     .bind(organization_id)
     .bind(recommended_only)
     .bind(plan_id)
+    .bind(query.category.as_deref())
     .fetch_one(pool)
     .await
     .map_err(sql_error)?;
@@ -2848,11 +2967,13 @@ async fn load_package_groups_page(
             CAST(g.external_id AS INTEGER) AS external_id,
             g.name,
             g.description,
-            CAST(COALESCE(g.sort_weight, 0) AS INTEGER) AS sort_weight
+            CAST(COALESCE(g.sort_weight, 0) AS INTEGER) AS sort_weight,
+            g.category AS category
         FROM membership_package_group g
         WHERE (g.tenant_id = CAST($1 AS TEXT) OR g.tenant_id IS NULL)
           AND (g.organization_id = CAST($2 AS TEXT) OR g.organization_id = '0')
           AND g.status = 'active'
+          AND ($7 IS NULL OR g.category = $7)
           AND EXISTS (
             SELECT 1
             FROM membership_package p
@@ -2873,6 +2994,7 @@ async fn load_package_groups_page(
     .bind(offset)
     .bind(recommended_only)
     .bind(plan_id)
+    .bind(query.category.as_deref())
     .fetch_all(pool)
     .await
     .map_err(sql_error)?;
@@ -2890,6 +3012,7 @@ async fn load_package_groups_page(
                 page: Some(1),
                 page_size: Some(200),
                 cursor: None,
+                category: query.category.clone(),
             },
             recommended_only,
         )
@@ -2901,6 +3024,7 @@ async fn load_package_groups_page(
             optional_string_cell(&row, "description"),
             integer_cell(&row, "sort_weight"),
             packages,
+            string_cell(&row, "category"),
         ));
     }
     Ok(offset_page(groups, total, params))
@@ -2918,7 +3042,8 @@ async fn load_package_group_by_id(
             CAST(g.external_id AS INTEGER) AS external_id,
             g.name,
             g.description,
-            CAST(COALESCE(g.sort_weight, 0) AS INTEGER) AS sort_weight
+            CAST(COALESCE(g.sort_weight, 0) AS INTEGER) AS sort_weight,
+            g.category AS category
         FROM membership_package_group g
         WHERE (g.tenant_id = CAST($1 AS TEXT) OR g.tenant_id IS NULL)
           AND (g.organization_id = CAST($2 AS TEXT) OR g.organization_id = '0')
@@ -2947,6 +3072,7 @@ async fn load_package_group_by_id(
             page: Some(1),
             page_size: Some(200),
             cursor: None,
+            category: Some(string_cell(&row, "category")),
         },
         false,
     )
@@ -2958,6 +3084,7 @@ async fn load_package_group_by_id(
         optional_string_cell(&row, "description"),
         integer_cell(&row, "sort_weight"),
         packages,
+        string_cell(&row, "category"),
     )))
 }
 
@@ -3174,9 +3301,7 @@ async fn reserve_membership_purchase(
     let membership_active = current
         .as_ref()
         .map(|item| {
-            item.rank > 0
-                && item.status != "expired"
-                && !membership_expired(&item.expires_at)
+            item.rank > 0 && item.status != "expired" && !membership_expired(&item.expires_at)
         })
         .unwrap_or(false);
     let current_rank = current.as_ref().map(|item| item.rank).unwrap_or(0);
@@ -3920,12 +4045,12 @@ async fn persist_membership_subscription(
         sqlx::query(
             r#"
             INSERT INTO membership_subscription
-                (id, tenant_id, organization_id, subscription_no, subject_type, subject_id,
+                (id, tenant_id, organization_id, category, subscription_no, subject_type, subject_id,
                  owner_user_id, plan_id, plan_version_id, package_id, current_period_id,
                  source_order_id, status, starts_at, expires_at,
                  grace_until, cancel_at_period_end, request_no, idempotency_key, created_at, updated_at)
             VALUES
-                ($1, CAST($2 AS TEXT), CAST($3 AS TEXT), $4, 'user', CAST($5 AS TEXT),
+                ($1, CAST($2 AS TEXT), CAST($3 AS TEXT), $18, $4, 'user', CAST($5 AS TEXT),
                  CAST($6 AS TEXT), $7, $8, $9, $10, $11, 'pending_activation', $12, $13,
                  NULL, 0, $14, $15, $16, $17)
             "#,
@@ -3947,6 +4072,7 @@ async fn persist_membership_subscription(
         .bind(&command.idempotency_key)
         .bind(&command.requested_at)
         .bind(&command.requested_at)
+        .bind(&plan.item.category)
         .execute(&mut **tx)
         .await
         .map_err(|error| store_error("failed to insert membership subscription", error))?;
@@ -3964,6 +4090,7 @@ async fn persist_membership_subscription(
                 expires_at = $8,
                 request_no = $9,
                 idempotency_key = $10,
+                category = $16,
                 updated_at = $11
             WHERE id = $12
               AND tenant_id = CAST($13 AS TEXT)
@@ -3987,6 +4114,7 @@ async fn persist_membership_subscription(
         .bind(command.subject.tenant_id)
         .bind(command.subject.organization_id)
         .bind(command.subject.user_id)
+        .bind(&plan.item.category)
         .execute(&mut **tx)
         .await
         .map_err(|error| store_error("failed to update membership subscription", error))?;
@@ -3995,12 +4123,12 @@ async fn persist_membership_subscription(
     sqlx::query(
         r#"
         INSERT INTO membership_period
-            (id, tenant_id, organization_id, period_no, subscription_id, subject_type,
+            (id, tenant_id, organization_id, category, period_no, subscription_id, subject_type,
              subject_id, plan_id, plan_version_id, starts_at, ends_at, status,
              source_order_id, request_no, idempotency_key,
              created_at, updated_at)
         VALUES
-            ($1, CAST($2 AS TEXT), CAST($3 AS TEXT), $4, $5, 'user',
+            ($1, CAST($2 AS TEXT), CAST($3 AS TEXT), $16, $4, $5, 'user',
              CAST($6 AS TEXT), $7, $8, $9, $10, 'pending_activation',
              $11, $12, $13, $14, $15)
         "#,
@@ -4020,6 +4148,7 @@ async fn persist_membership_subscription(
     .bind(format!("{}-period", command.idempotency_key))
     .bind(&command.requested_at)
     .bind(&command.requested_at)
+    .bind(&plan.item.category)
     .execute(&mut **tx)
     .await
     .map_err(|error| store_error("failed to insert membership period", error))?;
@@ -4206,15 +4335,16 @@ pub async fn expire_due_memberships(
     pool: &PgPool,
 ) -> AppMembershipResult<MembershipLifecycleSweepOutcome> {
     let mut conn = pool.acquire().await.map_err(|error| {
-        store_error("failed to acquire connection for membership lifecycle sweep", error)
+        store_error(
+            "failed to acquire connection for membership lifecycle sweep",
+            error,
+        )
     })?;
     let locked: bool = sqlx::query_scalar("SELECT pg_try_advisory_lock($1)")
         .bind(MEMBERSHIP_LIFECYCLE_SWEEP_LOCK_KEY)
         .fetch_one(&mut *conn)
         .await
-        .map_err(|error| {
-            store_error("failed to acquire membership lifecycle sweep lock", error)
-        })?;
+        .map_err(|error| store_error("failed to acquire membership lifecycle sweep lock", error))?;
     if !locked {
         // 另一实例正在执行本轮扫描
         return Ok(MembershipLifecycleSweepOutcome {
@@ -4233,10 +4363,12 @@ pub async fn expire_due_memberships(
 async fn expire_due_memberships_in_tx(
     pool: &PgPool,
 ) -> AppMembershipResult<MembershipLifecycleSweepOutcome> {
-    let mut tx = pool
-        .begin()
-        .await
-        .map_err(|error| store_error("failed to begin membership lifecycle sweep transaction", error))?;
+    let mut tx = pool.begin().await.map_err(|error| {
+        store_error(
+            "failed to begin membership lifecycle sweep transaction",
+            error,
+        )
+    })?;
     let now = current_timestamp_string();
     let due_rows = sqlx::query(
         r#"
@@ -4342,9 +4474,12 @@ async fn expire_due_memberships_in_tx(
     .map_err(|error| store_error("failed to expire membership entitlement accounts", error))?
     .rows_affected() as i64;
 
-    tx.commit()
-        .await
-        .map_err(|error| store_error("failed to commit membership lifecycle sweep transaction", error))?;
+    tx.commit().await.map_err(|error| {
+        store_error(
+            "failed to commit membership lifecycle sweep transaction",
+            error,
+        )
+    })?;
     Ok(MembershipLifecycleSweepOutcome {
         expired_subscriptions,
         expired_periods,
@@ -4447,10 +4582,12 @@ async fn recharge_subscription_quota(
         command.subject.user_id,
         command.idempotency_key.trim()
     );
-    let mut tx = pool
-        .begin()
-        .await
-        .map_err(|error| store_error("failed to begin subscription quota recharge transaction", error))?;
+    let mut tx = pool.begin().await.map_err(|error| {
+        store_error(
+            "failed to begin subscription quota recharge transaction",
+            error,
+        )
+    })?;
 
     // 幂等重放：同一充值订单已入账
     if let Some(row) = sqlx::query(
@@ -4500,8 +4637,7 @@ async fn recharge_subscription_quota(
     }
 
     // 仅对当前有效订阅开放充值（status='active' 且未到期）
-    let membership =
-        load_current_membership_for_validation(&mut *tx, command.subject).await?;
+    let membership = load_current_membership_for_validation(&mut *tx, command.subject).await?;
     let Some(membership) = membership else {
         return Err(CommerceServiceError::conflict(
             "membership quota recharge requires an active membership subscription",
@@ -4553,15 +4689,16 @@ async fn recharge_subscription_quota(
         .max(0)
         .checked_add(command.quantity)
         .ok_or_else(|| {
-            CommerceServiceError::validation("subscription quota recharge exceeds the supported range")
+            CommerceServiceError::validation(
+                "subscription quota recharge exceeds the supported range",
+            )
         })?;
     // 追加额度有效期不超出订阅到期日（账户到期时间一并顺延到订阅到期日）
-    let grant_expires_at =
-        if account_expires_at.as_str() < membership.expires_at.as_str() {
-            membership.expires_at.clone()
-        } else {
-            account_expires_at.clone()
-        };
+    let grant_expires_at = if account_expires_at.as_str() < membership.expires_at.as_str() {
+        membership.expires_at.clone()
+    } else {
+        account_expires_at.clone()
+    };
     let grant_policy = serde_json::json!({
         "kind": "quota_recharge",
         "orderId": command.order_id.trim(),
@@ -4652,9 +4789,12 @@ async fn recharge_subscription_quota(
     .await
     .map_err(|error| store_error("failed to insert quota recharge ledger entry", error))?;
 
-    tx.commit()
-        .await
-        .map_err(|error| store_error("failed to commit subscription quota recharge transaction", error))?;
+    tx.commit().await.map_err(|error| {
+        store_error(
+            "failed to commit subscription quota recharge transaction",
+            error,
+        )
+    })?;
     Ok(SubscriptionQuotaRechargeOutcome {
         accepted: true,
         replayed: false,
@@ -5672,7 +5812,8 @@ mod tests {
         let coupon = r#"{"kind":"coupon_subscription_quota","couponOrderId":"o1","period":"month","dailyQuota":100,"totalQuota":3000}"#;
         let (daily, total) = resolve_consumption_limits(coupon, 5000).expect("coupon policy");
         assert_eq!((daily, total), (100, 3000));
-        let (daily, total) = resolve_consumption_limits("membership_plan", 500).expect("plan policy");
+        let (daily, total) =
+            resolve_consumption_limits("membership_plan", 500).expect("plan policy");
         assert_eq!((daily, total), (500, 500));
         let recharge = r#"{"kind":"quota_recharge","orderId":"o1","quantity":1000}"#;
         let (daily, total) = resolve_consumption_limits(recharge, 1000).expect("recharge policy");
@@ -5713,8 +5854,10 @@ mod tests {
     fn quota_recharge_is_idempotent_and_requires_active_subscription() {
         let source = include_str!("postgres.rs");
         assert!(source.contains("membership_quota_recharge"));
-        assert!(source.contains("business_type = 'quota_recharge'")
-            || source.contains("'quota_recharge'"));
+        assert!(
+            source.contains("business_type = 'quota_recharge'")
+                || source.contains("'quota_recharge'")
+        );
         assert!(source.contains("requires an active membership subscription"));
         assert!(source.contains("failed to load quota recharge replay"));
         assert!(source.contains("failed to begin subscription quota recharge transaction"));

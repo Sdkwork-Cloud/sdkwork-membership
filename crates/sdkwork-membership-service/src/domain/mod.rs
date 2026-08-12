@@ -1,19 +1,60 @@
 use sdkwork_contract_service::{CommerceMoney, CommerceServiceError, CommerceSurfaceProfile};
 
+/// Catalog classification of membership plans, package groups, and packages.
+///
+/// The catalog is organized into plan families: `token` (Token Plan
+/// compute-credit plans) and `community` (circle/community membership plans).
+/// The vocabulary is extensible; new values are added here and in the
+/// database CHECK constraints via migration.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum MembershipCategory {
+    Token,
+    Community,
+}
+
+impl MembershipCategory {
+    pub const fn as_storage_str(&self) -> &'static str {
+        match self {
+            Self::Token => "token",
+            Self::Community => "community",
+        }
+    }
+
+    pub fn parse(value: &str) -> Result<Self, CommerceServiceError> {
+        match value.trim().to_ascii_lowercase().as_str() {
+            "token" => Ok(Self::Token),
+            "community" => Ok(Self::Community),
+            _ => Err(CommerceServiceError::validation(
+                "membership category must be token or community",
+            )),
+        }
+    }
+}
+
+impl std::fmt::Display for MembershipCategory {
+    fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        formatter.write_str(self.as_storage_str())
+    }
+}
+
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum MembershipBillingCycle {
+    Once,
     Day,
     Week,
     Month,
+    Quarter,
     Year,
 }
 
 impl MembershipBillingCycle {
     pub const fn as_storage_str(&self) -> &'static str {
         match self {
+            Self::Once => "once",
             Self::Day => "day",
             Self::Week => "week",
             Self::Month => "month",
+            Self::Quarter => "quarter",
             Self::Year => "year",
         }
     }
@@ -22,6 +63,7 @@ impl MembershipBillingCycle {
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct MembershipPlanDraft {
     pub plan_id: String,
+    pub category: MembershipCategory,
     pub name: String,
     pub tenant_id: String,
     pub validity_days: u32,
@@ -32,6 +74,7 @@ pub struct MembershipPlanDraft {
 pub struct MembershipPackageGroupDraft {
     pub tenant_id: String,
     pub organization_id: String,
+    pub category: MembershipCategory,
     pub external_id: i64,
     pub package_group_no: String,
     pub name: String,
@@ -45,6 +88,7 @@ pub struct MembershipPackageGroupDraft {
 pub struct MembershipPackageGroupDraftInput {
     pub tenant_id: String,
     pub organization_id: String,
+    pub category: MembershipCategory,
     pub external_id: i64,
     pub package_group_no: String,
     pub name: String,
@@ -58,6 +102,7 @@ pub struct MembershipPackageGroupDraftInput {
 pub struct MembershipPackageDraft {
     pub tenant_id: String,
     pub organization_id: String,
+    pub category: MembershipCategory,
     pub external_id: i64,
     pub package_no: String,
     pub package_group_id: String,
@@ -132,6 +177,7 @@ impl MembershipPlanDraft {
     pub fn new(
         tenant_id: &str,
         plan_id: &str,
+        category: MembershipCategory,
         name: &str,
         validity_days: u32,
         visible_surfaces: Vec<CommerceSurfaceProfile>,
@@ -152,6 +198,7 @@ impl MembershipPlanDraft {
 
         Ok(Self {
             plan_id: plan_id.to_string(),
+            category,
             name: name.to_string(),
             tenant_id: tenant_id.to_string(),
             validity_days,
@@ -182,6 +229,7 @@ impl MembershipPackageGroupDraft {
         Ok(Self {
             tenant_id: input.tenant_id,
             organization_id: input.organization_id,
+            category: input.category,
             external_id: input.external_id,
             package_group_no: input.package_group_no,
             name: input.name,
@@ -196,6 +244,7 @@ impl MembershipPackageGroupDraft {
     pub fn new(
         tenant_id: &str,
         organization_id: &str,
+        category: MembershipCategory,
         external_id: i64,
         package_group_no: &str,
         name: &str,
@@ -207,6 +256,7 @@ impl MembershipPackageGroupDraft {
         Self::from_input(MembershipPackageGroupDraftInput {
             tenant_id: tenant_id.to_string(),
             organization_id: organization_id.to_string(),
+            category,
             external_id,
             package_group_no: package_group_no.to_string(),
             name: name.to_string(),
@@ -223,6 +273,7 @@ impl MembershipPackageDraft {
     pub fn new(
         tenant_id: &str,
         organization_id: &str,
+        category: MembershipCategory,
         external_id: i64,
         package_no: &str,
         package_group_id: &str,
@@ -269,6 +320,7 @@ impl MembershipPackageDraft {
         Ok(Self {
             tenant_id: tenant_id.to_string(),
             organization_id: organization_id.to_string(),
+            category,
             external_id,
             package_no: package_no.to_string(),
             package_group_id: package_group_id.to_string(),

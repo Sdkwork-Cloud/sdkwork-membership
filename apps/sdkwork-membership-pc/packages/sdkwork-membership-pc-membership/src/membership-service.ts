@@ -468,7 +468,7 @@ export function createSdkworkMembershipService(
       }
       const results = await Promise.all(
         featureCodes.map((featureCode) =>
-          membershipAppService.memberships.access.checks
+          membershipAppService.memberships.accessChecks
             .create({ featureCode })
             .then((gate) => mapFeatureGate(featureCode, gate))
             .catch(() => ({

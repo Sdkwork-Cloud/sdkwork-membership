@@ -27,12 +27,7 @@ client.setAuthToken('your-auth-token');
 client.setAccessToken('your-access-token');
 
 // Use the SDK
-const params = {
-  status: 'status',
-  page: 2,
-  page_size: 3,
-};
-const result = await client.memberships.plans.list(params);
+const result = await client.memberships.metaCatalog.retrieve();
 ```
 
 ## Authentication
@@ -66,13 +61,8 @@ const client = new SdkworkBackendClient({
 ### memberships
 
 ```typescript
-// Membership plans list.
-const params = {
-  status: 'status',
-  page: 2,
-  page_size: 3,
-};
-const result = await client.memberships.plans.list(params);
+// Membership catalog enum reference.
+const result = await client.memberships.metaCatalog.retrieve();
 ```
 
 ## Error Handling
@@ -81,12 +71,7 @@ const result = await client.memberships.plans.list(params);
 import { SdkworkBackendClient, NetworkError, TimeoutError, AuthenticationError } from '@sdkwork/membership-backend-sdk';
 
 try {
-  const params = {
-    status: 'status',
-    page: 2,
-    page_size: 3,
-  };
-  const result = await client.memberships.plans.list(params);
+  const result = await client.memberships.metaCatalog.retrieve();
 } catch (error) {
   if (error instanceof AuthenticationError) {
     console.error('Authentication failed:', error.message);

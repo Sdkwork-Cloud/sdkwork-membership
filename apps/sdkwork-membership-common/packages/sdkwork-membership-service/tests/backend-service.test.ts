@@ -101,7 +101,7 @@ describe("createSdkworkMembershipBackendService", () => {
     client.memberships.members.status.update.mockResolvedValue({ id: "membership-1", status: "active" });
     client.memberships.members.retrieve.mockResolvedValue({ id: "membership-1", status: "active" });
     const service = createSdkworkMembershipBackendService(client as never);
-    const plan = { code: "pro", name: "Pro", rank: "1", status: "active" };
+    const plan = { category: "token" as const, code: "pro", name: "Pro", rank: "1", status: "active" as const };
 
     await service.createPlan(plan);
     await service.getMember("membership-1");

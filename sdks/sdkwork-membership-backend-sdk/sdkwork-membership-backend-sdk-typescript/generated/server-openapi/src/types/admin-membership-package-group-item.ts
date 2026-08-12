@@ -1,3 +1,5 @@
+import type { MembershipCategory } from './membership-category';
+
 export interface AdminMembershipPackageGroupItem {
   id: string;
   code: string;
@@ -6,5 +8,6 @@ export interface AdminMembershipPackageGroupItem {
   billingCycle: string;
   durationDays: string;
   sortWeight: string;
-  status: string;
+  status: 'active' | 'inactive' | 'disabled';
+  category: MembershipCategory;
 }

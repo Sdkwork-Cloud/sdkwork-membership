@@ -36,6 +36,7 @@ pub fn builtin_plans() -> Vec<AppMembershipPlanItem> {
     vec![
         AppMembershipPlanItem {
             id: 0,
+            category: "token".to_string(),
             name: "Free".to_string(),
             rank: 0,
             required_points: Some(0),
@@ -45,6 +46,7 @@ pub fn builtin_plans() -> Vec<AppMembershipPlanItem> {
         },
         AppMembershipPlanItem {
             id: 1,
+            category: "token".to_string(),
             name: "基础会员".to_string(),
             rank: 1,
             required_points: Some(330),
@@ -54,6 +56,7 @@ pub fn builtin_plans() -> Vec<AppMembershipPlanItem> {
         },
         AppMembershipPlanItem {
             id: 2,
+            category: "token".to_string(),
             name: "标准会员".to_string(),
             rank: 2,
             required_points: Some(950),
@@ -63,6 +66,7 @@ pub fn builtin_plans() -> Vec<AppMembershipPlanItem> {
         },
         AppMembershipPlanItem {
             id: 3,
+            category: "token".to_string(),
             name: "高级会员".to_string(),
             rank: 3,
             required_points: Some(2600),
@@ -72,6 +76,7 @@ pub fn builtin_plans() -> Vec<AppMembershipPlanItem> {
         },
         AppMembershipPlanItem {
             id: 4,
+            category: "token".to_string(),
             name: "超级会员".to_string(),
             rank: 4,
             required_points: Some(7500),
@@ -163,12 +168,14 @@ pub fn builtin_package_groups() -> Vec<AppMembershipPackageGroupItem> {
     vec![
         AppMembershipPackageGroupItem {
             id: 1,
+            category: "token".to_string(),
             name: "连续包年".to_string(),
             description: Some("5.8折".to_string()),
             sort_weight: 1,
             packages: vec![
                 AppMembershipPackageItem {
                     id: 101,
+                    category: "token".to_string(),
                     name: "基础会员·年卡".to_string(),
                     description: Some("连续包年，到期自动续费".to_string()),
                     price: "393".to_string(),
@@ -182,6 +189,7 @@ pub fn builtin_package_groups() -> Vec<AppMembershipPackageGroupItem> {
                 },
                 AppMembershipPackageItem {
                     id: 102,
+                    category: "token".to_string(),
                     name: "标准会员·年卡".to_string(),
                     description: Some("连续包年，到期自动续费".to_string()),
                     price: "1099".to_string(),
@@ -195,6 +203,7 @@ pub fn builtin_package_groups() -> Vec<AppMembershipPackageGroupItem> {
                 },
                 AppMembershipPackageItem {
                     id: 103,
+                    category: "token".to_string(),
                     name: "高级会员·年卡".to_string(),
                     description: Some("连续包年，到期自动续费".to_string()),
                     price: "3099".to_string(),
@@ -208,6 +217,7 @@ pub fn builtin_package_groups() -> Vec<AppMembershipPackageGroupItem> {
                 },
                 AppMembershipPackageItem {
                     id: 104,
+                    category: "token".to_string(),
                     name: "超级会员·年卡".to_string(),
                     description: Some("连续包年，到期自动续费".to_string()),
                     price: "8999".to_string(),
@@ -223,12 +233,14 @@ pub fn builtin_package_groups() -> Vec<AppMembershipPackageGroupItem> {
         },
         AppMembershipPackageGroupItem {
             id: 2,
+            category: "token".to_string(),
             name: "连续包月".to_string(),
             description: Some("6折".to_string()),
             sort_weight: 2,
             packages: vec![
                 AppMembershipPackageItem {
                     id: 201,
+                    category: "token".to_string(),
                     name: "基础会员·月卡".to_string(),
                     description: Some("连续包月，到期自动续费".to_string()),
                     price: "33".to_string(),
@@ -242,6 +254,7 @@ pub fn builtin_package_groups() -> Vec<AppMembershipPackageGroupItem> {
                 },
                 AppMembershipPackageItem {
                     id: 202,
+                    category: "token".to_string(),
                     name: "标准会员·月卡".to_string(),
                     description: Some("连续包月，到期自动续费".to_string()),
                     price: "95".to_string(),
@@ -255,6 +268,7 @@ pub fn builtin_package_groups() -> Vec<AppMembershipPackageGroupItem> {
                 },
                 AppMembershipPackageItem {
                     id: 203,
+                    category: "token".to_string(),
                     name: "高级会员·月卡".to_string(),
                     description: Some("连续包月，到期自动续费".to_string()),
                     price: "260".to_string(),
@@ -268,6 +282,7 @@ pub fn builtin_package_groups() -> Vec<AppMembershipPackageGroupItem> {
                 },
                 AppMembershipPackageItem {
                     id: 204,
+                    category: "token".to_string(),
                     name: "超级会员·月卡".to_string(),
                     description: Some("连续包月，到期自动续费".to_string()),
                     price: "750".to_string(),
@@ -283,12 +298,14 @@ pub fn builtin_package_groups() -> Vec<AppMembershipPackageGroupItem> {
         },
         AppMembershipPackageGroupItem {
             id: 3,
+            category: "token".to_string(),
             name: "连续包季".to_string(),
             description: Some("7折".to_string()),
             sort_weight: 3,
             packages: vec![
                 AppMembershipPackageItem {
                     id: 301,
+                    category: "token".to_string(),
                     name: "基础会员·季卡".to_string(),
                     description: Some("连续包季，到期自动续费".to_string()),
                     price: "116".to_string(),
@@ -302,6 +319,7 @@ pub fn builtin_package_groups() -> Vec<AppMembershipPackageGroupItem> {
                 },
                 AppMembershipPackageItem {
                     id: 302,
+                    category: "token".to_string(),
                     name: "标准会员·季卡".to_string(),
                     description: Some("连续包季，到期自动续费".to_string()),
                     price: "332".to_string(),
@@ -315,6 +333,7 @@ pub fn builtin_package_groups() -> Vec<AppMembershipPackageGroupItem> {
                 },
                 AppMembershipPackageItem {
                     id: 303,
+                    category: "token".to_string(),
                     name: "高级会员·季卡".to_string(),
                     description: Some("连续包季，到期自动续费".to_string()),
                     price: "909".to_string(),
@@ -328,6 +347,7 @@ pub fn builtin_package_groups() -> Vec<AppMembershipPackageGroupItem> {
                 },
                 AppMembershipPackageItem {
                     id: 304,
+                    category: "token".to_string(),
                     name: "超级会员·季卡".to_string(),
                     description: Some("连续包季，到期自动续费".to_string()),
                     price: "2625".to_string(),
@@ -343,12 +363,14 @@ pub fn builtin_package_groups() -> Vec<AppMembershipPackageGroupItem> {
         },
         AppMembershipPackageGroupItem {
             id: 4,
+            category: "token".to_string(),
             name: "单月购买".to_string(),
             description: None,
             sort_weight: 4,
             packages: vec![
                 AppMembershipPackageItem {
                     id: 401,
+                    category: "token".to_string(),
                     name: "基础会员·单月".to_string(),
                     description: Some("单次购买，不自动续费".to_string()),
                     price: "55".to_string(),
@@ -362,6 +384,7 @@ pub fn builtin_package_groups() -> Vec<AppMembershipPackageGroupItem> {
                 },
                 AppMembershipPackageItem {
                     id: 402,
+                    category: "token".to_string(),
                     name: "标准会员·单月".to_string(),
                     description: Some("单次购买，不自动续费".to_string()),
                     price: "158".to_string(),
@@ -375,6 +398,7 @@ pub fn builtin_package_groups() -> Vec<AppMembershipPackageGroupItem> {
                 },
                 AppMembershipPackageItem {
                     id: 403,
+                    category: "token".to_string(),
                     name: "高级会员·单月".to_string(),
                     description: Some("单次购买，不自动续费".to_string()),
                     price: "433".to_string(),
@@ -388,6 +412,7 @@ pub fn builtin_package_groups() -> Vec<AppMembershipPackageGroupItem> {
                 },
                 AppMembershipPackageItem {
                     id: 404,
+                    category: "token".to_string(),
                     name: "超级会员·单月".to_string(),
                     description: Some("单次购买，不自动续费".to_string()),
                     price: "1083".to_string(),

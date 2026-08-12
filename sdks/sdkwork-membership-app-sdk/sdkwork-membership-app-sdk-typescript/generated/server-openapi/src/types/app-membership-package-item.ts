@@ -1,3 +1,5 @@
+import type { MembershipCategory } from './membership-category';
+
 /** Membership package item. */
 export interface AppMembershipPackageItem {
   id: string;
@@ -11,4 +13,5 @@ export interface AppMembershipPackageItem {
   sortWeight: string;
   recommended: boolean;
   tags: string[];
+  category: MembershipCategory;
 }

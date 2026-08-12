@@ -1,7 +1,7 @@
 import { appApiPath } from './paths';
 import type { ApiRequestOptions, HttpClient } from '../http/client';
 
-import type { AppMembershipDailyRewardResponse, AppMembershipDailyRewardStatusResponse, AppMembershipInfoResponse, AppMembershipPackageGroupItem, AppMembershipPackageItem, AppMembershipPointsBalanceResponse, AppMembershipPrivilegeUsageResponse, AppMembershipPurchaseOutcome, AppMembershipStatusResponse, CommerceOperationCommand, MembershipFeatureAccessCheckCommand, MembershipFeatureAccessCheckResult, SdkWorkCommandData, SdkWorkPageDataBenefits, SdkWorkPageDataPackageGroups, SdkWorkPageDataPackages, SdkWorkPageDataPlans, SdkWorkPageDataPointsHistory } from '../types';
+import type { AppMembershipDailyRewardResponse, AppMembershipDailyRewardStatusResponse, AppMembershipInfoResponse, AppMembershipPackageGroupItem, AppMembershipPackageItem, AppMembershipPointsBalanceResponse, AppMembershipPrivilegeUsageResponse, AppMembershipPurchaseOutcome, AppMembershipStatusResponse, CommerceOperationCommand, MembershipCategory, MembershipFeatureAccessCheckCommand, MembershipFeatureAccessCheckResult, SdkWorkCommandData, SdkWorkPageDataBenefits, SdkWorkPageDataPackageGroups, SdkWorkPageDataPackages, SdkWorkPageDataPlans, SdkWorkPageDataPointsHistory } from '../types';
 
 
 export class MembershipsAccessChecksApi {
@@ -16,17 +16,6 @@ export class MembershipsAccessChecksApi {
   async create(body: MembershipFeatureAccessCheckCommand, requestOptions?: ApiRequestOptions): Promise<MembershipFeatureAccessCheckResult> {
     return this.client.request<MembershipFeatureAccessCheckResult>(appApiPath(`/memberships/access/checks`), { signal: requestOptions?.signal, timeout: requestOptions?.timeout, method: 'POST' as any, body, contentType: 'application/json', sdkworkUnwrapKind: 'item' });
   }
-}
-
-export class MembershipsAccessApi {
-  private client: HttpClient;
-  public readonly checks: MembershipsAccessChecksApi;
-
-  constructor(client: HttpClient) {
-    this.client = client;
-    this.checks = new MembershipsAccessChecksApi(client);
-  }
-
 }
 
 export class MembershipsPrivilegesSpeedUpsApi {
@@ -179,6 +168,7 @@ export class MembershipsPurchasesApi {
 }
 
 export interface MembershipsPackagesListParams {
+  category?: MembershipCategory;
   status?: string;
   page?: number;
   pageSize?: number;
@@ -198,6 +188,7 @@ export class MembershipsPackagesApi {
 /** Memberships packages list. */
   async list(params?: MembershipsPackagesListParams, requestOptions?: ApiRequestOptions): Promise<SdkWorkPageDataPackages> {
     const query = buildQueryString([
+      { name: 'category', value: params?.category, style: 'form', explode: true, allowReserved: false },
       { name: 'status', value: params?.status, style: 'form', explode: true, allowReserved: false },
       { name: 'page', value: params?.page, style: 'form', explode: true, allowReserved: false },
       { name: 'page_size', value: params?.pageSize, style: 'form', explode: true, allowReserved: false },
@@ -246,6 +237,7 @@ export class MembershipsPackageGroupsPackagesApi {
 }
 
 export interface MembershipsPackageGroupsListParams {
+  category?: MembershipCategory;
   status?: string;
   page?: number;
   pageSize?: number;
@@ -267,6 +259,7 @@ export class MembershipsPackageGroupsApi {
 /** Memberships package Groups list. */
   async list(params?: MembershipsPackageGroupsListParams, requestOptions?: ApiRequestOptions): Promise<SdkWorkPageDataPackageGroups> {
     const query = buildQueryString([
+      { name: 'category', value: params?.category, style: 'form', explode: true, allowReserved: false },
       { name: 'status', value: params?.status, style: 'form', explode: true, allowReserved: false },
       { name: 'page', value: params?.page, style: 'form', explode: true, allowReserved: false },
       { name: 'page_size', value: params?.pageSize, style: 'form', explode: true, allowReserved: false },
@@ -284,6 +277,7 @@ export class MembershipsPackageGroupsApi {
 }
 
 export interface MembershipsPlansListParams {
+  category?: MembershipCategory;
   status?: string;
   page?: number;
   pageSize?: number;
@@ -301,6 +295,7 @@ export class MembershipsPlansApi {
 /** Memberships plans list. */
   async list(params?: MembershipsPlansListParams, requestOptions?: ApiRequestOptions): Promise<SdkWorkPageDataPlans> {
     const query = buildQueryString([
+      { name: 'category', value: params?.category, style: 'form', explode: true, allowReserved: false },
       { name: 'status', value: params?.status, style: 'form', explode: true, allowReserved: false },
       { name: 'page', value: params?.page, style: 'form', explode: true, allowReserved: false },
       { name: 'page_size', value: params?.pageSize, style: 'form', explode: true, allowReserved: false },
@@ -377,7 +372,7 @@ export class MembershipsApi {
   public readonly purchases: MembershipsPurchasesApi;
   public readonly points: MembershipsPointsApi;
   public readonly privileges: MembershipsPrivilegesApi;
-  public readonly access: MembershipsAccessApi;
+  public readonly accessChecks: MembershipsAccessChecksApi;
 
   constructor(client: HttpClient) {
     this.client = client;
@@ -389,7 +384,7 @@ export class MembershipsApi {
     this.purchases = new MembershipsPurchasesApi(client);
     this.points = new MembershipsPointsApi(client);
     this.privileges = new MembershipsPrivilegesApi(client);
-    this.access = new MembershipsAccessApi(client);
+    this.accessChecks = new MembershipsAccessChecksApi(client);
   }
 
 }

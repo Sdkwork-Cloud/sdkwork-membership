@@ -1,4 +1,5 @@
 import type { MembershipBenefitItem } from './membership-benefit-item';
+import type { MembershipCategory } from './membership-category';
 
 export interface AdminMembershipPlanItem {
   id: string;
@@ -6,5 +7,8 @@ export interface AdminMembershipPlanItem {
   name: string;
   rank: string;
   benefits: MembershipBenefitItem[];
-  status: string;
+  status: 'active' | 'inactive' | 'disabled';
+  createdAt?: string;
+  updatedAt?: string;
+  category: MembershipCategory;
 }

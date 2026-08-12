@@ -1,11 +1,38 @@
 use sdkwork_contract_service::{CommerceServiceError, CommerceSurfaceProfile};
 use sdkwork_membership_service::{
     membership_service_contract, EntitlementGrantDraft, MembershipActivationDraft,
-    MembershipBillingCycle, MembershipPackageDraft, MembershipPackageGroupDraft,
-    MembershipPackageGroupDraftInput, MembershipPackageGroupListQuery, MembershipPackageListQuery,
-    MembershipPlanDraft, MembershipPortRequirement, MembershipPurchaseDraft,
-    MembershipRepositoryCommand, MembershipStatus, MembershipTransition,
+    MembershipBillingCycle, MembershipCategory, MembershipPackageDraft,
+    MembershipPackageGroupDraft, MembershipPackageGroupDraftInput, MembershipPackageGroupListQuery,
+    MembershipPackageListQuery, MembershipPlanDraft, MembershipPortRequirement,
+    MembershipPurchaseDraft, MembershipRepositoryCommand, MembershipStatus, MembershipTransition,
 };
+
+#[test]
+fn membership_category_vocabulary_is_token_and_community() {
+    assert_eq!(MembershipCategory::Token.as_storage_str(), "token");
+    assert_eq!(MembershipCategory::Community.as_storage_str(), "community");
+    assert_eq!(
+        MembershipCategory::parse("token").unwrap(),
+        MembershipCategory::Token
+    );
+    assert_eq!(
+        MembershipCategory::parse("COMMUNITY").unwrap(),
+        MembershipCategory::Community
+    );
+    assert!(MembershipCategory::parse("course").is_err());
+    assert_eq!(MembershipCategory::Token.to_string(), "token");
+    assert_eq!(MembershipCategory::Community.to_string(), "community");
+}
+
+#[test]
+fn membership_billing_cycle_covers_sellable_families() {
+    assert_eq!(MembershipBillingCycle::Once.as_storage_str(), "once");
+    assert_eq!(MembershipBillingCycle::Day.as_storage_str(), "day");
+    assert_eq!(MembershipBillingCycle::Week.as_storage_str(), "week");
+    assert_eq!(MembershipBillingCycle::Month.as_storage_str(), "month");
+    assert_eq!(MembershipBillingCycle::Quarter.as_storage_str(), "quarter");
+    assert_eq!(MembershipBillingCycle::Year.as_storage_str(), "year");
+}
 
 #[test]
 fn membership_domain_contract_uses_standard_plan_and_package_terms() {
@@ -61,6 +88,7 @@ fn validates_membership_plan_definition_and_surface_visibility() {
     let plan = MembershipPlanDraft::new(
         "100001",
         "membership-plan-pro",
+        MembershipCategory::Token,
         "Pro member",
         30,
         vec![CommerceSurfaceProfile::App, CommerceSurfaceProfile::Console],
@@ -68,11 +96,13 @@ fn validates_membership_plan_definition_and_surface_visibility() {
     .unwrap();
 
     assert_eq!(plan.plan_id, "membership-plan-pro");
+    assert_eq!(plan.category, MembershipCategory::Token);
     assert_eq!(plan.validity_days, 30);
     assert!(plan.visible_surfaces.contains(&CommerceSurfaceProfile::App));
     assert!(MembershipPlanDraft::new(
         "100001",
         "membership-plan-pro",
+        MembershipCategory::Community,
         "Pro member",
         0,
         vec![CommerceSurfaceProfile::App]
@@ -170,6 +200,7 @@ fn validates_membership_package_group_catalog_shape() {
     let group = MembershipPackageGroupDraft::from_input(MembershipPackageGroupDraftInput {
         tenant_id: "100001".to_string(),
         organization_id: "0".to_string(),
+        category: MembershipCategory::Token,
         external_id: 1,
         package_group_no: "membership-month".to_string(),
         name: "Monthly purchase".to_string(),
@@ -181,6 +212,7 @@ fn validates_membership_package_group_catalog_shape() {
     .unwrap();
 
     assert_eq!(group.external_id, 1);
+    assert_eq!(group.category, MembershipCategory::Token);
     assert_eq!(group.package_group_no, "membership-month");
     assert_eq!(group.billing_cycle.as_storage_str(), "month");
     assert_eq!(group.duration_days, 30);
@@ -188,6 +220,7 @@ fn validates_membership_package_group_catalog_shape() {
         MembershipPackageGroupDraft::from_input(MembershipPackageGroupDraftInput {
             tenant_id: "100001".to_string(),
             organization_id: "0".to_string(),
+            category: MembershipCategory::Community,
             external_id: 0,
             package_group_no: "membership-month".to_string(),
             name: "Monthly purchase".to_string(),
@@ -202,6 +235,7 @@ fn validates_membership_package_group_catalog_shape() {
         MembershipPackageGroupDraft::from_input(MembershipPackageGroupDraftInput {
             tenant_id: "100001".to_string(),
             organization_id: "0".to_string(),
+            category: MembershipCategory::Token,
             external_id: 1,
             package_group_no: String::new(),
             name: "Monthly purchase".to_string(),
@@ -219,6 +253,7 @@ fn validates_membership_package_catalog_shape_and_prices() {
     let package = MembershipPackageDraft::new(
         "100001",
         "0",
+        MembershipCategory::Token,
         303,
         "membership-month-pro",
         "membership-package-group-month",
@@ -238,6 +273,7 @@ fn validates_membership_package_catalog_shape_and_prices() {
     .unwrap();
 
     assert_eq!(package.external_id, 303);
+    assert_eq!(package.category, MembershipCategory::Token);
     assert_eq!(package.package_group_id, "membership-package-group-month");
     assert_eq!(package.plan_id, "membership-plan-pro");
     assert_eq!(package.price_amount, "6990");
@@ -248,6 +284,7 @@ fn validates_membership_package_catalog_shape_and_prices() {
     assert!(MembershipPackageDraft::new(
         "100001",
         "0",
+        MembershipCategory::Token,
         303,
         "membership-month-pro",
         "membership-package-group-month",
@@ -268,6 +305,7 @@ fn validates_membership_package_catalog_shape_and_prices() {
     assert!(MembershipPackageDraft::new(
         "100001",
         "0",
+        MembershipCategory::Token,
         303,
         "membership-month-pro",
         "membership-package-group-month",

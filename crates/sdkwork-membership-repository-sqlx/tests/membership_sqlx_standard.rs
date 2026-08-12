@@ -159,7 +159,8 @@ fn membership_package_discount_column_is_persisted_and_validated() {
         "the 0002 down migration must remove the discount column"
     );
     assert!(
-        PACKAGE_DISCOUNT_MIGRATION_DOWN.contains("DROP CONSTRAINT IF EXISTS ck_membership_package_discount_range"),
+        PACKAGE_DISCOUNT_MIGRATION_DOWN
+            .contains("DROP CONSTRAINT IF EXISTS ck_membership_package_discount_range"),
         "the 0002 down migration must drop the discount range constraint"
     );
 }

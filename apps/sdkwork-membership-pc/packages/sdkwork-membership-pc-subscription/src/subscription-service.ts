@@ -462,7 +462,7 @@ export function createSdkworkSubscriptionService(
     try {
       const membershipAppService = resolveMembershipAppService();
       const payload = await membershipAppService.memberships.packageGroups.list(
-        createSdkworkMembershipListQuery(1, 200),
+        createSdkworkMembershipListQuery(1, 200, "token"),
       );
       const groups = unwrapSdkworkMembershipPageItems<RemoteMembershipPackageGroup>(payload);
       return sortPackageGroups(groups.map(mapPackageGroup));

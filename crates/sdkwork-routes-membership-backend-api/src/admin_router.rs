@@ -23,6 +23,7 @@ use sdkwork_membership_repository_sqlx::shared::{
     current_timestamp_string, normalize_optional_text,
 };
 use sdkwork_membership_repository_sqlx::{
+    admin_membership_catalog_meta, is_valid_membership_category,
     AdminMembershipPackageGroupMutation, AdminMembershipPackageMutation,
     AdminMembershipPlanMutation, AdminMembershipStore, AdminMembershipSubject,
     AppMembershipBenefitItem, AppMembershipEntityIdGenerator, CreateAdminMembershipPackageCommand,
@@ -50,6 +51,7 @@ struct AdminMembershipState {
 
 #[derive(Debug, Deserialize)]
 struct AdminMembershipStatusQuery {
+    category: Option<String>,
     status: Option<String>,
     page: Option<i64>,
     page_size: Option<i64>,
@@ -58,6 +60,7 @@ struct AdminMembershipStatusQuery {
 
 #[derive(Debug, Deserialize)]
 struct AdminMembershipPackagesQuery {
+    category: Option<String>,
     package_group_id: Option<String>,
     plan_id: Option<String>,
     status: Option<String>,
@@ -89,8 +92,10 @@ struct AdminMembershipEntitlementsQuery {
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
 struct AdminMembershipPlanMutationRequest {
+    category: Option<String>,
     code: Option<String>,
     name: Option<String>,
+    #[serde(with = "sdkwork_utils_rust::serde_int64::option")]
     rank: Option<i64>,
     benefits: Option<Vec<AdminMembershipBenefitMutationRequest>>,
     status: Option<String>,
@@ -113,12 +118,14 @@ struct AdminMembershipBenefitMutationRequest {
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
 struct AdminMembershipPackageMutationRequest {
+    category: Option<String>,
     code: Option<String>,
     package_group_id: Option<String>,
     plan_id: Option<String>,
     name: Option<String>,
     price_amount: Option<String>,
     currency_code: Option<String>,
+    #[serde(with = "sdkwork_utils_rust::serde_int64::option")]
     duration_days: Option<i64>,
     discount: Option<i64>,
     status: Option<String>,
@@ -127,11 +134,14 @@ struct AdminMembershipPackageMutationRequest {
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
 struct AdminMembershipPackageGroupMutationRequest {
+    category: Option<String>,
     code: Option<String>,
     name: Option<String>,
     description: Option<String>,
     billing_cycle: Option<String>,
+    #[serde(with = "sdkwork_utils_rust::serde_int64::option")]
     duration_days: Option<i64>,
+    #[serde(with = "sdkwork_utils_rust::serde_int64::option")]
     sort_weight: Option<i64>,
     status: Option<String>,
 }
@@ -192,10 +202,31 @@ pub fn admin_membership_router_with_store(
             "/backend/v3/api/memberships/entitlements",
             get(list_entitlements),
         )
+        .route(
+            "/backend/v3/api/memberships/meta/catalog",
+            get(retrieve_catalog_meta),
+        )
         .with_state(AdminMembershipState {
             store,
             entity_id_generator,
         })
+}
+
+/// Serves the catalog enum reference (categories, statuses, billing cycles,
+/// benefit types) as the single source of truth for admin surface options.
+async fn retrieve_catalog_meta(
+    ctx: WebRequestContext,
+    State(_state): State<AdminMembershipState>,
+) -> axum::response::Response {
+    finish_api_json(
+        &ctx,
+        async {
+            Ok(ItemEnvelope {
+                item: admin_membership_catalog_meta(),
+            })
+        }
+        .await,
+    )
 }
 
 async fn list_plans(
@@ -211,6 +242,7 @@ async fn list_plans(
                 .store
                 .list_admin_membership_plans(ListAdminMembershipPlansQuery {
                     subject,
+                    category: normalize_optional_category_filter(params.category)?,
                     status: normalize_optional_status_filter(params.status)?,
                     page: params.page,
                     page_size: params.page_size,
@@ -345,6 +377,7 @@ async fn list_packages(
                 .store
                 .list_admin_membership_packages(ListAdminMembershipPackagesQuery {
                     subject,
+                    category: normalize_optional_category_filter(params.category)?,
                     package_group_id: normalize_optional_text(params.package_group_id),
                     plan_id: normalize_optional_text(params.plan_id),
                     status: normalize_optional_status_filter(params.status)?,
@@ -482,6 +515,7 @@ async fn list_package_groups(
                 .store
                 .list_admin_membership_package_groups(ListAdminMembershipPackageGroupsQuery {
                     subject,
+                    category: normalize_optional_category_filter(params.category)?,
                     status: normalize_optional_status_filter(params.status)?,
                     page: params.page,
                     page_size: params.page_size,
@@ -783,6 +817,10 @@ fn normalize_plan_mutation(
     let code = normalize_code(request.code.as_deref(), "membership plan code")?;
     let benefits = normalize_plan_benefits(request.benefits)?;
     Ok(AdminMembershipPlanMutation {
+        category: normalize_membership_category(
+            request.category.as_deref(),
+            "membership plan category",
+        )?,
         name: normalize_required_text(
             request.name.as_deref(),
             "membership plan name",
@@ -885,6 +923,10 @@ fn normalize_package_mutation(
         ));
     }
     Ok(AdminMembershipPackageMutation {
+        category: normalize_membership_category(
+            request.category.as_deref(),
+            "membership package category",
+        )?,
         code: normalize_code(request.code.as_deref(), "membership package code")?,
         package_group_id: normalize_required_text(
             request.package_group_id.as_deref(),
@@ -912,13 +954,9 @@ fn normalize_package_mutation(
     })
 }
 
-fn normalize_package_discount(
-    value: Option<i64>,
-    field_name: &str,
-) -> Result<i64, ApiProblem> {
-    let discount = value.ok_or_else(|| {
-        ApiProblem::bad_request(format!("{field_name} is required"))
-    })?;
+fn normalize_package_discount(value: Option<i64>, field_name: &str) -> Result<i64, ApiProblem> {
+    let discount =
+        value.ok_or_else(|| ApiProblem::bad_request(format!("{field_name} is required")))?;
     if !(1..=100).contains(&discount) {
         return Err(ApiProblem::bad_request(format!(
             "{field_name} must be an integer between 1 and 100"
@@ -943,6 +981,10 @@ fn normalize_package_group_mutation(
         ));
     }
     Ok(AdminMembershipPackageGroupMutation {
+        category: normalize_membership_category(
+            request.category.as_deref(),
+            "membership package group category",
+        )?,
         code: normalize_code(request.code.as_deref(), "membership package group code")?,
         name: normalize_required_text(
             request.name.as_deref(),
@@ -1045,6 +1087,29 @@ fn normalize_money(value: Option<&str>, field_name: &str) -> Result<String, ApiP
         })
         .ok_or_else(|| ApiProblem::bad_request(format!("{field_name} is too large")))?;
     Ok(format!("{}.{:02}", cents / 100, cents.rem_euclid(100)))
+}
+
+fn normalize_membership_category(
+    value: Option<&str>,
+    field_name: &str,
+) -> Result<String, ApiProblem> {
+    let value = normalize_required_text(value, field_name, 32)?;
+    let normalized = value.trim().to_ascii_lowercase();
+    if is_valid_membership_category(&normalized) {
+        Ok(normalized)
+    } else {
+        Err(ApiProblem::bad_request(format!(
+            "{field_name} must be token or community"
+        )))
+    }
+}
+
+fn normalize_optional_category_filter(value: Option<String>) -> Result<Option<String>, ApiProblem> {
+    match value {
+        None => Ok(None),
+        Some(raw) if raw.trim().is_empty() => Ok(None),
+        Some(raw) => normalize_membership_category(Some(&raw), "membership category").map(Some),
+    }
 }
 
 fn normalize_status(value: Option<&str>) -> Result<String, ApiProblem> {

@@ -45,6 +45,8 @@ export interface MembershipBackendListQuery {
   page?: number;
   pageSize?: number;
   status?: string;
+  /** Catalog classification filter (`token` Token Plan | `community` 圈子). */
+  category?: "token" | "community";
 }
 
 export interface MembershipMemberListQuery extends MembershipBackendListQuery {
@@ -120,10 +122,13 @@ export function createSdkworkMembershipBackendService(
 }
 
 function toListParams(query: MembershipBackendListQuery = {}) {
+  const category: "token" | "community" | undefined =
+    query.category === "community" || query.category === "token" ? query.category : undefined;
   return {
     page: normalizePage(query.page),
     pageSize: normalizePageSize(query.pageSize),
     status: normalizeOptionalText(query.status),
+    category,
   };
 }
 

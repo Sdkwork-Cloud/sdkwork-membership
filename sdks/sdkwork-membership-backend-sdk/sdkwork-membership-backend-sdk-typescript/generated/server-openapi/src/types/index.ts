@@ -29,3 +29,6 @@ export type { AdminMembershipPackageGroupListResponse } from './admin-membership
 export type { AdminMembershipMemberResponse } from './admin-membership-member-response';
 export type { AdminMembershipMemberListResponse } from './admin-membership-member-list-response';
 export type { AdminMembershipEntitlementListResponse } from './admin-membership-entitlement-list-response';
+export type { MembershipCategory } from './membership-category';
+export type { AdminMembershipCatalogMeta } from './admin-membership-catalog-meta';
+export type { AdminMembershipCatalogMetaResponse } from './admin-membership-catalog-meta-response';

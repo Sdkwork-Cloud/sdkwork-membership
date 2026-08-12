@@ -7,6 +7,90 @@ use serde::{Deserialize, Serialize};
 
 pub use crate::pagination::MembershipListQuery as AppMembershipListQuery;
 
+/// Membership category vocabulary (wire/storage values).
+///
+/// The catalog is classified into plan families: `token` (Token Plan
+/// compute-credit plans) and `community` (circle/community membership
+/// plans). Future categories are added here and in the matching database
+/// CHECK constraints via migration.
+pub const MEMBERSHIP_CATEGORIES: [&str; 2] = ["token", "community"];
+
+/// Returns true when `value` is a declared membership category.
+pub fn is_valid_membership_category(value: &str) -> bool {
+    MEMBERSHIP_CATEGORIES.contains(&value)
+}
+
+/// Catalog lifecycle status vocabulary shared by plan, package group, and
+/// package rows. `disabled` is the soft-delete marker written by admin
+/// delete commands.
+pub const MEMBERSHIP_CATALOG_STATUSES: [&str; 3] = ["active", "inactive", "disabled"];
+
+/// Billing / recurrence cycle vocabulary for package groups and packages.
+pub const MEMBERSHIP_BILLING_CYCLES: [&str; 6] =
+    ["once", "day", "week", "month", "quarter", "year"];
+
+/// Benefit type vocabulary for benefit definitions.
+pub const MEMBERSHIP_BENEFIT_TYPES: [&str; 5] = ["points", "feature", "queue", "quota", "service"];
+
+/// Subscription status vocabulary aligned with the domain state machine.
+pub const MEMBERSHIP_SUBSCRIPTION_STATUSES: [&str; 6] = [
+    "pending",
+    "pending_activation",
+    "active",
+    "grace_period",
+    "expired",
+    "cancelled",
+];
+
+/// Static catalog enum reference served to admin surfaces as the single
+/// source of truth for dropdown options (kept in sync with the database
+/// CHECK constraints).
+#[derive(Debug, Clone, Default, Serialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct AdminMembershipCatalogMeta {
+    pub categories: Vec<String>,
+    pub plan_statuses: Vec<String>,
+    pub package_statuses: Vec<String>,
+    pub package_group_statuses: Vec<String>,
+    pub billing_cycles: Vec<String>,
+    pub benefit_types: Vec<String>,
+    pub subscription_statuses: Vec<String>,
+}
+
+/// Builds the admin catalog enum reference.
+pub fn admin_membership_catalog_meta() -> AdminMembershipCatalogMeta {
+    AdminMembershipCatalogMeta {
+        categories: MEMBERSHIP_CATEGORIES
+            .iter()
+            .map(|value| (*value).to_owned())
+            .collect(),
+        plan_statuses: MEMBERSHIP_CATALOG_STATUSES
+            .iter()
+            .map(|value| (*value).to_owned())
+            .collect(),
+        package_statuses: MEMBERSHIP_CATALOG_STATUSES
+            .iter()
+            .map(|value| (*value).to_owned())
+            .collect(),
+        package_group_statuses: MEMBERSHIP_CATALOG_STATUSES
+            .iter()
+            .map(|value| (*value).to_owned())
+            .collect(),
+        billing_cycles: MEMBERSHIP_BILLING_CYCLES
+            .iter()
+            .map(|value| (*value).to_owned())
+            .collect(),
+        benefit_types: MEMBERSHIP_BENEFIT_TYPES
+            .iter()
+            .map(|value| (*value).to_owned())
+            .collect(),
+        subscription_statuses: MEMBERSHIP_SUBSCRIPTION_STATUSES
+            .iter()
+            .map(|value| (*value).to_owned())
+            .collect(),
+    }
+}
+
 pub type AppMembershipResult<T> = Result<T, CommerceServiceError>;
 
 pub type AppMembershipReadFuture<'a, T> =
@@ -68,6 +152,7 @@ pub struct AdminMembershipSubject {
 #[derive(Debug, Clone, Default, Deserialize, Serialize, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
 pub struct AppMembershipBenefitItem {
+    #[serde(with = "sdkwork_utils_rust::serde_int64")]
     pub id: i64,
     pub name: String,
     pub benefit_key: Option<String>,
@@ -75,7 +160,9 @@ pub struct AppMembershipBenefitItem {
     pub description: Option<String>,
     pub icon: Option<String>,
     pub claimed: bool,
+    #[serde(with = "sdkwork_utils_rust::serde_int64::option")]
     pub usage_limit: Option<i64>,
+    #[serde(with = "sdkwork_utils_rust::serde_int64::option")]
     pub used_count: Option<i64>,
     /// Raw text value of the benefit grant quantity. Used for non-numeric
     /// comparison table cells like "2K", "4K/8K", "8折算力元", "标准生成通道".
@@ -89,9 +176,14 @@ pub struct AppMembershipBenefitItem {
 #[derive(Debug, Clone, Default, Serialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub struct AppMembershipPlanItem {
+    #[serde(with = "sdkwork_utils_rust::serde_int64")]
     pub id: i64,
+    /// Catalog classification of this plan (`token` | `community`).
+    pub category: String,
     pub name: String,
+    #[serde(with = "sdkwork_utils_rust::serde_int64")]
     pub rank: i64,
+    #[serde(with = "sdkwork_utils_rust::serde_int64::option")]
     pub required_points: Option<i64>,
     pub description: Option<String>,
     pub icon: Option<String>,
@@ -101,16 +193,22 @@ pub struct AppMembershipPlanItem {
 #[derive(Debug, Clone, Default, Serialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub struct AppMembershipInfoResponse {
+    #[serde(with = "sdkwork_utils_rust::serde_int64")]
     pub plan_rank: i64,
     pub plan_name: String,
     pub membership_status: String,
     pub started_at: Option<String>,
     pub expires_at: Option<String>,
+    #[serde(with = "sdkwork_utils_rust::serde_int64::option")]
     pub remaining_days: Option<i64>,
+    #[serde(with = "sdkwork_utils_rust::serde_int64::option")]
     pub total_days: Option<i64>,
     pub total_spent: Option<String>,
+    #[serde(with = "sdkwork_utils_rust::serde_int64::option")]
     pub points: Option<i64>,
+    #[serde(with = "sdkwork_utils_rust::serde_int64::option")]
     pub growth_value: Option<i64>,
+    #[serde(with = "sdkwork_utils_rust::serde_int64::option")]
     pub upgrade_growth_value: Option<i64>,
     pub benefits: Vec<AppMembershipBenefitItem>,
 }
@@ -119,22 +217,31 @@ pub struct AppMembershipInfoResponse {
 #[serde(rename_all = "camelCase")]
 pub struct AppMembershipStatusResponse {
     pub active: bool,
+    #[serde(with = "sdkwork_utils_rust::serde_int64")]
     pub plan_rank: i64,
     pub expires_at: Option<String>,
+    #[serde(with = "sdkwork_utils_rust::serde_int64::option")]
     pub point_balance: Option<i64>,
 }
 
 #[derive(Debug, Clone, Default, Serialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub struct AppMembershipPackageItem {
+    #[serde(with = "sdkwork_utils_rust::serde_int64")]
     pub id: i64,
+    /// Catalog classification of this package (`token` | `community`),
+    /// snapshotted from its package group.
+    pub category: String,
     pub name: String,
     pub description: Option<String>,
     pub price: String,
     pub original_price: Option<String>,
+    #[serde(with = "sdkwork_utils_rust::serde_int64")]
     pub point_amount: i64,
+    #[serde(with = "sdkwork_utils_rust::serde_int64")]
     pub duration_days: i64,
     pub plan_name: Option<String>,
+    #[serde(with = "sdkwork_utils_rust::serde_int64")]
     pub sort_weight: i64,
     pub recommended: bool,
     pub tags: Vec<String>,
@@ -143,9 +250,13 @@ pub struct AppMembershipPackageItem {
 #[derive(Debug, Clone, Default, Serialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub struct AppMembershipPackageGroupItem {
+    #[serde(with = "sdkwork_utils_rust::serde_int64")]
     pub id: i64,
+    /// Catalog classification of this group (`token` | `community`).
+    pub category: String,
     pub name: String,
     pub description: Option<String>,
+    #[serde(with = "sdkwork_utils_rust::serde_int64")]
     pub sort_weight: i64,
     pub packages: Vec<AppMembershipPackageItem>,
 }
@@ -153,8 +264,11 @@ pub struct AppMembershipPackageGroupItem {
 #[derive(Debug, Clone, Default, Serialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub struct AppMembershipPointsBalanceResponse {
+    #[serde(with = "sdkwork_utils_rust::serde_int64")]
     pub points: i64,
+    #[serde(with = "sdkwork_utils_rust::serde_int64")]
     pub available_points: i64,
+    #[serde(with = "sdkwork_utils_rust::serde_int64")]
     pub frozen_points: i64,
 }
 
@@ -163,8 +277,11 @@ pub struct AppMembershipPointsBalanceResponse {
 pub struct AppMembershipPointsHistoryItem {
     pub id: String,
     pub change_type: String,
+    #[serde(with = "sdkwork_utils_rust::serde_int64")]
     pub change_amount: i64,
+    #[serde(with = "sdkwork_utils_rust::serde_int64::option")]
     pub before_balance: Option<i64>,
+    #[serde(with = "sdkwork_utils_rust::serde_int64")]
     pub after_balance: i64,
     pub source_type: String,
     pub remark: Option<String>,
@@ -176,26 +293,36 @@ pub struct AppMembershipPointsHistoryItem {
 pub struct AppMembershipDailyRewardStatusResponse {
     pub can_claim: bool,
     pub claimed_today: bool,
+    #[serde(with = "sdkwork_utils_rust::serde_int64")]
     pub consecutive_days: i64,
+    #[serde(with = "sdkwork_utils_rust::serde_int64")]
     pub total_days: i64,
 }
 
 #[derive(Debug, Clone, Default, Serialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub struct AppMembershipDailyRewardResponse {
+    #[serde(with = "sdkwork_utils_rust::serde_int64")]
     pub reward_points: i64,
     pub claimed_at: Option<String>,
+    #[serde(with = "sdkwork_utils_rust::serde_int64")]
     pub consecutive_days: i64,
 }
 
 #[derive(Debug, Clone, Default, Serialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub struct AppMembershipPrivilegeUsageResponse {
+    #[serde(with = "sdkwork_utils_rust::serde_int64")]
     pub speed_up_used: i64,
+    #[serde(with = "sdkwork_utils_rust::serde_int64")]
     pub speed_up_limit: i64,
+    #[serde(with = "sdkwork_utils_rust::serde_int64")]
     pub priority_queue_used: i64,
+    #[serde(with = "sdkwork_utils_rust::serde_int64")]
     pub priority_queue_limit: i64,
+    #[serde(with = "sdkwork_utils_rust::serde_int64")]
     pub exclusive_model_used: i64,
+    #[serde(with = "sdkwork_utils_rust::serde_int64")]
     pub exclusive_model_limit: i64,
 }
 
@@ -245,10 +372,13 @@ pub struct FulfillMembershipPurchaseOutcome {
 pub struct AppMembershipPurchaseOutcome {
     pub request_no: String,
     pub order_id: String,
+    #[serde(with = "sdkwork_utils_rust::serde_int64")]
     pub package_id: i64,
     pub package_name: String,
     pub amount: String,
+    #[serde(with = "sdkwork_utils_rust::serde_int64")]
     pub duration_days: i64,
+    #[serde(with = "sdkwork_utils_rust::serde_int64")]
     pub target_plan_rank: i64,
     pub target_plan_name: String,
     pub status: String,
@@ -258,19 +388,28 @@ pub struct AppMembershipPurchaseOutcome {
 #[serde(rename_all = "camelCase")]
 pub struct AdminMembershipPlanItem {
     pub id: String,
+    /// Catalog classification (`token` | `community`).
+    pub category: String,
     pub code: String,
     pub name: String,
+    #[serde(with = "sdkwork_utils_rust::serde_int64")]
     pub rank: i64,
     pub benefits: Vec<AppMembershipBenefitItem>,
     pub status: String,
+    pub created_at: String,
+    pub updated_at: String,
 }
 
 #[derive(Debug, Clone, Default, Serialize, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
 pub struct AdminMembershipPackageItem {
     pub id: String,
+    /// Catalog classification (`token` | `community`), consistent with the
+    /// package's group and plan.
+    pub category: String,
     /// Backend-assigned package external id (the `packageId` order creation
     /// resolves by external id).
+    #[serde(with = "sdkwork_utils_rust::serde_int64")]
     pub external_id: i64,
     pub code: String,
     pub package_group_id: String,
@@ -278,20 +417,27 @@ pub struct AdminMembershipPackageItem {
     pub name: String,
     pub price_amount: String,
     pub currency_code: String,
+    #[serde(with = "sdkwork_utils_rust::serde_int64")]
     pub duration_days: i64,
     pub discount: i64,
     pub status: String,
+    pub created_at: String,
+    pub updated_at: String,
 }
 
 #[derive(Debug, Clone, Default, Serialize, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
 pub struct AdminMembershipPackageGroupItem {
     pub id: String,
+    /// Catalog classification (`token` | `community`).
+    pub category: String,
     pub code: String,
     pub name: String,
     pub description: Option<String>,
     pub billing_cycle: String,
+    #[serde(with = "sdkwork_utils_rust::serde_int64")]
     pub duration_days: i64,
+    #[serde(with = "sdkwork_utils_rust::serde_int64")]
     pub sort_weight: i64,
     pub status: String,
 }
@@ -321,6 +467,7 @@ pub struct AdminMembershipEntitlementItem {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ListAdminMembershipPlansQuery {
     pub subject: AdminMembershipSubject,
+    pub category: Option<String>,
     pub status: Option<String>,
     pub page: Option<i64>,
     pub page_size: Option<i64>,
@@ -330,6 +477,7 @@ pub struct ListAdminMembershipPlansQuery {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ListAdminMembershipPackagesQuery {
     pub subject: AdminMembershipSubject,
+    pub category: Option<String>,
     pub package_group_id: Option<String>,
     pub plan_id: Option<String>,
     pub status: Option<String>,
@@ -341,6 +489,7 @@ pub struct ListAdminMembershipPackagesQuery {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ListAdminMembershipPackageGroupsQuery {
     pub subject: AdminMembershipSubject,
+    pub category: Option<String>,
     pub status: Option<String>,
     pub page: Option<i64>,
     pub page_size: Option<i64>,
@@ -461,7 +610,9 @@ pub struct FeatureAccessCheckQuery {
 pub struct FeatureAccessCheckOutcome {
     pub allowed: bool,
     pub active: bool,
+    #[serde(with = "sdkwork_utils_rust::serde_int64")]
     pub current_rank: i64,
+    #[serde(with = "sdkwork_utils_rust::serde_int64")]
     pub required_rank: i64,
     pub status: String,
     pub expires_at: Option<String>,
@@ -487,6 +638,7 @@ pub struct ListAdminMembershipEntitlementsQuery {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct AdminMembershipPlanMutation {
+    pub category: String,
     pub code: String,
     pub name: String,
     pub rank: i64,
@@ -496,6 +648,7 @@ pub struct AdminMembershipPlanMutation {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct AdminMembershipPackageMutation {
+    pub category: String,
     pub code: String,
     pub package_group_id: String,
     pub plan_id: String,
@@ -509,6 +662,7 @@ pub struct AdminMembershipPackageMutation {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct AdminMembershipPackageGroupMutation {
+    pub category: String,
     pub code: String,
     pub name: String,
     pub description: Option<String>,

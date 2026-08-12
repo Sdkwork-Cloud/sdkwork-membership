@@ -15,17 +15,16 @@ use axum::{Json, Router};
 use serde::Deserialize;
 use sqlx::PgPool;
 
-use crate::response::{
-    finish_api_created, finish_api_json, item_envelope, ApiProblem, ApiResult,
-};
+use crate::response::{finish_api_created, finish_api_json, item_envelope, ApiProblem, ApiResult};
 use crate::subject::numeric_runtime_subject_from_context;
 use sdkwork_membership_repository_sqlx::shared::{
     current_timestamp_string, normalize_optional_text,
 };
 use sdkwork_membership_repository_sqlx::{
-    AppMembershipEntityIdGenerator, AppMembershipListQuery, AppMembershipPointsHistoryQuery,
-    AppMembershipPurchaseOutcome, AppMembershipResult, AppMembershipStore, AppMembershipSubject,
-    FeatureAccessCheckQuery, PostgresCommerceMembershipStore, SubmitMembershipPurchaseCommand,
+    is_valid_membership_category, AppMembershipEntityIdGenerator, AppMembershipListQuery,
+    AppMembershipPointsHistoryQuery, AppMembershipPurchaseOutcome, AppMembershipResult,
+    AppMembershipStore, AppMembershipSubject, FeatureAccessCheckQuery,
+    PostgresCommerceMembershipStore, SubmitMembershipPurchaseCommand,
 };
 use sdkwork_web_core::WebRequestContext;
 
@@ -38,6 +37,8 @@ struct AppMembershipState {
 
 #[derive(Debug, Deserialize)]
 struct MembershipCatalogQuery {
+    category: Option<String>,
+    #[serde(with = "sdkwork_utils_rust::serde_int64::option")]
     plan_id: Option<i64>,
     recommended_only: Option<bool>,
     page: Option<i64>,
@@ -48,6 +49,7 @@ struct MembershipCatalogQuery {
 
 #[derive(Debug, Deserialize)]
 struct MembershipBenefitQuery {
+    #[serde(with = "sdkwork_utils_rust::serde_int64::option")]
     plan_id: Option<i64>,
     page: Option<i64>,
     #[serde(rename = "page_size")]
@@ -57,7 +59,10 @@ struct MembershipBenefitQuery {
 
 #[derive(Debug, Deserialize)]
 struct MembershipPackagesQuery {
+    category: Option<String>,
+    #[serde(with = "sdkwork_utils_rust::serde_int64::option")]
     package_group_id: Option<i64>,
+    #[serde(with = "sdkwork_utils_rust::serde_int64::option")]
     plan_id: Option<i64>,
     page: Option<i64>,
     #[serde(rename = "page_size")]
@@ -76,6 +81,7 @@ struct MembershipPointsHistoryQuery {
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
 struct SubmitMembershipPurchaseRequest {
+    #[serde(with = "sdkwork_utils_rust::serde_int64")]
     package_id: i64,
     order_id: String,
     request_no: String,
@@ -104,7 +110,36 @@ fn list_query_from_params(
         page,
         page_size,
         cursor: normalize_optional_text(cursor),
+        category: None,
     }
+}
+
+fn list_query_with_category(
+    category: Option<String>,
+    page: Option<i64>,
+    page_size: Option<i64>,
+    cursor: Option<String>,
+) -> Result<AppMembershipListQuery, ApiProblem> {
+    let category = match category {
+        None => None,
+        Some(raw) if raw.trim().is_empty() => None,
+        Some(raw) => {
+            let normalized = raw.trim().to_ascii_lowercase();
+            if is_valid_membership_category(&normalized) {
+                Some(normalized)
+            } else {
+                return Err(ApiProblem::bad_request(
+                    "membership category must be token or community",
+                ));
+            }
+        }
+    };
+    Ok(AppMembershipListQuery {
+        page,
+        page_size,
+        cursor: normalize_optional_text(cursor),
+        category,
+    })
 }
 
 #[allow(dead_code)]
@@ -230,12 +265,15 @@ async fn fetch_plans(
         &ctx,
         async {
             let catalog_subject = resolve_optional_membership_subject(&ctx);
+            let list_query = list_query_with_category(
+                query.category,
+                query.page,
+                query.page_size,
+                query.cursor,
+            )?;
             let data = state
                 .store
-                .load_plans(
-                    catalog_subject,
-                    list_query_from_params(query.page, query.page_size, query.cursor),
-                )
+                .load_plans(catalog_subject, list_query)
                 .await
                 .map_err(|e| {
                     ApiProblem::from_service("membership plans read model is unavailable", e)
@@ -281,13 +319,19 @@ async fn fetch_package_groups(
         &ctx,
         async {
             let catalog_subject = resolve_optional_membership_subject(&ctx);
+            let list_query = list_query_with_category(
+                query.category,
+                query.page,
+                query.page_size,
+                query.cursor,
+            )?;
             let data = state
                 .store
                 .load_package_groups(
                     catalog_subject,
                     query.plan_id,
                     query.recommended_only.unwrap_or(false),
-                    list_query_from_params(query.page, query.page_size, query.cursor),
+                    list_query,
                 )
                 .await
                 .map_err(|e| {
@@ -338,13 +382,19 @@ async fn fetch_package_group_packages(
         &ctx,
         async {
             let catalog_subject = resolve_optional_membership_subject(&ctx);
+            let list_query = list_query_with_category(
+                query.category,
+                query.page,
+                query.page_size,
+                query.cursor,
+            )?;
             let data = state
                 .store
                 .load_packages(
                     catalog_subject,
                     Some(package_group_id),
                     query.plan_id,
-                    list_query_from_params(query.page, query.page_size, query.cursor),
+                    list_query,
                 )
                 .await
                 .map_err(|e| {
@@ -365,13 +415,19 @@ async fn fetch_packages(
         &ctx,
         async {
             let catalog_subject = resolve_optional_membership_subject(&ctx);
+            let list_query = list_query_with_category(
+                query.category,
+                query.page,
+                query.page_size,
+                query.cursor,
+            )?;
             let data = state
                 .store
                 .load_packages(
                     catalog_subject,
                     query.package_group_id,
                     query.plan_id,
-                    list_query_from_params(query.page, query.page_size, query.cursor),
+                    list_query,
                 )
                 .await
                 .map_err(|e| {
@@ -563,6 +619,7 @@ async fn claim_daily_reward(
 #[serde(rename_all = "camelCase")]
 struct FeatureAccessCheckRequest {
     feature_code: Option<String>,
+    #[serde(with = "sdkwork_utils_rust::serde_int64::option")]
     required_level: Option<i64>,
 }
 
@@ -571,7 +628,7 @@ async fn check_feature_access(
     State(state): State<AppMembershipState>,
     Json(request): Json<FeatureAccessCheckRequest>,
 ) -> axum::response::Response {
-    finish_api_json(
+    finish_api_created(
         &ctx,
         async {
             let subject = resolve_required_membership_subject(&state, &ctx)?;
@@ -584,10 +641,7 @@ async fn check_feature_access(
                 })
                 .await
                 .map_err(|e| {
-                    ApiProblem::from_service(
-                        "membership feature access check is unavailable",
-                        e,
-                    )
+                    ApiProblem::from_service("membership feature access check is unavailable", e)
                 })
                 .map(item_envelope)
         }

@@ -32,9 +32,7 @@ export const APP_MEMBERSHIP_METHOD_TREE = {
       usage: { retrieve: true },
       speedUps: { create: true },
     },
-    access: {
-      checks: { create: true },
-    },
+    accessChecks: { create: true },
   },
 } as const;
 

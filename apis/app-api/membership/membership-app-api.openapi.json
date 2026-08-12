@@ -261,8 +261,10 @@
             "in": "query",
             "required": false,
             "schema": {
-              "type": "integer",
-              "format": "int64"
+              "type": "string",
+              "format": "int64",
+              "pattern": "^-?[0-9]+$",
+              "x-sdkwork-int64-string": true
             },
             "description": "Filter catalog results by membership plan rank (matches AppMembershipPlanItem.id)."
           },
@@ -379,6 +381,14 @@
         "summary": "Memberships plans list.",
         "operationId": "plans.list",
         "parameters": [
+          {
+            "name": "category",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/MembershipCategory"
+            }
+          },
           {
             "name": "status",
             "in": "query",
@@ -522,6 +532,14 @@
         "operationId": "packageGroups.list",
         "parameters": [
           {
+            "name": "category",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/MembershipCategory"
+            }
+          },
+          {
             "name": "status",
             "in": "query",
             "required": false,
@@ -555,8 +573,10 @@
             "in": "query",
             "required": false,
             "schema": {
-              "type": "integer",
-              "format": "int64"
+              "type": "string",
+              "format": "int64",
+              "pattern": "^-?[0-9]+$",
+              "x-sdkwork-int64-string": true
             },
             "description": "Filter catalog results by membership plan rank (matches AppMembershipPlanItem.id)."
           },
@@ -837,8 +857,10 @@
             "in": "query",
             "required": false,
             "schema": {
-              "type": "integer",
-              "format": "int64"
+              "type": "string",
+              "format": "int64",
+              "pattern": "^-?[0-9]+$",
+              "x-sdkwork-int64-string": true
             },
             "description": "Filter catalog results by membership plan rank (matches AppMembershipPlanItem.id)."
           },
@@ -966,6 +988,14 @@
         "operationId": "packages.list",
         "parameters": [
           {
+            "name": "category",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/MembershipCategory"
+            }
+          },
+          {
             "name": "status",
             "in": "query",
             "required": false,
@@ -999,8 +1029,10 @@
             "in": "query",
             "required": false,
             "schema": {
-              "type": "integer",
-              "format": "int64"
+              "type": "string",
+              "format": "int64",
+              "pattern": "^-?[0-9]+$",
+              "x-sdkwork-int64-string": true
             },
             "description": "Filter packages by package group external id."
           },
@@ -1009,8 +1041,10 @@
             "in": "query",
             "required": false,
             "schema": {
-              "type": "integer",
-              "format": "int64"
+              "type": "string",
+              "format": "int64",
+              "pattern": "^-?[0-9]+$",
+              "x-sdkwork-int64-string": true
             },
             "description": "Filter catalog results by membership plan rank (matches AppMembershipPlanItem.id)."
           },
@@ -2281,42 +2315,9 @@
           "memberships"
         ],
         "summary": "Check whether the current member level grants access to a feature.",
-        "operationId": "memberships.access.checks.create",
+        "operationId": "accessChecks.create",
         "parameters": [],
         "responses": {
-          "200": {
-            "description": "Success",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "allOf": [
-                    {
-                      "$ref": "#/components/schemas/SdkWorkApiResponse"
-                    },
-                    {
-                      "type": "object",
-                      "required": [
-                        "data"
-                      ],
-                      "properties": {
-                        "data": {
-                          "type": "object",
-                          "required": [
-                            "item"
-                          ],
-                          "properties": {
-                            "item": {
-                              "$ref": "#/components/schemas/MembershipFeatureAccessCheckResult"
-                            }
-                          }
-                        }
-                      }
-                    }
-                  ]
-                }
-              }
-            }
-          },
           "400": {
             "description": "Bad request",
             "content": {
@@ -2353,6 +2354,39 @@
               "application/problem+json": {
                 "schema": {
                   "$ref": "#/components/schemas/ProblemDetail"
+                }
+              }
+            }
+          },
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/SdkWorkApiResponse"
+                    },
+                    {
+                      "type": "object",
+                      "required": [
+                        "data"
+                      ],
+                      "properties": {
+                        "data": {
+                          "type": "object",
+                          "required": [
+                            "item"
+                          ],
+                          "properties": {
+                            "item": {
+                              "$ref": "#/components/schemas/MembershipFeatureAccessCheckResult"
+                            }
+                          }
+                        }
+                      }
+                    }
+                  ]
                 }
               }
             }
@@ -2670,8 +2704,10 @@
             ]
           },
           "packageId": {
-            "type": "integer",
-            "format": "int64"
+            "type": "string",
+            "format": "int64",
+            "pattern": "^-?[0-9]+$",
+            "x-sdkwork-int64-string": true
           },
           "orderId": {
             "type": "string",
@@ -2701,8 +2737,10 @@
         "description": "Membership benefit item.",
         "properties": {
           "id": {
-            "type": "integer",
-            "format": "int64"
+            "type": "string",
+            "format": "int64",
+            "pattern": "^-?[0-9]+$",
+            "x-sdkwork-int64-string": true
           },
           "name": {
             "type": "string"
@@ -2723,16 +2761,20 @@
             "type": "boolean"
           },
           "usageLimit": {
-            "type": "integer",
-            "format": "int64"
+            "type": "string",
+            "format": "int64",
+            "pattern": "^-?[0-9]+$",
+            "x-sdkwork-int64-string": true
           },
           "displayValue": {
             "type": "string",
             "description": "Raw text value for non-numeric benefit display (e.g. 2K, 4K/8K, 8折算力元). Present when grant_quantity is not a pure number."
           },
           "usedCount": {
-            "type": "integer",
-            "format": "int64"
+            "type": "string",
+            "format": "int64",
+            "pattern": "^-?[0-9]+$",
+            "x-sdkwork-int64-string": true
           }
         }
       },
@@ -2740,6 +2782,7 @@
         "type": "object",
         "additionalProperties": false,
         "required": [
+          "category",
           "id",
           "name",
           "rank"
@@ -2747,19 +2790,25 @@
         "description": "Membership plan item.",
         "properties": {
           "id": {
-            "type": "integer",
-            "format": "int64"
+            "type": "string",
+            "format": "int64",
+            "pattern": "^-?[0-9]+$",
+            "x-sdkwork-int64-string": true
           },
           "name": {
             "type": "string"
           },
           "rank": {
-            "type": "integer",
-            "format": "int64"
+            "type": "string",
+            "format": "int64",
+            "pattern": "^-?[0-9]+$",
+            "x-sdkwork-int64-string": true
           },
           "requiredPoints": {
-            "type": "integer",
-            "format": "int64"
+            "type": "string",
+            "format": "int64",
+            "pattern": "^-?[0-9]+$",
+            "x-sdkwork-int64-string": true
           },
           "description": {
             "type": "string"
@@ -2769,6 +2818,9 @@
           },
           "badge": {
             "type": "string"
+          },
+          "category": {
+            "$ref": "#/components/schemas/MembershipCategory"
           }
         }
       },
@@ -2784,8 +2836,10 @@
         "description": "Membership info response.",
         "properties": {
           "planRank": {
-            "type": "integer",
-            "format": "int64"
+            "type": "string",
+            "format": "int64",
+            "pattern": "^-?[0-9]+$",
+            "x-sdkwork-int64-string": true
           },
           "planName": {
             "type": "string"
@@ -2800,27 +2854,37 @@
             "type": "string"
           },
           "remainingDays": {
-            "type": "integer",
-            "format": "int64"
+            "type": "string",
+            "format": "int64",
+            "pattern": "^-?[0-9]+$",
+            "x-sdkwork-int64-string": true
           },
           "totalDays": {
-            "type": "integer",
-            "format": "int64"
+            "type": "string",
+            "format": "int64",
+            "pattern": "^-?[0-9]+$",
+            "x-sdkwork-int64-string": true
           },
           "totalSpent": {
             "type": "string"
           },
           "points": {
-            "type": "integer",
-            "format": "int64"
+            "type": "string",
+            "format": "int64",
+            "pattern": "^-?[0-9]+$",
+            "x-sdkwork-int64-string": true
           },
           "growthValue": {
-            "type": "integer",
-            "format": "int64"
+            "type": "string",
+            "format": "int64",
+            "pattern": "^-?[0-9]+$",
+            "x-sdkwork-int64-string": true
           },
           "upgradeGrowthValue": {
-            "type": "integer",
-            "format": "int64"
+            "type": "string",
+            "format": "int64",
+            "pattern": "^-?[0-9]+$",
+            "x-sdkwork-int64-string": true
           },
           "benefits": {
             "type": "array",
@@ -2843,15 +2907,19 @@
             "type": "boolean"
           },
           "planRank": {
-            "type": "integer",
-            "format": "int64"
+            "type": "string",
+            "format": "int64",
+            "pattern": "^-?[0-9]+$",
+            "x-sdkwork-int64-string": true
           },
           "expiresAt": {
             "type": "string"
           },
           "pointBalance": {
-            "type": "integer",
-            "format": "int64"
+            "type": "string",
+            "format": "int64",
+            "pattern": "^-?[0-9]+$",
+            "x-sdkwork-int64-string": true
           }
         }
       },
@@ -2859,6 +2927,7 @@
         "type": "object",
         "additionalProperties": false,
         "required": [
+          "category",
           "id",
           "name",
           "price",
@@ -2871,8 +2940,10 @@
         "description": "Membership package item.",
         "properties": {
           "id": {
-            "type": "integer",
-            "format": "int64"
+            "type": "string",
+            "format": "int64",
+            "pattern": "^-?[0-9]+$",
+            "x-sdkwork-int64-string": true
           },
           "name": {
             "type": "string"
@@ -2887,19 +2958,25 @@
             "type": "string"
           },
           "pointAmount": {
-            "type": "integer",
-            "format": "int64"
+            "type": "string",
+            "format": "int64",
+            "pattern": "^-?[0-9]+$",
+            "x-sdkwork-int64-string": true
           },
           "durationDays": {
-            "type": "integer",
-            "format": "int64"
+            "type": "string",
+            "format": "int64",
+            "pattern": "^-?[0-9]+$",
+            "x-sdkwork-int64-string": true
           },
           "planName": {
             "type": "string"
           },
           "sortWeight": {
-            "type": "integer",
-            "format": "int64"
+            "type": "string",
+            "format": "int64",
+            "pattern": "^-?[0-9]+$",
+            "x-sdkwork-int64-string": true
           },
           "recommended": {
             "type": "boolean"
@@ -2909,6 +2986,9 @@
             "items": {
               "type": "string"
             }
+          },
+          "category": {
+            "$ref": "#/components/schemas/MembershipCategory"
           }
         }
       },
@@ -2916,6 +2996,7 @@
         "type": "object",
         "additionalProperties": false,
         "required": [
+          "category",
           "id",
           "name",
           "sortWeight",
@@ -2924,8 +3005,10 @@
         "description": "Membership package group item.",
         "properties": {
           "id": {
-            "type": "integer",
-            "format": "int64"
+            "type": "string",
+            "format": "int64",
+            "pattern": "^-?[0-9]+$",
+            "x-sdkwork-int64-string": true
           },
           "name": {
             "type": "string"
@@ -2934,14 +3017,19 @@
             "type": "string"
           },
           "sortWeight": {
-            "type": "integer",
-            "format": "int64"
+            "type": "string",
+            "format": "int64",
+            "pattern": "^-?[0-9]+$",
+            "x-sdkwork-int64-string": true
           },
           "packages": {
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/AppMembershipPackageItem"
             }
+          },
+          "category": {
+            "$ref": "#/components/schemas/MembershipCategory"
           }
         }
       },
@@ -2956,16 +3044,22 @@
         "description": "Membership points balance response.",
         "properties": {
           "points": {
-            "type": "integer",
-            "format": "int64"
+            "type": "string",
+            "format": "int64",
+            "pattern": "^-?[0-9]+$",
+            "x-sdkwork-int64-string": true
           },
           "availablePoints": {
-            "type": "integer",
-            "format": "int64"
+            "type": "string",
+            "format": "int64",
+            "pattern": "^-?[0-9]+$",
+            "x-sdkwork-int64-string": true
           },
           "frozenPoints": {
-            "type": "integer",
-            "format": "int64"
+            "type": "string",
+            "format": "int64",
+            "pattern": "^-?[0-9]+$",
+            "x-sdkwork-int64-string": true
           }
         }
       },
@@ -2988,16 +3082,22 @@
             "type": "string"
           },
           "changeAmount": {
-            "type": "integer",
-            "format": "int64"
+            "type": "string",
+            "format": "int64",
+            "pattern": "^-?[0-9]+$",
+            "x-sdkwork-int64-string": true
           },
           "beforeBalance": {
-            "type": "integer",
-            "format": "int64"
+            "type": "string",
+            "format": "int64",
+            "pattern": "^-?[0-9]+$",
+            "x-sdkwork-int64-string": true
           },
           "afterBalance": {
-            "type": "integer",
-            "format": "int64"
+            "type": "string",
+            "format": "int64",
+            "pattern": "^-?[0-9]+$",
+            "x-sdkwork-int64-string": true
           },
           "sourceType": {
             "type": "string"
@@ -3028,12 +3128,16 @@
             "type": "boolean"
           },
           "consecutiveDays": {
-            "type": "integer",
-            "format": "int64"
+            "type": "string",
+            "format": "int64",
+            "pattern": "^-?[0-9]+$",
+            "x-sdkwork-int64-string": true
           },
           "totalDays": {
-            "type": "integer",
-            "format": "int64"
+            "type": "string",
+            "format": "int64",
+            "pattern": "^-?[0-9]+$",
+            "x-sdkwork-int64-string": true
           }
         }
       },
@@ -3047,15 +3151,19 @@
         "description": "Membership daily reward response.",
         "properties": {
           "rewardPoints": {
-            "type": "integer",
-            "format": "int64"
+            "type": "string",
+            "format": "int64",
+            "pattern": "^-?[0-9]+$",
+            "x-sdkwork-int64-string": true
           },
           "claimedAt": {
             "type": "string"
           },
           "consecutiveDays": {
-            "type": "integer",
-            "format": "int64"
+            "type": "string",
+            "format": "int64",
+            "pattern": "^-?[0-9]+$",
+            "x-sdkwork-int64-string": true
           }
         }
       },
@@ -3073,28 +3181,40 @@
         "description": "Membership privilege usage response.",
         "properties": {
           "speedUpUsed": {
-            "type": "integer",
-            "format": "int64"
+            "type": "string",
+            "format": "int64",
+            "pattern": "^-?[0-9]+$",
+            "x-sdkwork-int64-string": true
           },
           "speedUpLimit": {
-            "type": "integer",
-            "format": "int64"
+            "type": "string",
+            "format": "int64",
+            "pattern": "^-?[0-9]+$",
+            "x-sdkwork-int64-string": true
           },
           "priorityQueueUsed": {
-            "type": "integer",
-            "format": "int64"
+            "type": "string",
+            "format": "int64",
+            "pattern": "^-?[0-9]+$",
+            "x-sdkwork-int64-string": true
           },
           "priorityQueueLimit": {
-            "type": "integer",
-            "format": "int64"
+            "type": "string",
+            "format": "int64",
+            "pattern": "^-?[0-9]+$",
+            "x-sdkwork-int64-string": true
           },
           "exclusiveModelUsed": {
-            "type": "integer",
-            "format": "int64"
+            "type": "string",
+            "format": "int64",
+            "pattern": "^-?[0-9]+$",
+            "x-sdkwork-int64-string": true
           },
           "exclusiveModelLimit": {
-            "type": "integer",
-            "format": "int64"
+            "type": "string",
+            "format": "int64",
+            "pattern": "^-?[0-9]+$",
+            "x-sdkwork-int64-string": true
           }
         }
       },
@@ -3123,8 +3243,10 @@
             "description": "Commerce order UUID (canonical resource identifier)."
           },
           "packageId": {
-            "type": "integer",
-            "format": "int64"
+            "type": "string",
+            "format": "int64",
+            "pattern": "^-?[0-9]+$",
+            "x-sdkwork-int64-string": true
           },
           "packageName": {
             "type": "string"
@@ -3133,12 +3255,16 @@
             "type": "string"
           },
           "durationDays": {
-            "type": "integer",
-            "format": "int64"
+            "type": "string",
+            "format": "int64",
+            "pattern": "^-?[0-9]+$",
+            "x-sdkwork-int64-string": true
           },
           "targetPlanRank": {
-            "type": "integer",
-            "format": "int64"
+            "type": "string",
+            "format": "int64",
+            "pattern": "^-?[0-9]+$",
+            "x-sdkwork-int64-string": true
           },
           "targetPlanName": {
             "type": "string"
@@ -3387,9 +3513,11 @@
             "description": "Registered feature code (ai_chat, image_generation, priority_speed_up, priority_queue, exclusive_model). Required when requiredLevel is omitted."
           },
           "requiredLevel": {
-            "type": "integer",
+            "description": "Explicit required member level; overrides the feature registry when provided.",
+            "type": "string",
             "format": "int64",
-            "description": "Explicit required member level; overrides the feature registry when provided."
+            "pattern": "^-?[0-9]+$",
+            "x-sdkwork-int64-string": true
           }
         }
       },
@@ -3412,12 +3540,16 @@
             "type": "boolean"
           },
           "currentLevel": {
-            "type": "integer",
-            "format": "int64"
+            "type": "string",
+            "format": "int64",
+            "pattern": "^-?[0-9]+$",
+            "x-sdkwork-int64-string": true
           },
           "requiredLevel": {
-            "type": "integer",
-            "format": "int64"
+            "type": "string",
+            "format": "int64",
+            "pattern": "^-?[0-9]+$",
+            "x-sdkwork-int64-string": true
           },
           "status": {
             "type": "string"
@@ -3429,6 +3561,14 @@
             "type": "string"
           }
         }
+      },
+      "MembershipCategory": {
+        "type": "string",
+        "enum": [
+          "token",
+          "community"
+        ],
+        "description": "Membership catalog classification. `token` covers Token Plan compute-credit plans; `community` covers circle/community membership plans. The vocabulary is extensible via migration."
       }
     }
   }

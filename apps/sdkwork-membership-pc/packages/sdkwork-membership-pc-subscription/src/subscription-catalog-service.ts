@@ -80,7 +80,7 @@ export interface SdkworkSubscriptionCatalogService {
   purchasePackage(input: SdkworkSubscriptionMutationInput): Promise<SdkworkSubscriptionPurchaseResult>;
 }
 
-const CATALOG_LIST_QUERY = createSdkworkMembershipListQuery(1, 200);
+const CATALOG_LIST_QUERY = createSdkworkMembershipListQuery(1, 200, "token");
 
 async function fetchBenefitsByRank(
   membershipAppService: SdkworkMembershipAppService,

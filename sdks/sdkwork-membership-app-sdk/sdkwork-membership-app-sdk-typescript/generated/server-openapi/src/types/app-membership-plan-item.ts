@@ -1,3 +1,5 @@
+import type { MembershipCategory } from './membership-category';
+
 /** Membership plan item. */
 export interface AppMembershipPlanItem {
   id: string;
@@ -7,4 +9,5 @@ export interface AppMembershipPlanItem {
   description?: string;
   icon?: string;
   badge?: string;
+  category: MembershipCategory;
 }

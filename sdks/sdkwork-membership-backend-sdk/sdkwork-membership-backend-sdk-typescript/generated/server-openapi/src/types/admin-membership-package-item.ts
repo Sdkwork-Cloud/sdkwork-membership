@@ -1,3 +1,5 @@
+import type { MembershipCategory } from './membership-category';
+
 export interface AdminMembershipPackageItem {
   id: string;
   code: string;
@@ -9,5 +11,8 @@ export interface AdminMembershipPackageItem {
   durationDays: string;
   /** Discount rate percentage: 100 means no discount, 90 means pay 90 percent of the price. */
   discount: number;
-  status: string;
+  status: 'active' | 'inactive' | 'disabled';
+  createdAt?: string;
+  updatedAt?: string;
+  category: MembershipCategory;
 }

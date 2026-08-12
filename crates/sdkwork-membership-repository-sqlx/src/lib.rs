@@ -9,6 +9,7 @@ mod types;
 pub use entity_id::TimestampMembershipEntityIdGenerator;
 pub use postgres::PostgresCommerceMembershipStore;
 pub use types::{
+    admin_membership_catalog_meta, is_valid_membership_category, AdminMembershipCatalogMeta,
     AdminMembershipEntitlementItem, AdminMembershipFuture, AdminMembershipMemberItem,
     AdminMembershipPackageGroupItem, AdminMembershipPackageGroupMutation,
     AdminMembershipPackageItem, AdminMembershipPackageMutation, AdminMembershipPlanItem,
@@ -25,9 +26,9 @@ pub use types::{
     CouponSubscriptionFulfillmentOutcome, CreateAdminMembershipPackageCommand,
     CreateAdminMembershipPackageGroupCommand, CreateAdminMembershipPlanCommand,
     DeleteAdminMembershipPackageCommand, DeleteAdminMembershipPackageGroupCommand,
-    DeleteAdminMembershipPlanCommand, FulfillMembershipPurchaseCommand,
-    FulfillMembershipPurchaseOutcome, FulfillPaidMembershipPurchaseCommand,
-    GrantCouponSubscriptionCommand, FeatureAccessCheckOutcome, FeatureAccessCheckQuery,
+    DeleteAdminMembershipPlanCommand, FeatureAccessCheckOutcome, FeatureAccessCheckQuery,
+    FulfillMembershipPurchaseCommand, FulfillMembershipPurchaseOutcome,
+    FulfillPaidMembershipPurchaseCommand, GrantCouponSubscriptionCommand,
     ListAdminMembershipEntitlementsQuery, ListAdminMembershipMembersQuery,
     ListAdminMembershipPackageGroupsQuery, ListAdminMembershipPackagesQuery,
     ListAdminMembershipPlansQuery, MembershipLifecycleSweepOutcome,

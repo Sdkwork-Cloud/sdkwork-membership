@@ -1,4 +1,5 @@
 import type { AppMembershipPackageItem } from './app-membership-package-item';
+import type { MembershipCategory } from './membership-category';
 
 /** Membership package group item. */
 export interface AppMembershipPackageGroupItem {
@@ -7,4 +8,5 @@ export interface AppMembershipPackageGroupItem {
   description?: string;
   sortWeight: string;
   packages: AppMembershipPackageItem[];
+  category: MembershipCategory;
 }

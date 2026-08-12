@@ -23,6 +23,14 @@
         "x-sdkwork-permission": "commerce.memberships.read",
         "parameters": [
           {
+            "name": "category",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/MembershipCategory"
+            }
+          },
+          {
             "name": "status",
             "in": "query",
             "required": false,
@@ -464,6 +472,14 @@
         "x-sdkwork-permission": "commerce.memberships.read",
         "parameters": [
           {
+            "name": "category",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/MembershipCategory"
+            }
+          },
+          {
             "name": "status",
             "in": "query",
             "required": false,
@@ -904,6 +920,14 @@
         "operationId": "packages.list",
         "x-sdkwork-permission": "commerce.memberships.read",
         "parameters": [
+          {
+            "name": "category",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/MembershipCategory"
+            }
+          },
           {
             "name": "package_group_id",
             "in": "query",
@@ -1845,6 +1869,102 @@
         "x-sdkwork-api-surface": "backend-api",
         "x-sdkwork-server-request-id": true
       }
+    },
+    "/backend/v3/api/memberships/meta/catalog": {
+      "get": {
+        "tags": [
+          "memberships"
+        ],
+        "summary": "Membership catalog enum reference.",
+        "operationId": "metaCatalog.retrieve",
+        "x-sdkwork-permission": "commerce.memberships.read",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminMembershipCatalogMetaResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetail"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetail"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetail"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetail"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetail"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetail"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "AuthToken": [],
+            "AccessToken": []
+          }
+        ],
+        "x-sdkwork-owner": "sdkwork-membership",
+        "x-sdkwork-api-authority": "sdkwork-membership-backend-api",
+        "x-sdkwork-domain": "commerce",
+        "x-sdkwork-resource": "memberships.meta",
+        "x-sdkwork-request-context": "WebRequestContext",
+        "x-sdkwork-api-surface": "backend-api",
+        "x-sdkwork-server-request-id": true
+      }
     }
   },
   "components": {
@@ -2125,8 +2245,10 @@
         ],
         "properties": {
           "id": {
-            "type": "integer",
-            "format": "int64"
+            "type": "string",
+            "format": "int64",
+            "pattern": "^-?[0-9]+$",
+            "x-sdkwork-int64-string": true
           },
           "name": {
             "type": "string"
@@ -2160,17 +2282,21 @@
           },
           "usageLimit": {
             "type": [
-              "integer",
+              "string",
               "null"
             ],
-            "format": "int64"
+            "format": "int64",
+            "pattern": "^-?[0-9]+$",
+            "x-sdkwork-int64-string": true
           },
           "usedCount": {
             "type": [
-              "integer",
+              "string",
               "null"
             ],
-            "format": "int64"
+            "format": "int64",
+            "pattern": "^-?[0-9]+$",
+            "x-sdkwork-int64-string": true
           }
         }
       },
@@ -2178,6 +2304,7 @@
         "type": "object",
         "additionalProperties": false,
         "required": [
+          "category",
           "id",
           "code",
           "name",
@@ -2196,8 +2323,10 @@
             "type": "string"
           },
           "rank": {
-            "type": "integer",
-            "format": "int64"
+            "type": "string",
+            "format": "int64",
+            "pattern": "^-?[0-9]+$",
+            "x-sdkwork-int64-string": true
           },
           "benefits": {
             "type": "array",
@@ -2206,7 +2335,23 @@
             }
           },
           "status": {
-            "type": "string"
+            "type": "string",
+            "enum": [
+              "active",
+              "inactive",
+              "disabled"
+            ]
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "category": {
+            "$ref": "#/components/schemas/MembershipCategory"
           }
         }
       },
@@ -2214,6 +2359,7 @@
         "type": "object",
         "additionalProperties": false,
         "required": [
+          "category",
           "id",
           "code",
           "packageGroupId",
@@ -2248,8 +2394,10 @@
             "type": "string"
           },
           "durationDays": {
-            "type": "integer",
-            "format": "int64"
+            "type": "string",
+            "format": "int64",
+            "pattern": "^-?[0-9]+$",
+            "x-sdkwork-int64-string": true
           },
           "discount": {
             "type": "integer",
@@ -2259,7 +2407,23 @@
             "description": "Discount rate percentage: 100 means no discount, 90 means pay 90 percent of the price."
           },
           "status": {
-            "type": "string"
+            "type": "string",
+            "enum": [
+              "active",
+              "inactive",
+              "disabled"
+            ]
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "category": {
+            "$ref": "#/components/schemas/MembershipCategory"
           }
         }
       },
@@ -2267,6 +2431,7 @@
         "type": "object",
         "additionalProperties": false,
         "required": [
+          "category",
           "id",
           "code",
           "name",
@@ -2295,15 +2460,27 @@
             "type": "string"
           },
           "durationDays": {
-            "type": "integer",
-            "format": "int64"
+            "type": "string",
+            "format": "int64",
+            "pattern": "^-?[0-9]+$",
+            "x-sdkwork-int64-string": true
           },
           "sortWeight": {
-            "type": "integer",
-            "format": "int64"
+            "type": "string",
+            "format": "int64",
+            "pattern": "^-?[0-9]+$",
+            "x-sdkwork-int64-string": true
           },
           "status": {
-            "type": "string"
+            "type": "string",
+            "enum": [
+              "active",
+              "inactive",
+              "disabled"
+            ]
+          },
+          "category": {
+            "$ref": "#/components/schemas/MembershipCategory"
           }
         }
       },
@@ -2375,6 +2552,7 @@
         "type": "object",
         "additionalProperties": false,
         "required": [
+          "category",
           "code",
           "name",
           "rank",
@@ -2390,8 +2568,10 @@
             "maxLength": 128
           },
           "rank": {
-            "type": "integer",
-            "format": "int64"
+            "type": "string",
+            "format": "int64",
+            "pattern": "^-?[0-9]+$",
+            "x-sdkwork-int64-string": true
           },
           "benefits": {
             "type": [
@@ -2403,7 +2583,15 @@
             }
           },
           "status": {
-            "type": "string"
+            "type": "string",
+            "enum": [
+              "active",
+              "inactive",
+              "disabled"
+            ]
+          },
+          "category": {
+            "$ref": "#/components/schemas/MembershipCategory"
           }
         }
       },
@@ -2411,6 +2599,7 @@
         "type": "object",
         "additionalProperties": false,
         "required": [
+          "category",
           "code",
           "name",
           "billingCycle",
@@ -2437,15 +2626,27 @@
             "type": "string"
           },
           "durationDays": {
-            "type": "integer",
-            "format": "int64"
+            "type": "string",
+            "format": "int64",
+            "pattern": "^-?[0-9]+$",
+            "x-sdkwork-int64-string": true
           },
           "sortWeight": {
-            "type": "integer",
-            "format": "int64"
+            "type": "string",
+            "format": "int64",
+            "pattern": "^-?[0-9]+$",
+            "x-sdkwork-int64-string": true
           },
           "status": {
-            "type": "string"
+            "type": "string",
+            "enum": [
+              "active",
+              "inactive",
+              "disabled"
+            ]
+          },
+          "category": {
+            "$ref": "#/components/schemas/MembershipCategory"
           }
         }
       },
@@ -2453,6 +2654,7 @@
         "type": "object",
         "additionalProperties": false,
         "required": [
+          "category",
           "code",
           "packageGroupId",
           "planId",
@@ -2485,8 +2687,10 @@
             "type": "string"
           },
           "durationDays": {
-            "type": "integer",
-            "format": "int64"
+            "type": "string",
+            "format": "int64",
+            "pattern": "^-?[0-9]+$",
+            "x-sdkwork-int64-string": true
           },
           "discount": {
             "type": "integer",
@@ -2496,7 +2700,15 @@
             "description": "Discount rate percentage: 100 means no discount, 90 means pay 90 percent of the price."
           },
           "status": {
-            "type": "string"
+            "type": "string",
+            "enum": [
+              "active",
+              "inactive",
+              "disabled"
+            ]
+          },
+          "category": {
+            "$ref": "#/components/schemas/MembershipCategory"
           }
         }
       },
@@ -2783,6 +2995,98 @@
                   },
                   "pageInfo": {
                     "$ref": "#/components/schemas/PageInfo"
+                  }
+                }
+              }
+            }
+          }
+        ]
+      },
+      "MembershipCategory": {
+        "type": "string",
+        "enum": [
+          "token",
+          "community"
+        ],
+        "description": "Membership catalog classification. `token` covers Token Plan compute-credit plans; `community` covers circle/community membership plans. The vocabulary is extensible via migration."
+      },
+      "AdminMembershipCatalogMeta": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "categories",
+          "planStatuses",
+          "packageStatuses",
+          "packageGroupStatuses",
+          "billingCycles",
+          "benefitTypes",
+          "subscriptionStatuses"
+        ],
+        "properties": {
+          "categories": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/MembershipCategory"
+            }
+          },
+          "planStatuses": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "packageStatuses": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "packageGroupStatuses": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "billingCycles": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "benefitTypes": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "subscriptionStatuses": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "AdminMembershipCatalogMetaResponse": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/SdkWorkApiResponse"
+          },
+          {
+            "type": "object",
+            "required": [
+              "data"
+            ],
+            "properties": {
+              "data": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "item"
+                ],
+                "properties": {
+                  "item": {
+                    "$ref": "#/components/schemas/AdminMembershipCatalogMeta"
                   }
                 }
               }

@@ -13,13 +13,15 @@
 -- previously garbled data from older seed versions.
 
 INSERT INTO membership_plan (
-  id, tenant_id, organization_id, plan_no, plan_code, name, rank, description, status, created_at, updated_at
+  id, tenant_id, organization_id, category, plan_no, plan_code, name, rank, description, status, created_at, updated_at
 ) VALUES
-  ('plan-free', '100001', '0', 'free', 'free', 'Free', 0, 'Experience core features with daily bonus compute credits.', 'active', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
-  ('plan-basic', '100001', '0', 'basic', 'basic', 'Basic', 1, 'For individual creators, unlock basic AI capabilities.', 'active', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
-  ('plan-standard', '100001', '0', 'standard', 'standard', 'Standard', 2, 'For professional creators, unlock all AI models.', 'active', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
-  ('plan-premium', '100001', '0', 'premium', 'premium', 'Premium', 3, 'For teams and power users, enjoy dedicated channels.', 'active', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
-  ('plan-super', '100001', '0', 'super', 'super', 'Super', 4, 'Ultimate tier with VIP queue, maximum quotas, and exclusive effects.', 'active', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP) ON CONFLICT (id) DO UPDATE SET
+  ('plan-free', '100001', '0', 'token', 'free', 'free', 'Free', 0, 'Experience core features with daily bonus compute credits.', 'active', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+  ('plan-basic', '100001', '0', 'token', 'basic', 'basic', 'Basic', 1, 'For individual creators, unlock basic AI capabilities.', 'active', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+  ('plan-standard', '100001', '0', 'token', 'standard', 'standard', 'Standard', 2, 'For professional creators, unlock all AI models.', 'active', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+  ('plan-premium', '100001', '0', 'token', 'premium', 'premium', 'Premium', 3, 'For teams and power users, enjoy dedicated channels.', 'active', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+  ('plan-super', '100001', '0', 'token', 'super', 'super', 'Super', 4, 'Ultimate tier with VIP queue, maximum quotas, and exclusive effects.', 'active', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+  ('plan-community-basic', '100001', '0', 'community', 'community-basic', 'community_basic', 'Community Basic', 1, 'Circle membership: join private communities, exclusive circle content and member-only events.', 'active', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP) ON CONFLICT (id) DO UPDATE SET
+  category = EXCLUDED.category,
   name = EXCLUDED.name,
   rank = EXCLUDED.rank,
   description = EXCLUDED.description,
@@ -33,7 +35,8 @@ INSERT INTO membership_plan_version (
   ('plan-basic-v1', '100001', '0', 'plan-basic', 'v1', 'Basic', NULL, 'published', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
   ('plan-standard-v1', '100001', '0', 'plan-standard', 'v1', 'Standard', NULL, 'published', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
   ('plan-premium-v1', '100001', '0', 'plan-premium', 'v1', 'Premium', NULL, 'published', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
-  ('plan-super-v1', '100001', '0', 'plan-super', 'v1', 'Super', NULL, 'published', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP) ON CONFLICT (id) DO UPDATE SET
+  ('plan-super-v1', '100001', '0', 'plan-super', 'v1', 'Super', NULL, 'published', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+  ('plan-community-basic-v1', '100001', '0', 'plan-community-basic', 'v1', 'Community Basic', NULL, 'published', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP) ON CONFLICT (id) DO UPDATE SET
   title = EXCLUDED.title,
   description = EXCLUDED.description,
   lifecycle_status = EXCLUDED.lifecycle_status,
@@ -177,12 +180,14 @@ INSERT INTO membership_plan_benefit (
 
 -- Package groups: 4 billing cycles (English defaults, locale files override)
 INSERT INTO membership_package_group (
-  id, tenant_id, organization_id, external_id, group_no, name, description, billing_cycle, duration_days, display_channel, sort_weight, status, created_at, updated_at
+  id, tenant_id, organization_id, category, external_id, group_no, name, description, billing_cycle, duration_days, display_channel, sort_weight, status, created_at, updated_at
 ) VALUES
-  ('package-group-annual', '100001', '0', 1, 'annual', 'Annual subscription', '3% off', 'year', 365, 'app', 1, 'active', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
-  ('package-group-monthly', '100001', '0', 2, 'monthly', 'Monthly subscription', '1% off', 'month', 30, 'app', 2, 'active', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
-  ('package-group-quarterly', '100001', '0', 3, 'quarterly', 'Quarterly subscription', '2% off', 'quarter', 90, 'app', 3, 'active', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
-  ('package-group-single', '100001', '0', 4, 'single', 'Single month purchase', NULL, 'month', 30, 'app', 4, 'active', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP) ON CONFLICT (id) DO UPDATE SET
+  ('package-group-annual', '100001', '0', 'token', 1, 'annual', 'Annual subscription', '3% off', 'year', 365, 'app', 1, 'active', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+  ('package-group-monthly', '100001', '0', 'token', 2, 'monthly', 'Monthly subscription', '1% off', 'month', 30, 'app', 2, 'active', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+  ('package-group-quarterly', '100001', '0', 'token', 3, 'quarterly', 'Quarterly subscription', '2% off', 'quarter', 90, 'app', 3, 'active', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+  ('package-group-single', '100001', '0', 'token', 4, 'single', 'Single month purchase', NULL, 'month', 30, 'app', 4, 'active', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+  ('package-group-community-annual', '100001', '0', 'community', 5, 'community-annual', 'Circle annual membership', 'Circle member annual plan', 'year', 365, 'app', 1, 'active', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP) ON CONFLICT (id) DO UPDATE SET
+  category = EXCLUDED.category,
   name = EXCLUDED.name,
   description = EXCLUDED.description,
   billing_cycle = EXCLUDED.billing_cycle,
@@ -193,24 +198,26 @@ INSERT INTO membership_package_group (
 
 -- Packages: 12 sellable packages (English defaults, locale files override)
 INSERT INTO membership_package (
-  id, tenant_id, organization_id, external_id, package_no, package_group_id, plan_id, plan_version_id, sku_id, name, description, price_amount, original_price_amount, currency_code, point_amount, duration_days, recurrence_cycle, sort_weight, recommended, status, created_at, updated_at
+  id, tenant_id, organization_id, category, external_id, package_no, package_group_id, plan_id, plan_version_id, sku_id, name, description, price_amount, original_price_amount, currency_code, point_amount, duration_days, recurrence_cycle, sort_weight, recommended, status, created_at, updated_at
 ) VALUES
-  ('package-basic-annual', '100001', '0', 101, 'basic-annual', 'package-group-annual', 'plan-basic', 'plan-basic-v1', 'sku-basic-annual', 'Basic - Annual', 'Annual subscription, auto-renew on expiry', '640', '660', 'CNY', 6400, 365, 'year', 1, 0, 'active', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
-  ('package-standard-annual', '100001', '0', 102, 'standard-annual', 'package-group-annual', 'plan-standard', 'plan-standard-v1', 'sku-standard-annual', 'Standard - Annual', 'Annual subscription, auto-renew on expiry', '1839', '1896', 'CNY', 18390, 365, 'year', 2, 1, 'active', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
-  ('package-premium-annual', '100001', '0', 103, 'premium-annual', 'package-group-annual', 'plan-premium', 'plan-premium-v1', 'sku-premium-annual', 'Premium - Annual', 'Annual subscription, auto-renew on expiry', '5040', '5196', 'CNY', 50400, 365, 'year', 3, 0, 'active', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
-  ('package-super-annual', '100001', '0', 104, 'super-annual', 'package-group-annual', 'plan-super', 'plan-super-v1', 'sku-super-annual', 'Super - Annual', 'Annual subscription, auto-renew on expiry', '12606', '12996', 'CNY', 126060, 365, 'year', 4, 0, 'active', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
-  ('package-basic-monthly', '100001', '0', 201, 'basic-monthly', 'package-group-monthly', 'plan-basic', 'plan-basic-v1', 'sku-basic-monthly', 'Basic - Monthly', 'Monthly subscription, auto-renew on expiry', '54', '55', 'CNY', 540, 30, 'month', 1, 0, 'active', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
-  ('package-standard-monthly', '100001', '0', 202, 'standard-monthly', 'package-group-monthly', 'plan-standard', 'plan-standard-v1', 'sku-standard-monthly', 'Standard - Monthly', 'Monthly subscription, auto-renew on expiry', '156', '158', 'CNY', 1560, 30, 'month', 2, 1, 'active', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
-  ('package-premium-monthly', '100001', '0', 203, 'premium-monthly', 'package-group-monthly', 'plan-premium', 'plan-premium-v1', 'sku-premium-monthly', 'Premium - Monthly', 'Monthly subscription, auto-renew on expiry', '429', '433', 'CNY', 4290, 30, 'month', 3, 0, 'active', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
-  ('package-super-monthly', '100001', '0', 204, 'super-monthly', 'package-group-monthly', 'plan-super', 'plan-super-v1', 'sku-super-monthly', 'Super - Monthly', 'Monthly subscription, auto-renew on expiry', '1072', '1083', 'CNY', 10720, 30, 'month', 4, 0, 'active', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
-  ('package-basic-quarterly', '100001', '0', 301, 'basic-quarterly', 'package-group-quarterly', 'plan-basic', 'plan-basic-v1', 'sku-basic-quarterly', 'Basic - Quarterly', 'Quarterly subscription, auto-renew on expiry', '162', '165', 'CNY', 1620, 90, 'quarter', 1, 0, 'active', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
-  ('package-standard-quarterly', '100001', '0', 302, 'standard-quarterly', 'package-group-quarterly', 'plan-standard', 'plan-standard-v1', 'sku-standard-quarterly', 'Standard - Quarterly', 'Quarterly subscription, auto-renew on expiry', '465', '474', 'CNY', 4650, 90, 'quarter', 2, 0, 'active', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
-  ('package-premium-quarterly', '100001', '0', 303, 'premium-quarterly', 'package-group-quarterly', 'plan-premium', 'plan-premium-v1', 'sku-premium-quarterly', 'Premium - Quarterly', 'Quarterly subscription, auto-renew on expiry', '1273', '1299', 'CNY', 12730, 90, 'quarter', 3, 0, 'active', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
-  ('package-super-quarterly', '100001', '0', 304, 'super-quarterly', 'package-group-quarterly', 'plan-super', 'plan-super-v1', 'sku-super-quarterly', 'Super - Quarterly', 'Quarterly subscription, auto-renew on expiry', '3184', '3249', 'CNY', 31840, 90, 'quarter', 4, 0, 'active', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
-  ('package-basic-single', '100001', '0', 401, 'basic-single', 'package-group-single', 'plan-basic', 'plan-basic-v1', 'sku-basic-single', 'Basic - Single Month', 'One-time purchase, no auto-renew', '55', NULL, 'CNY', 550, 30, 'once', 1, 0, 'active', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
-  ('package-standard-single', '100001', '0', 402, 'standard-single', 'package-group-single', 'plan-standard', 'plan-standard-v1', 'sku-standard-single', 'Standard - Single Month', 'One-time purchase, no auto-renew', '158', NULL, 'CNY', 1580, 30, 'once', 2, 0, 'active', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
-  ('package-premium-single', '100001', '0', 403, 'premium-single', 'package-group-single', 'plan-premium', 'plan-premium-v1', 'sku-premium-single', 'Premium - Single Month', 'One-time purchase, no auto-renew', '433', NULL, 'CNY', 4330, 30, 'once', 3, 0, 'active', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
-  ('package-super-single', '100001', '0', 404, 'super-single', 'package-group-single', 'plan-super', 'plan-super-v1', 'sku-super-single', 'Super - Single Month', 'One-time purchase, no auto-renew', '1083', NULL, 'CNY', 10830, 30, 'once', 4, 0, 'active', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP) ON CONFLICT (id) DO UPDATE SET
+  ('package-basic-annual', '100001', '0', 'token', 101, 'basic-annual', 'package-group-annual', 'plan-basic', 'plan-basic-v1', 'sku-basic-annual', 'Basic - Annual', 'Annual subscription, auto-renew on expiry', '640', '660', 'CNY', 6400, 365, 'year', 1, 0, 'active', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+  ('package-standard-annual', '100001', '0', 'token', 102, 'standard-annual', 'package-group-annual', 'plan-standard', 'plan-standard-v1', 'sku-standard-annual', 'Standard - Annual', 'Annual subscription, auto-renew on expiry', '1839', '1896', 'CNY', 18390, 365, 'year', 2, 1, 'active', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+  ('package-premium-annual', '100001', '0', 'token', 103, 'premium-annual', 'package-group-annual', 'plan-premium', 'plan-premium-v1', 'sku-premium-annual', 'Premium - Annual', 'Annual subscription, auto-renew on expiry', '5040', '5196', 'CNY', 50400, 365, 'year', 3, 0, 'active', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+  ('package-super-annual', '100001', '0', 'token', 104, 'super-annual', 'package-group-annual', 'plan-super', 'plan-super-v1', 'sku-super-annual', 'Super - Annual', 'Annual subscription, auto-renew on expiry', '12606', '12996', 'CNY', 126060, 365, 'year', 4, 0, 'active', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+  ('package-basic-monthly', '100001', '0', 'token', 201, 'basic-monthly', 'package-group-monthly', 'plan-basic', 'plan-basic-v1', 'sku-basic-monthly', 'Basic - Monthly', 'Monthly subscription, auto-renew on expiry', '54', '55', 'CNY', 540, 30, 'month', 1, 0, 'active', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+  ('package-standard-monthly', '100001', '0', 'token', 202, 'standard-monthly', 'package-group-monthly', 'plan-standard', 'plan-standard-v1', 'sku-standard-monthly', 'Standard - Monthly', 'Monthly subscription, auto-renew on expiry', '156', '158', 'CNY', 1560, 30, 'month', 2, 1, 'active', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+  ('package-premium-monthly', '100001', '0', 'token', 203, 'premium-monthly', 'package-group-monthly', 'plan-premium', 'plan-premium-v1', 'sku-premium-monthly', 'Premium - Monthly', 'Monthly subscription, auto-renew on expiry', '429', '433', 'CNY', 4290, 30, 'month', 3, 0, 'active', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+  ('package-super-monthly', '100001', '0', 'token', 204, 'super-monthly', 'package-group-monthly', 'plan-super', 'plan-super-v1', 'sku-super-monthly', 'Super - Monthly', 'Monthly subscription, auto-renew on expiry', '1072', '1083', 'CNY', 10720, 30, 'month', 4, 0, 'active', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+  ('package-basic-quarterly', '100001', '0', 'token', 301, 'basic-quarterly', 'package-group-quarterly', 'plan-basic', 'plan-basic-v1', 'sku-basic-quarterly', 'Basic - Quarterly', 'Quarterly subscription, auto-renew on expiry', '162', '165', 'CNY', 1620, 90, 'quarter', 1, 0, 'active', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+  ('package-standard-quarterly', '100001', '0', 'token', 302, 'standard-quarterly', 'package-group-quarterly', 'plan-standard', 'plan-standard-v1', 'sku-standard-quarterly', 'Standard - Quarterly', 'Quarterly subscription, auto-renew on expiry', '465', '474', 'CNY', 4650, 90, 'quarter', 2, 0, 'active', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+  ('package-premium-quarterly', '100001', '0', 'token', 303, 'premium-quarterly', 'package-group-quarterly', 'plan-premium', 'plan-premium-v1', 'sku-premium-quarterly', 'Premium - Quarterly', 'Quarterly subscription, auto-renew on expiry', '1273', '1299', 'CNY', 12730, 90, 'quarter', 3, 0, 'active', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+  ('package-super-quarterly', '100001', '0', 'token', 304, 'super-quarterly', 'package-group-quarterly', 'plan-super', 'plan-super-v1', 'sku-super-quarterly', 'Super - Quarterly', 'Quarterly subscription, auto-renew on expiry', '3184', '3249', 'CNY', 31840, 90, 'quarter', 4, 0, 'active', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+  ('package-basic-single', '100001', '0', 'token', 401, 'basic-single', 'package-group-single', 'plan-basic', 'plan-basic-v1', 'sku-basic-single', 'Basic - Single Month', 'One-time purchase, no auto-renew', '55', NULL, 'CNY', 550, 30, 'once', 1, 0, 'active', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+  ('package-standard-single', '100001', '0', 'token', 402, 'standard-single', 'package-group-single', 'plan-standard', 'plan-standard-v1', 'sku-standard-single', 'Standard - Single Month', 'One-time purchase, no auto-renew', '158', NULL, 'CNY', 1580, 30, 'once', 2, 0, 'active', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+  ('package-premium-single', '100001', '0', 'token', 403, 'premium-single', 'package-group-single', 'plan-premium', 'plan-premium-v1', 'sku-premium-single', 'Premium - Single Month', 'One-time purchase, no auto-renew', '433', NULL, 'CNY', 4330, 30, 'once', 3, 0, 'active', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+  ('package-super-single', '100001', '0', 'token', 404, 'super-single', 'package-group-single', 'plan-super', 'plan-super-v1', 'sku-super-single', 'Super - Single Month', 'One-time purchase, no auto-renew', '1083', NULL, 'CNY', 10830, 30, 'once', 4, 0, 'active', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+  ('package-community-basic-annual', '100001', '0', 'community', 501, 'community-basic-annual', 'package-group-community-annual', 'plan-community-basic', 'plan-community-basic-v1', 'sku-community-basic-annual', 'Community Basic - Annual', 'Circle membership annual plan, private community access', '199', '299', 'CNY', 1990, 365, 'year', 1, 1, 'active', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP) ON CONFLICT (id) DO UPDATE SET
+  category = EXCLUDED.category,
   name = EXCLUDED.name,
   description = EXCLUDED.description,
   price_amount = EXCLUDED.price_amount,

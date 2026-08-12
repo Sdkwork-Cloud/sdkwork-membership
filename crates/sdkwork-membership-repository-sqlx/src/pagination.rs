@@ -5,12 +5,15 @@ use sdkwork_utils_rust::{
     SdkWorkPageData, DEFAULT_LIST_PAGE_SIZE, MAX_LIST_PAGE_SIZE,
 };
 
-/// Parse standard list query parameters (`page`, `page_size`, optional `cursor`).
+/// Parse standard list query parameters (`page`, `page_size`, optional `cursor`)
+/// plus an optional catalog `category` filter.
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct MembershipListQuery {
     pub page: Option<i64>,
     pub page_size: Option<i64>,
     pub cursor: Option<String>,
+    /// Optional catalog classification filter (`token` | `community`).
+    pub category: Option<String>,
 }
 
 impl MembershipListQuery {

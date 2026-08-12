@@ -1,8 +1,22 @@
 import { backendApiPath } from './paths';
 import type { ApiRequestOptions, HttpClient } from '../http/client';
 
-import type { AdminMembershipEntitlementItem, AdminMembershipMemberItem, AdminMembershipMemberStatusUpdate, AdminMembershipPackageGroupItem, AdminMembershipPackageGroupMutation, AdminMembershipPackageItem, AdminMembershipPackageMutation, AdminMembershipPlanItem, AdminMembershipPlanMutation, PageInfo } from '../types';
+import type { AdminMembershipCatalogMeta, AdminMembershipEntitlementItem, AdminMembershipMemberItem, AdminMembershipMemberStatusUpdate, AdminMembershipPackageGroupItem, AdminMembershipPackageGroupMutation, AdminMembershipPackageItem, AdminMembershipPackageMutation, AdminMembershipPlanItem, AdminMembershipPlanMutation, MembershipCategory, PageInfo } from '../types';
 
+
+export class MembershipsMetaCatalogApi {
+  private client: HttpClient;
+
+  constructor(client: HttpClient) {
+    this.client = client;
+  }
+
+
+/** Membership catalog enum reference. */
+  async retrieve(requestOptions?: ApiRequestOptions): Promise<AdminMembershipCatalogMeta> {
+    return this.client.request<AdminMembershipCatalogMeta>(backendApiPath(`/memberships/meta/catalog`), { signal: requestOptions?.signal, timeout: requestOptions?.timeout, method: 'GET' as any, sdkworkUnwrapKind: 'item' });
+  }
+}
 
 export interface MembershipsEntitlementsListParams {
   planId?: string;
@@ -84,6 +98,7 @@ export class MembershipsMembersApi {
 }
 
 export interface MembershipsPackagesListParams {
+  category?: MembershipCategory;
   packageGroupId?: string;
   planId?: string;
   status?: string;
@@ -102,6 +117,7 @@ export class MembershipsPackagesApi {
 /** Membership packages list. */
   async list(params?: MembershipsPackagesListParams, requestOptions?: ApiRequestOptions): Promise<{ items: AdminMembershipPackageItem[]; pageInfo: PageInfo; }> {
     const query = buildQueryString([
+      { name: 'category', value: params?.category, style: 'form', explode: true, allowReserved: false },
       { name: 'package_group_id', value: params?.packageGroupId, style: 'form', explode: true, allowReserved: false },
       { name: 'plan_id', value: params?.planId, style: 'form', explode: true, allowReserved: false },
       { name: 'status', value: params?.status, style: 'form', explode: true, allowReserved: false },
@@ -128,6 +144,7 @@ export class MembershipsPackagesApi {
 }
 
 export interface MembershipsPackageGroupsListParams {
+  category?: MembershipCategory;
   status?: string;
   page?: number;
   pageSize?: number;
@@ -144,6 +161,7 @@ export class MembershipsPackageGroupsApi {
 /** Membership package groups list. */
   async list(params?: MembershipsPackageGroupsListParams, requestOptions?: ApiRequestOptions): Promise<{ items: AdminMembershipPackageGroupItem[]; pageInfo: PageInfo; }> {
     const query = buildQueryString([
+      { name: 'category', value: params?.category, style: 'form', explode: true, allowReserved: false },
       { name: 'status', value: params?.status, style: 'form', explode: true, allowReserved: false },
       { name: 'page', value: params?.page, style: 'form', explode: true, allowReserved: false },
       { name: 'page_size', value: params?.pageSize, style: 'form', explode: true, allowReserved: false },
@@ -168,6 +186,7 @@ export class MembershipsPackageGroupsApi {
 }
 
 export interface MembershipsPlansListParams {
+  category?: MembershipCategory;
   status?: string;
   page?: number;
   pageSize?: number;
@@ -184,6 +203,7 @@ export class MembershipsPlansApi {
 /** Membership plans list. */
   async list(params?: MembershipsPlansListParams, requestOptions?: ApiRequestOptions): Promise<{ items: AdminMembershipPlanItem[]; pageInfo: PageInfo; }> {
     const query = buildQueryString([
+      { name: 'category', value: params?.category, style: 'form', explode: true, allowReserved: false },
       { name: 'status', value: params?.status, style: 'form', explode: true, allowReserved: false },
       { name: 'page', value: params?.page, style: 'form', explode: true, allowReserved: false },
       { name: 'page_size', value: params?.pageSize, style: 'form', explode: true, allowReserved: false },
@@ -214,6 +234,7 @@ export class MembershipsApi {
   public readonly packages: MembershipsPackagesApi;
   public readonly members: MembershipsMembersApi;
   public readonly entitlements: MembershipsEntitlementsApi;
+  public readonly metaCatalog: MembershipsMetaCatalogApi;
 
   constructor(client: HttpClient) {
     this.client = client;
@@ -222,6 +243,7 @@ export class MembershipsApi {
     this.packages = new MembershipsPackagesApi(client);
     this.members = new MembershipsMembersApi(client);
     this.entitlements = new MembershipsEntitlementsApi(client);
+    this.metaCatalog = new MembershipsMetaCatalogApi(client);
   }
 
 }

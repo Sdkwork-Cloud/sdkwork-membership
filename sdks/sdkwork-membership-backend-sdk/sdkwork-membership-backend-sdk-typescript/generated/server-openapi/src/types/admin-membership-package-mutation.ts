@@ -1,3 +1,5 @@
+import type { MembershipCategory } from './membership-category';
+
 export interface AdminMembershipPackageMutation {
   code: string;
   packageGroupId: string;
@@ -8,5 +10,6 @@ export interface AdminMembershipPackageMutation {
   durationDays: string;
   /** Discount rate percentage: 100 means no discount, 90 means pay 90 percent of the price. */
   discount: number;
-  status: string;
+  status: 'active' | 'inactive' | 'disabled';
+  category: MembershipCategory;
 }

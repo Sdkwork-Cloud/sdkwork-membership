@@ -243,6 +243,7 @@ pub(crate) fn map_membership_package_record(
     plan_no: Option<String>,
     rank: i64,
     _sku_id: Option<String>,
+    category: String,
 ) -> Option<ParsedMembershipPackage> {
     if id <= 0
         || storage_id.trim().is_empty()
@@ -259,6 +260,11 @@ pub(crate) fn map_membership_package_record(
     };
     let item = AppMembershipPackageItem {
         id,
+        category: if category.trim().is_empty() {
+            "token".to_owned()
+        } else {
+            category
+        },
         name,
         description,
         price,
@@ -431,9 +437,15 @@ pub(crate) fn build_package_group_from_packages(
     description: Option<String>,
     sort_weight: i64,
     packages: Vec<AppMembershipPackageItem>,
+    category: String,
 ) -> AppMembershipPackageGroupItem {
     AppMembershipPackageGroupItem {
         id: package_group_id,
+        category: if category.trim().is_empty() {
+            "token".to_owned()
+        } else {
+            category
+        },
         name,
         description,
         sort_weight,
@@ -445,6 +457,7 @@ pub(crate) fn build_package_group_from_packages(
 pub(crate) fn default_free_plan() -> AppMembershipPlanItem {
     AppMembershipPlanItem {
         id: 0,
+        category: "token".to_owned(),
         name: "Free".to_owned(),
         rank: 0,
         required_points: Some(0),
