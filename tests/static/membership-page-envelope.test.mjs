@@ -27,10 +27,17 @@ test("unwrapSdkworkMembershipPageItems extracts items from SdkWorkPageData", () 
   assert.equal(items[0]?.name, "Basic");
 });
 
-test("createSdkworkMembershipListQuery defaults page size to 20", () => {
+test("createSdkworkMembershipListQuery defaults to token category and page size 20", () => {
   assert.deepEqual(createSdkworkMembershipListQuery(), {
     page: 1,
     pageSize: 20,
+    category: "token",
+  });
+  // Token Plan queries always transmit the type parameter; community is opt-in.
+  assert.deepEqual(createSdkworkMembershipListQuery(1, 20, "community"), {
+    page: 1,
+    pageSize: 20,
+    category: "community",
   });
 });
 

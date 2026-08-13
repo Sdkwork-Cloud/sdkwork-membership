@@ -847,6 +847,7 @@ async fn list_admin_membership_plans(
             CAST(p.rank AS INTEGER) AS rank,
             p.status,
             p.category AS category,
+            p.description AS description,
             CAST(p.created_at AS TEXT) AS created_at,
             CAST(p.updated_at AS TEXT) AS updated_at,
             b.id AS plan_benefit_id,
@@ -893,7 +894,7 @@ async fn create_admin_membership_plan(
         INSERT INTO membership_plan
             (id, tenant_id, organization_id, category, plan_no, plan_code, name, rank, description, status, created_at, updated_at)
         VALUES
-            ($1, $2, $3, $4, $5, $5, $6, $7, NULL, $8, $9, $9)
+            ($1, $2, $3, $4, $5, $5, $6, $7, NULL, $8, $9::timestamptz, $9::timestamptz)
         "#,
     )
     .bind(&command.plan_id)
@@ -972,7 +973,7 @@ async fn update_admin_membership_plan(
             rank = $3,
             status = $4,
             category = $5,
-            updated_at = $6
+            updated_at = $6::timestamptz
         WHERE id = $7
           AND tenant_id = $8
         "#,
@@ -1012,7 +1013,7 @@ async fn delete_admin_membership_plan(
         r#"
         UPDATE membership_plan
         SET status = 'disabled',
-            updated_at = $2
+            updated_at = $2::timestamptz
         WHERE tenant_id = $3
           AND (id = $1 OR plan_no = $1)
         "#,
@@ -1200,7 +1201,7 @@ async fn update_admin_membership_package_group(
             sort_weight = $6,
             status = $7,
             category = $8,
-            updated_at = $9
+            updated_at = $9::timestamptz
         WHERE id = $10
           AND tenant_id = $11
         "#,
@@ -1231,7 +1232,7 @@ async fn delete_admin_membership_package_group(
         r#"
         UPDATE membership_package_group
         SET status = 'disabled',
-            updated_at = $2
+            updated_at = $2::timestamptz
         WHERE tenant_id = $3
           AND (id = $1 OR group_no = $1)
         "#,
@@ -1256,6 +1257,7 @@ async fn create_admin_membership_package(
         &tenant_id,
         &organization_id,
         &command.input.plan_id,
+        &command.input.category,
         &command.requested_at,
     )
     .await?;
@@ -1264,6 +1266,7 @@ async fn create_admin_membership_package(
         &tenant_id,
         &organization_id,
         &command.input.package_group_id,
+        &command.input.category,
         command.input.duration_days,
         &command.requested_at,
     )
@@ -1385,6 +1388,7 @@ async fn update_admin_membership_package(
         &tenant_id,
         &organization_id,
         &command.input.plan_id,
+        &command.input.category,
         &command.requested_at,
     )
     .await?;
@@ -1393,6 +1397,7 @@ async fn update_admin_membership_package(
         &tenant_id,
         &organization_id,
         &command.input.package_group_id,
+        &command.input.category,
         command.input.duration_days,
         &command.requested_at,
     )
@@ -1476,7 +1481,7 @@ async fn update_admin_membership_package(
             discount = $10,
             status = $11,
             category = $12,
-            updated_at = $13
+            updated_at = $13::timestamptz
         WHERE id = $14
           AND tenant_id = $15
         "#,
@@ -1511,7 +1516,7 @@ async fn delete_admin_membership_package(
         r#"
         UPDATE membership_package
         SET status = 'disabled',
-            updated_at = $2
+            updated_at = $2::timestamptz
         WHERE tenant_id = $3
           AND (id = $1 OR package_no = $1)
         "#,
@@ -1598,7 +1603,7 @@ async fn update_admin_membership_member_status(
         r#"
         UPDATE membership_subscription
         SET status = $1,
-            updated_at = $2
+            updated_at = $2::timestamptz
         WHERE tenant_id = CAST($3 AS TEXT)
           AND ($4 = 0 OR organization_id IS NULL OR organization_id = CAST($4 AS TEXT) OR organization_id = '0')
           AND id = $5
@@ -1737,6 +1742,7 @@ async fn load_admin_membership_plan(
             CAST(p.rank AS INTEGER) AS rank,
             p.status,
             p.category AS category,
+            p.description AS description,
             CAST(p.created_at AS TEXT) AS created_at,
             CAST(p.updated_at AS TEXT) AS updated_at,
             b.id AS plan_benefit_id,
@@ -1851,15 +1857,18 @@ async fn load_admin_membership(
 }
 
 /// Ensures the membership plan referenced by an admin package mutation
-/// exists, creating it on first use (idempotent). External integrations
-/// (e.g. circle tier publishing) identify plans by their own stable code, so
-/// the backend provisions the plan and its published version instead of
-/// failing on a not-found.
+/// Ensures the referenced plan exists before a package write, provisioning it
+/// when an external integration identifies plans by their own stable code
+/// (e.g. circle tier publishing). Provisioned placeholders get a readable
+/// display name derived from the stable code and the package's category, and
+/// carry an auto-provisioned description so operators can rename them in the
+/// admin console.
 async fn ensure_admin_plan_exists(
     pool: &PgPool,
     tenant_id: &str,
     organization_id: &str,
     plan_id: &str,
+    category: &str,
     requested_at: &str,
 ) -> AppMembershipResult<()> {
     let exists: Option<i32> =
@@ -1871,19 +1880,23 @@ async fn ensure_admin_plan_exists(
     if exists.is_some() {
         return Ok(());
     }
+    let display_name = humanize_provision_name(plan_id);
     sqlx::query(
         r#"
         INSERT INTO membership_plan
-            (id, tenant_id, organization_id, plan_no, plan_code, name, rank, description, status, created_at, updated_at)
+            (id, tenant_id, organization_id, category, plan_no, plan_code, name, rank, description, status, created_at, updated_at)
         VALUES
-            ($1, $2, $3, $4, $4, $4, 0, NULL, 'active', $5::timestamptz, $5::timestamptz)
+            ($1, $2, $3, $4, $5, $5, $6, 0, $7, 'inactive', $8::timestamptz, $8::timestamptz)
         ON CONFLICT (id) DO NOTHING
         "#,
     )
     .bind(plan_id)
     .bind(tenant_id)
     .bind(organization_id)
+    .bind(category)
     .bind(plan_id)
+    .bind(&display_name)
+    .bind(AUTO_PROVISIONED_DESCRIPTION)
     .bind(requested_at)
     .execute(pool)
     .await
@@ -2012,13 +2025,14 @@ async fn replace_admin_plan_benefits(
             .r#type
             .as_deref()
             .filter(|value| !value.trim().is_empty())
+            .map(normalize_benefit_type_storage)
             .unwrap_or("quota");
         sqlx::query(
             r#"
             INSERT INTO membership_benefit_definition
                 (id, tenant_id, organization_id, benefit_code, name, benefit_type, value_unit, measurement_type, description, status, created_at, updated_at)
             VALUES
-                ($1, $2, $3, $4, $5, $6, 'count', 'counter', $7, 'active', $8, $8)
+                ($1, $2, $3, $4, $5, $6, 'count', 'counter', $7, 'active', $8::timestamptz, $8::timestamptz)
             ON CONFLICT(tenant_id, organization_id, benefit_code) DO UPDATE SET
                 id = excluded.id,
                 name = excluded.name,
@@ -2047,7 +2061,7 @@ async fn replace_admin_plan_benefits(
             INSERT INTO membership_plan_benefit
                 (id, tenant_id, organization_id, plan_id, plan_version_id, benefit_id, benefit_code, grant_quantity, grant_period, reset_policy, usage_policy, sort_weight, status, created_at, updated_at)
             VALUES
-                ($1, $2, $3, $4, $5, $6, $7, $8, 'membership_period', NULL, $9, $10, 'active', $11, $11)
+                ($1, $2, $3, $4, $5, $6, $7, $8, 'membership_period', NULL, $9, $10, 'active', $11::timestamptz, $11::timestamptz)
             "#,
         )
         .bind(&plan_benefit_id)
@@ -2076,6 +2090,7 @@ async fn ensure_admin_package_group_exists(
     tenant_id: &str,
     organization_id: &str,
     package_group_id: &str,
+    category: &str,
     duration_days: i64,
     requested_at: &str,
 ) -> AppMembershipResult<()> {
@@ -2090,20 +2105,24 @@ async fn ensure_admin_package_group_exists(
         return Ok(());
     }
     let external_id = next_admin_package_group_external_id(pool).await?;
+    let display_name = humanize_provision_name(package_group_id);
     sqlx::query(
         r#"
         INSERT INTO membership_package_group
-            (id, tenant_id, organization_id, external_id, group_no, name, description, billing_cycle, duration_days, display_channel, sort_weight, status, created_at, updated_at)
+            (id, tenant_id, organization_id, category, external_id, group_no, name, description, billing_cycle, duration_days, display_channel, sort_weight, status, created_at, updated_at)
         VALUES
-            ($1, $2, $3, $4, $5, $5, NULL, $6, $7, 'app', 0, 'active', $8::timestamptz, $8::timestamptz)
+            ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, 'app', 0, 'inactive', $11::timestamptz, $11::timestamptz)
         ON CONFLICT (id) DO NOTHING
         "#,
     )
     .bind(package_group_id)
     .bind(tenant_id)
     .bind(organization_id)
+    .bind(category)
     .bind(external_id)
     .bind(package_group_id)
+    .bind(&display_name)
+    .bind(AUTO_PROVISIONED_DESCRIPTION)
     .bind(recurrence_cycle_from_duration(duration_days))
     .bind(duration_days)
     .bind(requested_at)
@@ -2239,6 +2258,7 @@ fn admin_plans_from_rows(rows: &[sqlx::postgres::PgRow]) -> Vec<AdminMembershipP
                     rank
                 },
                 benefits: Vec::new(),
+                description: optional_string_cell(row, "description"),
                 status: string_cell(row, "status"),
                 created_at: string_cell(row, "created_at"),
                 updated_at: string_cell(row, "updated_at"),
@@ -2350,6 +2370,45 @@ fn recurrence_cycle_from_duration(duration_days: i64) -> &'static str {
         7..=29 => "week",
         _ => "day",
     }
+}
+
+/// Description stamped on auto-provisioned plan/group placeholders so
+/// operators can recognise and rename them in the admin console.
+const AUTO_PROVISIONED_DESCRIPTION: &str =
+    "Auto-provisioned by an external integration; rename in the admin console.";
+
+/// Normalises a benefit type into the database CHECK vocabulary
+/// (`points | feature | queue | quota | service`). Legacy `discount` values
+/// map to `service` so rows from older admin forms keep persisting instead of
+/// failing the CHECK constraint.
+fn normalize_benefit_type_storage(value: &str) -> &'static str {
+    match value.trim().to_ascii_lowercase().as_str() {
+        "points" => "points",
+        "feature" => "feature",
+        "queue" => "queue",
+        "service" | "discount" => "service",
+        _ => "quota",
+    }
+}
+
+/// Turns a stable integration code (kebab-case, snake_case, or bare words)
+/// into a readable display name for auto-provisioned placeholders:
+/// `plan-circle-membership` -> `Plan Circle Membership`.
+fn humanize_provision_name(code: &str) -> String {
+    let mut words = Vec::new();
+    for part in code.split(['-', '_', ' ']) {
+        let trimmed = part.trim();
+        if trimmed.is_empty() {
+            continue;
+        }
+        let mut chars = trimmed.chars();
+        let head = chars.next().unwrap_or_default().to_ascii_uppercase();
+        words.push(format!("{head}{}", chars.as_str()));
+    }
+    if words.is_empty() {
+        return code.to_owned();
+    }
+    words.join(" ")
 }
 
 async fn load_info(
@@ -2798,10 +2857,13 @@ fn plan_required_points(plan_no: &str) -> i64 {
 }
 
 fn plan_badge(plan_no: &str) -> &'static str {
-    match plan_no {
+    match plan_no.trim().to_ascii_lowercase().as_str() {
         "pro" => "Pro",
         "max" => "Max",
         "vip" => "VIP",
+        // Community (circle) plan family badges; token plans fall back to Free.
+        "community-basic" | "community_basic" => "Community",
+        "community-plus" | "community_plus" => "Community Plus",
         _ => "Free",
     }
 }
@@ -3664,7 +3726,7 @@ async fn activate_membership_purchase(
         SET status = 'active',
             request_no = $1,
             idempotency_key = $2,
-            updated_at = $3
+            updated_at = $3::timestamptz
         WHERE id = $4
           AND tenant_id = CAST($5 AS TEXT)
           AND status = 'pending_activation'
@@ -3683,7 +3745,7 @@ async fn activate_membership_purchase(
         r#"
         UPDATE membership_period
         SET status = 'active',
-            updated_at = $1
+            updated_at = $1::timestamptz
         WHERE subscription_id = $2
           AND tenant_id = CAST($3 AS TEXT)
           AND source_order_id = $4
@@ -3702,7 +3764,7 @@ async fn activate_membership_purchase(
         r#"
         UPDATE membership_entitlement_grant
         SET status = 'active',
-            updated_at = $1
+            updated_at = $1::timestamptz
         WHERE source_type = 'membership_subscription'
           AND source_id = $2
           AND tenant_id = CAST($3 AS TEXT)
@@ -3720,7 +3782,7 @@ async fn activate_membership_purchase(
         r#"
         UPDATE membership_entitlement_account
         SET status = 'active',
-            updated_at = $1
+            updated_at = $1::timestamptz
         WHERE tenant_id = CAST($2 AS TEXT)
           AND subject_type = 'user'
           AND subject_id = CAST($3 AS TEXT)
@@ -3942,7 +4004,7 @@ async fn apply_coupon_subscription_quota_postgres(
         SET total_granted = CAST(CAST(total_granted AS BIGINT) + $1 AS TEXT),
             balance = CAST(CAST(balance AS BIGINT) + $1 AS TEXT),
             version = version + 1,
-            updated_at = $2
+            updated_at = $2::timestamptz
         WHERE tenant_id = CAST($3 AS TEXT)
           AND subject_type = 'user'
           AND subject_id = CAST($4 AS TEXT)
@@ -3966,7 +4028,7 @@ async fn apply_coupon_subscription_quota_postgres(
     sqlx::query(
         r#"
         UPDATE membership_entitlement_grant
-        SET granted_quantity = CAST($1 AS TEXT), grant_policy = $2, updated_at = $3
+        SET granted_quantity = CAST($1 AS TEXT), grant_policy = $2, updated_at = $3::timestamptz
         WHERE id = $4 AND tenant_id = CAST($5 AS TEXT)
         "#,
     )
@@ -4051,8 +4113,8 @@ async fn persist_membership_subscription(
                  grace_until, cancel_at_period_end, request_no, idempotency_key, created_at, updated_at)
             VALUES
                 ($1, CAST($2 AS TEXT), CAST($3 AS TEXT), $18, $4, 'user', CAST($5 AS TEXT),
-                 CAST($6 AS TEXT), $7, $8, $9, $10, $11, 'pending_activation', $12, $13,
-                 NULL, 0, $14, $15, $16, $17)
+                 CAST($6 AS TEXT), $7, $8, $9, $10, $11, 'pending_activation', $12::timestamptz, $13::timestamptz,
+                 NULL, 0, $14, $15, $16::timestamptz, $17::timestamptz)
             "#,
         )
         .bind(&binding.membership_uuid)
@@ -4086,12 +4148,12 @@ async fn persist_membership_subscription(
                 current_period_id = $4,
                 source_order_id = $5,
                 status = 'pending_activation',
-                starts_at = CASE WHEN $6 THEN starts_at ELSE $7 END,
-                expires_at = $8,
+                starts_at = CASE WHEN $6 THEN starts_at ELSE $7::timestamptz END,
+                expires_at = $8::timestamptz,
                 request_no = $9,
                 idempotency_key = $10,
                 category = $16,
-                updated_at = $11
+                updated_at = $11::timestamptz
             WHERE id = $12
               AND tenant_id = CAST($13 AS TEXT)
               AND (organization_id IS NULL OR organization_id = '0' OR organization_id = CAST($14 AS TEXT))
@@ -4129,8 +4191,8 @@ async fn persist_membership_subscription(
              created_at, updated_at)
         VALUES
             ($1, CAST($2 AS TEXT), CAST($3 AS TEXT), $16, $4, $5, 'user',
-             CAST($6 AS TEXT), $7, $8, $9, $10, 'pending_activation',
-             $11, $12, $13, $14, $15)
+             CAST($6 AS TEXT), $7, $8, $9::timestamptz, $10::timestamptz, 'pending_activation',
+             $11, $12, $13, $14::timestamptz, $15::timestamptz)
         "#,
     )
     .bind(&period_id)
@@ -4184,8 +4246,8 @@ async fn insert_entitlements(
                  expires_at, request_no, idempotency_key, created_at, updated_at)
             VALUES
                 ($1, CAST($2 AS TEXT), CAST($3 AS TEXT), $4, $5, 'user', CAST($6 AS TEXT),
-                 'membership_subscription', $7, 'membership_plan', $8, 'pending', $9, $10,
-                 $11, $12, $13, $14)
+                 'membership_subscription', $7, 'membership_plan', $8, 'pending', $9::timestamptz, $10::timestamptz,
+                 $11, $12, $13::timestamptz, $14::timestamptz)
             "#,
         )
         .bind(&grant_id)
@@ -4225,7 +4287,7 @@ async fn insert_entitlements(
             VALUES
                 ($1, CAST($2 AS TEXT), CAST($3 AS TEXT), $4, $5, $6, $7,
                  'user', CAST($8 AS TEXT), 'credit', $9, $10, 'membership_grant',
-                 'membership_subscription', $11, $12, $13, $14, $15)
+                 'membership_subscription', $11, $12, $13, $14::timestamptz, $15::timestamptz)
             "#,
         )
         .bind(&ledger_id)
@@ -4272,7 +4334,7 @@ async fn upsert_membership_entitlement_account(
              version, created_at, updated_at)
         VALUES
             ($1, CAST($2 AS TEXT), CAST($3 AS TEXT), $4, $5, 'user',
-             CAST($6 AS TEXT), $7, '0', $8, 'pending', $9, 0, $10, $11)
+             CAST($6 AS TEXT), $7, '0', $8, 'pending', $9::timestamptz, 0, $10::timestamptz, $11::timestamptz)
         ON CONFLICT(tenant_id, subject_type, subject_id, benefit_id) DO UPDATE SET
             total_granted = CAST((CAST(membership_entitlement_account.total_granted AS INTEGER) + CAST(excluded.total_granted AS INTEGER)) AS TEXT),
             balance = CAST((CAST(membership_entitlement_account.balance AS INTEGER) + CAST(excluded.balance AS INTEGER)) AS TEXT),
@@ -4715,7 +4777,7 @@ async fn recharge_subscription_quota(
              starts_at, expires_at, request_no, idempotency_key, created_at, updated_at)
         VALUES
             ($1, $2, $3, $4, $5, $6, 'user', $7, 'membership_quota_recharge', $8, $9,
-             CAST($10 AS TEXT), 'active', $11, $12, $13, $14, $15, $15)
+             CAST($10 AS TEXT), 'active', $11::timestamptz, $12::timestamptz, $13, $14, $15::timestamptz, $15::timestamptz)
         "#,
     )
     .bind(&grant_id)
@@ -4768,7 +4830,7 @@ async fn recharge_subscription_quota(
              source_type, source_id, request_no, idempotency_key, occurred_at, created_at)
         VALUES
             ($1, $2, $3, $4, $5, $6, $7, 'user', $8, 'credit', $9, $10, 'quota_recharge',
-             'membership_quota_recharge', $11, $12, $13, $14, $14)
+             'membership_quota_recharge', $11, $12, $13, $14::timestamptz, $14::timestamptz)
         "#,
     )
     .bind(&grant_id)
@@ -5183,7 +5245,7 @@ async fn consume_speed_up(
         SET total_used = CAST(CAST(total_used AS INTEGER) + 1 AS TEXT),
             balance = CAST(CAST(balance AS INTEGER) - 1 AS TEXT),
             version = version + 1,
-            updated_at = $2
+            updated_at = $2::timestamptz
         WHERE id = $1
           AND CAST(balance AS INTEGER) > 0
         "#,
@@ -5421,11 +5483,43 @@ fn integer_cell(row: &sqlx::postgres::PgRow, column: &str) -> i64 {
 
 fn sql_error(error: sqlx::Error) -> CommerceServiceError {
     eprintln!("membership storage error: {error}");
-    CommerceServiceError::storage("database operation failed")
+    classify_sql_error("database operation failed", &error)
 }
 
 fn store_error(context: &str, error: sqlx::Error) -> CommerceServiceError {
     eprintln!("membership storage error ({context}): {error}");
+    classify_sql_error(context, &error)
+}
+
+/// Maps PostgreSQL constraint failures to their real semantics instead of
+/// masking them as SERVICE_UNAVAILABLE (50301): unique violations are
+/// conflicts (409), CHECK/NOT NULL violations are validation errors (400),
+/// and everything else stays a storage/transport failure (503).
+fn classify_sql_error(context: &str, error: &sqlx::Error) -> CommerceServiceError {
+    use sqlx::error::Error as SqlxError;
+    use sqlx::postgres::PgDatabaseError;
+    if let SqlxError::Database(database_error) = error {
+        if let Some(pg_error) = database_error.try_downcast_ref::<PgDatabaseError>() {
+            match pg_error.code() {
+                "23505" => {
+                    return CommerceServiceError::conflict(format!(
+                        "{context}: unique constraint violation"
+                    ))
+                }
+                "23514" => {
+                    return CommerceServiceError::validation(format!(
+                        "{context}: check constraint violation"
+                    ))
+                }
+                "23502" => {
+                    return CommerceServiceError::validation(format!(
+                        "{context}: not-null constraint violation"
+                    ))
+                }
+                _ => {}
+            }
+        }
+    }
     CommerceServiceError::storage(context)
 }
 
@@ -5599,7 +5693,7 @@ async fn claim_daily_reward_postgres(
         INSERT INTO membership_daily_reward
             (id, uuid, tenant_id, organization_id, user_id, reward_date,
              reward_points, consecutive_days, total_days, status, idempotency_key, created_at)
-        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, 'claimed', $10, $11)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, 'claimed', $10::timestamptz, $11::timestamptz)
         ON CONFLICT (tenant_id, user_id, reward_date) DO NOTHING
         "#,
     )

@@ -111,6 +111,12 @@ export interface SdkworkSubscriptionMessages {
     upgradeBadgeLabel: string;
     welcomeBackLabel: string;
   };
+  catalog: {
+    categoryAll: string;
+    categoryCommunity: string;
+    categoryLabel: string;
+    categoryToken: string;
+  };
   levelGrid: {
     empty: string;
     eyebrow: string;
@@ -384,6 +390,12 @@ const EN_US_MESSAGES: SdkworkSubscriptionMessages = {
     upgradeBadgeLabel: "Upgrade",
     welcomeBackLabel: "Welcome back, ",
   },
+  catalog: {
+    categoryAll: "All",
+    categoryCommunity: "Community",
+    categoryLabel: "Plan family",
+    categoryToken: "Token Plan",
+  },
   levelGrid: {
     empty: "Membership level comparison will appear when the current runtime exposes membership levels.",
     eyebrow: "Membership ladder",
@@ -541,13 +553,13 @@ const ZH_CN_MESSAGES: SdkworkSubscriptionMessages = {
     days: "天",
     flexibleDuration: "时长灵活",
     noValue: "--",
-    points: "算力元",
+    points: "算力积分",
   },
   compareTable: {
     categoryGeneration: "AI 生成能力",
     categorySpeed: "生成速度与特权",
     categorySupport: "服务与支持",
-    dailyPoints: "每日赠送算力元",
+    dailyPoints: "每日赠送算力积分",
     description: "详细对比各套餐权益，选择最适合你的方案。",
     discount20Off: "8折",
     emptyDescription: "会员权益目录加载后将显示套餐对比。",
@@ -599,20 +611,20 @@ const ZH_CN_MESSAGES: SdkworkSubscriptionMessages = {
   hero: {
     availablePlansLabel: "可选套餐",
     currentLevelLabel: "当前等级",
-    currentPointsLabel: "当前算力元",
+    currentPointsLabel: "当前算力积分",
     currentStatusLabel: "当前状态",
-    dailyPointsLabel: "每日登录领取算力元",
+    dailyPointsLabel: "每日登录领取算力积分",
     description: "选择会员套餐、应用最优优惠券，并锁定一套可被任意 SDKWORK 桌面应用复用的高级订阅结算流。",
     eyebrow: "高级会员结算",
     freeTierLabel: "免费用户",
     freeUserTitle: "解锁",
     freeUserTitleHighlight: "无限创作",
     freeUserTitleSuffix: "可能",
-    guestDescription: "加入会员，畅享全部AI模型、更快生成速度和专属算力元额度，释放您的创作潜能。",
+    guestDescription: "加入会员，畅享全部AI模型、更快生成速度和专属算力积分额度，释放您的创作潜能。",
     memberBadgeLabel: "VIP会员",
     memberDescription: "您的会员权益即将到期，立即续费继续享受专属AI创作能力。",
     membershipBalanceLabel: "会员资产",
-    pointsUnit: "算力元",
+    pointsUnit: "算力积分",
     premiumMembershipActive: "当前为高级会员",
     readyForPremiumActivation: "已准备好开通高级会员",
     remainingDaysLabel: "剩余 {count} 天",
@@ -621,6 +633,12 @@ const ZH_CN_MESSAGES: SdkworkSubscriptionMessages = {
     totalSpentLabel: "累计消费",
     upgradeBadgeLabel: "升级会员",
     welcomeBackLabel: "欢迎回来，",
+  },
+  catalog: {
+    categoryAll: "全部",
+    categoryCommunity: "圈子社区",
+    categoryLabel: "套餐体系",
+    categoryToken: "Token 套餐",
   },
   levelGrid: {
     empty: "当运行时提供会员等级数据后，这里会展示完整的等级对比。",
@@ -634,7 +652,7 @@ const ZH_CN_MESSAGES: SdkworkSubscriptionMessages = {
     confirmOrderDescription: "确认您选择的套餐并完成支付。",
     durationLabel: "有效期",
     errorTitle: "订阅中心异常",
-    includedPointsLabel: "包含算力元",
+    includedPointsLabel: "包含算力积分",
     loading: "正在加载订阅中心...",
     title: "订阅中心",
   },
@@ -714,7 +732,7 @@ const ZH_CN_MESSAGES: SdkworkSubscriptionMessages = {
     descriptionLockedPackage: "返回上一阶段后可重新选择套餐，再继续结算。",
     descriptionNoPlanSelected: "请先选择一个订阅套餐后再进入结算。",
     durationLabel: "时长",
-    includedPointsLabel: "赠送算力元",
+    includedPointsLabel: "赠送算力积分",
     lockedBadge: "已锁定套餐",
     lockedPackageLabel: "锁定套餐",
     planStageDescription: "先完成套餐比较与选择，再在真正准备支付时进入结算阶段，保持与 Sdkwork Studio 一致的高级购买节奏。",

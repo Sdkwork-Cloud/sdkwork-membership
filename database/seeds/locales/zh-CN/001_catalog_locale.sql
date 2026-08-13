@@ -5,18 +5,20 @@
 -- display fields with Simplified Chinese text. It uses UPDATE statements keyed
 -- by primary key so re-seeding is idempotent.
 --
--- Pricing model: 10元 = 100算力元 (1元 = 10算力元)
+-- Pricing model: 10元 = 100算力积分 (1元 = 10算力积分)
 -- point_amount = price × 10
 -- ============================================================================
 
 -- ---------------------------------------------------------------------------
 -- membership_plan: plan display names and descriptions
 -- ---------------------------------------------------------------------------
-UPDATE membership_plan SET name = '免费版', description = '体验核心功能，每日赠送算力元。', updated_at = CURRENT_TIMESTAMP WHERE id = 'plan-free';
+UPDATE membership_plan SET name = '免费版', description = '体验核心功能，每日赠送算力积分。', updated_at = CURRENT_TIMESTAMP WHERE id = 'plan-free';
 UPDATE membership_plan SET name = '基础版', description = '面向个人创作者，解锁基础AI能力。', updated_at = CURRENT_TIMESTAMP WHERE id = 'plan-basic';
 UPDATE membership_plan SET name = '标准版', description = '面向专业创作者，解锁全部AI模型。', updated_at = CURRENT_TIMESTAMP WHERE id = 'plan-standard';
 UPDATE membership_plan SET name = '巅峰版', description = '面向团队和重度用户，享受专属通道。', updated_at = CURRENT_TIMESTAMP WHERE id = 'plan-premium';
 UPDATE membership_plan SET name = '超级版', description = '顶级VIP通道、最大配额与专属特效。', updated_at = CURRENT_TIMESTAMP WHERE id = 'plan-super';
+-- Community (circle) plan family
+UPDATE membership_plan SET name = '圈子基础会员', description = '圈子会员：加入私密圈子，解锁专属内容与会员活动。', updated_at = CURRENT_TIMESTAMP WHERE id = 'plan-community-basic';
 
 -- ---------------------------------------------------------------------------
 -- membership_plan_version: version display titles
@@ -26,15 +28,17 @@ UPDATE membership_plan_version SET title = '基础版', updated_at = CURRENT_TIM
 UPDATE membership_plan_version SET title = '标准版', updated_at = CURRENT_TIMESTAMP WHERE id = 'plan-standard-v1';
 UPDATE membership_plan_version SET title = '巅峰版', updated_at = CURRENT_TIMESTAMP WHERE id = 'plan-premium-v1';
 UPDATE membership_plan_version SET title = '超级版', updated_at = CURRENT_TIMESTAMP WHERE id = 'plan-super-v1';
+-- Community (circle) plan family
+UPDATE membership_plan_version SET title = '圈子基础会员', updated_at = CURRENT_TIMESTAMP WHERE id = 'plan-community-basic-v1';
 
 -- ---------------------------------------------------------------------------
 -- membership_benefit_definition: benefit display names and descriptions
 -- ---------------------------------------------------------------------------
-UPDATE membership_benefit_definition SET name = '平台免费算力元', description = '每日登录免费算力元。', updated_at = CURRENT_TIMESTAMP WHERE id = 'benefit-platform-free-points';
-UPDATE membership_benefit_definition SET name = '充值购买算力元', description = '充值购买的算力元。', updated_at = CURRENT_TIMESTAMP WHERE id = 'benefit-purchased-points';
-UPDATE membership_benefit_definition SET name = '订阅会员算力元', description = '每月订阅赠送算力元。', updated_at = CURRENT_TIMESTAMP WHERE id = 'benefit-daily-points';
+UPDATE membership_benefit_definition SET name = '平台免费算力积分', description = '每日登录免费算力积分。', updated_at = CURRENT_TIMESTAMP WHERE id = 'benefit-platform-free-points';
+UPDATE membership_benefit_definition SET name = '充值购买算力积分', description = '充值购买的算力积分。', updated_at = CURRENT_TIMESTAMP WHERE id = 'benefit-purchased-points';
+UPDATE membership_benefit_definition SET name = '订阅会员算力积分', description = '每月订阅赠送算力积分。', updated_at = CURRENT_TIMESTAMP WHERE id = 'benefit-daily-points';
 UPDATE membership_benefit_definition SET name = 'Seedance 2.0 VIP模型', description = 'Seedance 2.0 VIP模型使用权限。', updated_at = CURRENT_TIMESTAMP WHERE id = 'benefit-seedance-vip-model';
-UPDATE membership_benefit_definition SET name = 'Seedance 1.5 Pro模型', description = 'Seedance 1.5 Pro模型算力元折扣。', updated_at = CURRENT_TIMESTAMP WHERE id = 'benefit-seedance-pro-model';
+UPDATE membership_benefit_definition SET name = 'Seedance 1.5 Pro模型', description = 'Seedance 1.5 Pro模型算力积分折扣。', updated_at = CURRENT_TIMESTAMP WHERE id = 'benefit-seedance-pro-model';
 UPDATE membership_benefit_definition SET name = '标准生成通道', description = '标准优先级生成通道。', updated_at = CURRENT_TIMESTAMP WHERE id = 'benefit-standard-queue';
 UPDATE membership_benefit_definition SET name = '快速生成通道', description = '高优先级快速生成通道。', updated_at = CURRENT_TIMESTAMP WHERE id = 'benefit-fast-queue';
 UPDATE membership_benefit_definition SET name = 'VIP优先通道', description = '专属VIP生成通道。', updated_at = CURRENT_TIMESTAMP WHERE id = 'benefit-vip-queue';
@@ -52,31 +56,36 @@ UPDATE membership_benefit_definition SET name = '加速加速', description = '�
 UPDATE membership_benefit_definition SET name = '优先队列', description = '活跃会员优先队列容量。', updated_at = CURRENT_TIMESTAMP WHERE id = 'benefit-definition-priority_queue';
 UPDATE membership_benefit_definition SET name = 'AI配额', description = '专属模型和AI配额。', updated_at = CURRENT_TIMESTAMP WHERE id = 'seed-benefit-ai-quota';
 
+-- Community (circle) benefits
+UPDATE membership_benefit_definition SET name = '私密圈子入口', description = '加入私密圈子，会员专属入口。', updated_at = CURRENT_TIMESTAMP WHERE id = 'benefit-community-circle-access';
+UPDATE membership_benefit_definition SET name = '圈子专属内容', description = '解锁圈子专属帖子、资源与直播回放。', updated_at = CURRENT_TIMESTAMP WHERE id = 'benefit-community-exclusive-content';
+UPDATE membership_benefit_definition SET name = '会员专属活动', description = '会员专属活动与线下聚会优先参与。', updated_at = CURRENT_TIMESTAMP WHERE id = 'benefit-community-member-events';
+
 -- ---------------------------------------------------------------------------
 -- membership_plan_benefit: grant_quantity display text (text-type cells only)
 -- Numeric cells (e.g. '330', '1', '20') remain unchanged.
 -- ---------------------------------------------------------------------------
 -- Free plan
-UPDATE membership_plan_benefit SET grant_quantity = '每日登录免费算力元', updated_at = CURRENT_TIMESTAMP WHERE id = 'plan-free-v1-benefit-platform-points';
+UPDATE membership_plan_benefit SET grant_quantity = '每日登录免费算力积分', updated_at = CURRENT_TIMESTAMP WHERE id = 'plan-free-v1-benefit-platform-points';
 
 -- Basic plan
-UPDATE membership_plan_benefit SET grant_quantity = '每日登录赠送算力元', updated_at = CURRENT_TIMESTAMP WHERE id = 'plan-basic-v1-benefit-platform-points';
-UPDATE membership_plan_benefit SET grant_quantity = '9.7折算力元', updated_at = CURRENT_TIMESTAMP WHERE id = 'plan-basic-v1-benefit-seedance-pro';
+UPDATE membership_plan_benefit SET grant_quantity = '每日登录赠送算力积分', updated_at = CURRENT_TIMESTAMP WHERE id = 'plan-basic-v1-benefit-platform-points';
+UPDATE membership_plan_benefit SET grant_quantity = '9.7折算力积分', updated_at = CURRENT_TIMESTAMP WHERE id = 'plan-basic-v1-benefit-seedance-pro';
 UPDATE membership_plan_benefit SET grant_quantity = '标准生成通道', updated_at = CURRENT_TIMESTAMP WHERE id = 'plan-basic-v1-benefit-standard-queue';
 
 -- Standard plan
-UPDATE membership_plan_benefit SET grant_quantity = '每日登录赠送算力元', updated_at = CURRENT_TIMESTAMP WHERE id = 'plan-standard-v1-benefit-platform-points';
-UPDATE membership_plan_benefit SET grant_quantity = '9.7折算力元', updated_at = CURRENT_TIMESTAMP WHERE id = 'plan-standard-v1-benefit-seedance-pro';
+UPDATE membership_plan_benefit SET grant_quantity = '每日登录赠送算力积分', updated_at = CURRENT_TIMESTAMP WHERE id = 'plan-standard-v1-benefit-platform-points';
+UPDATE membership_plan_benefit SET grant_quantity = '9.7折算力积分', updated_at = CURRENT_TIMESTAMP WHERE id = 'plan-standard-v1-benefit-seedance-pro';
 UPDATE membership_plan_benefit SET grant_quantity = '标准生成通道', updated_at = CURRENT_TIMESTAMP WHERE id = 'plan-standard-v1-benefit-standard-queue';
 
 -- Premium plan
-UPDATE membership_plan_benefit SET grant_quantity = '每日登录赠送算力元', updated_at = CURRENT_TIMESTAMP WHERE id = 'plan-premium-v1-benefit-platform-points';
-UPDATE membership_plan_benefit SET grant_quantity = '9.7折算力元', updated_at = CURRENT_TIMESTAMP WHERE id = 'plan-premium-v1-benefit-seedance-pro';
+UPDATE membership_plan_benefit SET grant_quantity = '每日登录赠送算力积分', updated_at = CURRENT_TIMESTAMP WHERE id = 'plan-premium-v1-benefit-platform-points';
+UPDATE membership_plan_benefit SET grant_quantity = '9.7折算力积分', updated_at = CURRENT_TIMESTAMP WHERE id = 'plan-premium-v1-benefit-seedance-pro';
 UPDATE membership_plan_benefit SET grant_quantity = '快速生成通道', updated_at = CURRENT_TIMESTAMP WHERE id = 'plan-premium-v1-benefit-fast-queue';
 
 -- Super plan
-UPDATE membership_plan_benefit SET grant_quantity = '每日登录赠送算力元', updated_at = CURRENT_TIMESTAMP WHERE id = 'plan-super-v1-benefit-platform-points';
-UPDATE membership_plan_benefit SET grant_quantity = '9.7折算力元', updated_at = CURRENT_TIMESTAMP WHERE id = 'plan-super-v1-benefit-seedance-pro';
+UPDATE membership_plan_benefit SET grant_quantity = '每日登录赠送算力积分', updated_at = CURRENT_TIMESTAMP WHERE id = 'plan-super-v1-benefit-platform-points';
+UPDATE membership_plan_benefit SET grant_quantity = '9.7折算力积分', updated_at = CURRENT_TIMESTAMP WHERE id = 'plan-super-v1-benefit-seedance-pro';
 UPDATE membership_plan_benefit SET grant_quantity = 'VIP专属通道', updated_at = CURRENT_TIMESTAMP WHERE id = 'plan-super-v1-benefit-vip-queue';
 
 -- ---------------------------------------------------------------------------
@@ -86,10 +95,13 @@ UPDATE membership_package_group SET name = '连续包年', description = '9.7折
 UPDATE membership_package_group SET name = '连续包月', description = '9.9折', updated_at = CURRENT_TIMESTAMP WHERE id = 'package-group-monthly';
 UPDATE membership_package_group SET name = '连续包季', description = '9.8折', updated_at = CURRENT_TIMESTAMP WHERE id = 'package-group-quarterly';
 UPDATE membership_package_group SET name = '单月购买', description = NULL, updated_at = CURRENT_TIMESTAMP WHERE id = 'package-group-single';
+-- Community (circle) plan family
+UPDATE membership_package_group SET name = '圈子年度会员', description = '圈子会员年度方案', updated_at = CURRENT_TIMESTAMP WHERE id = 'package-group-community-annual';
 
 -- ---------------------------------------------------------------------------
 -- membership_package: package display names and descriptions
 -- ---------------------------------------------------------------------------
+UPDATE membership_package SET name = '圈子基础会员 - 年度', description = '圈子会员年度方案，私密圈子访问', updated_at = CURRENT_TIMESTAMP WHERE id = 'package-community-basic-annual';
 UPDATE membership_package SET name = '基础版 - 连续包年', description = '连续包年订阅，到期自动续费', updated_at = CURRENT_TIMESTAMP WHERE id = 'package-basic-annual';
 UPDATE membership_package SET name = '标准版 - 连续包年', description = '连续包年订阅，到期自动续费', updated_at = CURRENT_TIMESTAMP WHERE id = 'package-standard-annual';
 UPDATE membership_package SET name = '巅峰版 - 连续包年', description = '连续包年订阅，到期自动续费', updated_at = CURRENT_TIMESTAMP WHERE id = 'package-premium-annual';

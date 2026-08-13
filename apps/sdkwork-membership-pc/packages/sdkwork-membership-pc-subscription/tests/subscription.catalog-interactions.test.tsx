@@ -140,7 +140,7 @@ describe("sdkwork-membership-pc-subscription catalog interactions", () => {
     });
 
     expect(screen.queryByTestId("points-modal-open")).toBeNull();
-    fireEvent.click(screen.getByRole("button", { name: /购买算力元/ }));
+    fireEvent.click(screen.getByRole("button", { name: /购买算力积分/ }));
     expect(screen.getByTestId("points-modal-open")).toBeTruthy();
   });
 

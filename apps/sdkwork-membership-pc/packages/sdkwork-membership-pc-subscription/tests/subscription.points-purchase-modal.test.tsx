@@ -55,7 +55,7 @@ describe("subscription catalog points purchase", () => {
       </SdkworkThemeProvider>,
     );
 
-    fireEvent.click(screen.getByRole("button", { name: /购买算力元|buy compute credits/i }));
+    fireEvent.click(screen.getByRole("button", { name: /购买算力积分|buy compute credits/i }));
 
     expect(screen.getByText("points purchase open")).toBeInTheDocument();
     expect(onLoginRequired).not.toHaveBeenCalled();

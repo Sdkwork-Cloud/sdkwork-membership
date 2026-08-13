@@ -11,4 +11,6 @@ export interface AdminMembershipPlanItem {
   createdAt?: string;
   updatedAt?: string;
   category: MembershipCategory;
+  /** Plan description; auto-provisioned placeholders carry an Auto-provisioned marker. */
+  description?: string | null;
 }

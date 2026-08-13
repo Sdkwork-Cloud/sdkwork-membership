@@ -61,7 +61,7 @@ export function SubscriptionCatalogHero({
           onClick={onOpenPointsDetails}
           type="button"
         >
-          算力元详情
+          算力积分详情
         </button>
       </div>
     </div>

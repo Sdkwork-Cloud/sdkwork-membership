@@ -81,7 +81,10 @@ INSERT INTO membership_benefit_definition (
 ) VALUES
   ('seed-benefit-priority-speed-up', '100001', '0', 'priority_speed_up', 'Priority speed-up', 'quota', 'count', 'counter', 'Manual acceleration quota for generation jobs.', 'active', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
   ('benefit-definition-priority_queue', '100001', '0', 'priority_queue', 'Priority queue', 'quota', 'count', 'counter', 'Priority queue capacity for active members.', 'active', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
-  ('seed-benefit-ai-quota', '100001', '0', 'ai_quota', 'AI quota', 'quota', 'count', 'counter', 'Exclusive model and AI quota allowance.', 'active', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP) ON CONFLICT (id) DO UPDATE SET
+  ('seed-benefit-ai-quota', '100001', '0', 'ai_quota', 'AI quota', 'quota', 'count', 'counter', 'Exclusive model and AI quota allowance.', 'active', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+  ('benefit-community-circle-access', '100001', '0', 'community_circle_access', 'Private circle access', 'feature', 'count', 'counter', 'Join private circles with member-only entry.', 'active', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+  ('benefit-community-exclusive-content', '100001', '0', 'community_exclusive_content', 'Exclusive circle content', 'feature', 'count', 'counter', 'Unlock circle-exclusive posts, resources, and live replays.', 'active', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+  ('benefit-community-member-events', '100001', '0', 'community_member_events', 'Member-only events', 'service', 'count', 'counter', 'Priority access to member-only events and meetups.', 'active', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP) ON CONFLICT (id) DO UPDATE SET
   name = EXCLUDED.name,
   benefit_type = EXCLUDED.benefit_type,
   value_unit = EXCLUDED.value_unit,
@@ -170,7 +173,11 @@ INSERT INTO membership_plan_benefit (
   ('plan-super-v1-benefit-vip-support', '100001', '0', 'plan-super', 'plan-super-v1', 'benefit-vip-support', 'vip_support', '1', 'membership_period', 'included', 14, 'active', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
   ('plan-super-v1-benefit-speed-up', '100001', '0', 'plan-super', 'plan-super-v1', 'seed-benefit-priority-speed-up', 'priority_speed_up', '200', 'membership_period', 'included', 20, 'active', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
   ('plan-super-v1-benefit-priority-queue', '100001', '0', 'plan-super', 'plan-super-v1', 'benefit-definition-priority_queue', 'priority_queue', '500', 'membership_period', 'included', 21, 'active', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
-  ('plan-super-v1-benefit-ai-quota', '100001', '0', 'plan-super', 'plan-super-v1', 'seed-benefit-ai-quota', 'ai_quota', '500', 'membership_period', 'included', 22, 'active', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP) ON CONFLICT (id) DO UPDATE SET
+  ('plan-super-v1-benefit-ai-quota', '100001', '0', 'plan-super', 'plan-super-v1', 'seed-benefit-ai-quota', 'ai_quota', '500', 'membership_period', 'included', 22, 'active', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+  -- Community plan (category 'community'): circle membership benefits
+  ('plan-community-basic-v1-benefit-circle-access', '100001', '0', 'plan-community-basic', 'plan-community-basic-v1', 'benefit-community-circle-access', 'community_circle_access', '1', 'membership_period', 'included', 1, 'active', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+  ('plan-community-basic-v1-benefit-exclusive-content', '100001', '0', 'plan-community-basic', 'plan-community-basic-v1', 'benefit-community-exclusive-content', 'community_exclusive_content', '1', 'membership_period', 'included', 2, 'active', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+  ('plan-community-basic-v1-benefit-member-events', '100001', '0', 'plan-community-basic', 'plan-community-basic-v1', 'benefit-community-member-events', 'community_member_events', '1', 'membership_period', 'included', 3, 'active', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP) ON CONFLICT (id) DO UPDATE SET
   grant_quantity = EXCLUDED.grant_quantity,
   grant_period = EXCLUDED.grant_period,
   usage_policy = EXCLUDED.usage_policy,

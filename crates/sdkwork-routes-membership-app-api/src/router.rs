@@ -38,7 +38,7 @@ struct AppMembershipState {
 #[derive(Debug, Deserialize)]
 struct MembershipCatalogQuery {
     category: Option<String>,
-    #[serde(with = "sdkwork_utils_rust::serde_int64::option")]
+    #[serde(default, with = "sdkwork_utils_rust::serde_int64::option")]
     plan_id: Option<i64>,
     recommended_only: Option<bool>,
     page: Option<i64>,
@@ -49,7 +49,7 @@ struct MembershipCatalogQuery {
 
 #[derive(Debug, Deserialize)]
 struct MembershipBenefitQuery {
-    #[serde(with = "sdkwork_utils_rust::serde_int64::option")]
+    #[serde(default, with = "sdkwork_utils_rust::serde_int64::option")]
     plan_id: Option<i64>,
     page: Option<i64>,
     #[serde(rename = "page_size")]
@@ -60,9 +60,9 @@ struct MembershipBenefitQuery {
 #[derive(Debug, Deserialize)]
 struct MembershipPackagesQuery {
     category: Option<String>,
-    #[serde(with = "sdkwork_utils_rust::serde_int64::option")]
+    #[serde(default, with = "sdkwork_utils_rust::serde_int64::option")]
     package_group_id: Option<i64>,
-    #[serde(with = "sdkwork_utils_rust::serde_int64::option")]
+    #[serde(default, with = "sdkwork_utils_rust::serde_int64::option")]
     plan_id: Option<i64>,
     page: Option<i64>,
     #[serde(rename = "page_size")]
@@ -800,4 +800,34 @@ fn current_unix_timestamp() -> i64 {
         .duration_since(UNIX_EPOCH)
         .map(|duration| duration.as_secs() as i64)
         .unwrap_or(0)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn list_queries_deserialize_without_optional_int64_filters() {
+        let catalog_uri = "/app/v3/api/memberships/plans"
+            .parse()
+            .expect("catalog URI");
+        let Query(catalog) = Query::<MembershipCatalogQuery>::try_from_uri(&catalog_uri)
+            .expect("catalog query without plan_id");
+        assert_eq!(catalog.plan_id, None);
+
+        let benefits_uri = "/app/v3/api/memberships/benefits"
+            .parse()
+            .expect("benefits URI");
+        let Query(benefits) = Query::<MembershipBenefitQuery>::try_from_uri(&benefits_uri)
+            .expect("benefits query without plan_id");
+        assert_eq!(benefits.plan_id, None);
+
+        let packages_uri = "/app/v3/api/memberships/packages"
+            .parse()
+            .expect("packages URI");
+        let Query(packages) = Query::<MembershipPackagesQuery>::try_from_uri(&packages_uri)
+            .expect("packages query without optional filters");
+        assert_eq!(packages.package_group_id, None);
+        assert_eq!(packages.plan_id, None);
+    }
 }

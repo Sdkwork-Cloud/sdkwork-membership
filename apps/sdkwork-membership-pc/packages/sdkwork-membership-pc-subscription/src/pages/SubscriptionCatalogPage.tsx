@@ -6,6 +6,7 @@ import { SubscriptionCatalogHero } from "../components/subscription-catalog-hero
 import { SubscriptionCatalogPlanGrid } from "../components/subscription-catalog-plan-grid";
 import { SubscriptionCatalogTierCompare } from "../components/subscription-catalog-tier-compare";
 import { sdkworkSubscriptionCatalogHostComponents } from "../components/subscription-catalog-host-components";
+import { useSdkworkSubscriptionIntl } from "../subscription-intl";
 import type { SdkworkSubscriptionCatalogPlanCardModel } from "../subscription-catalog-content";
 import {
   useSdkworkSubscriptionCatalogController,
@@ -54,6 +55,7 @@ export function SdkworkSubscriptionCatalogPage({
   onNotify,
 }: SdkworkSubscriptionCatalogPageProps) {
   const { t } = useTranslation();
+  const { copy } = useSdkworkSubscriptionIntl();
 
   // Use provided host components or fall back to built-in defaults so the
   // page works with zero configuration: <SdkworkSubscriptionCatalogPage />
@@ -278,12 +280,19 @@ export function SdkworkSubscriptionCatalogPage({
               controller.selectBillingCycle(index);
             }}
             subtitleLead={t("choose_suitable_plan", "选择合适你的套餐，或直接")}
-            subtitlePointsActionLabel={t("buy_points", "购买算力元")}
+            subtitlePointsActionLabel={t("buy_points", "购买算力积分")}
             subtitleRedeemActionLabel={t("redeem_vip", "会员兑换")}
             title={t("unlock_infinite", "订阅特权，解锁无尽竞技能力")}
           />
 
           <SubscriptionCatalogPlanGrid onSelectPlan={handlePlanCardSelect} plans={state.planCards} />
+
+          <div className="flex items-center justify-center gap-2 py-1">
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-sky-50 px-2.5 py-0.5 text-xs font-medium text-sky-700 dark:bg-sky-500/10 dark:text-sky-300">
+              {copy.catalog.categoryToken}
+            </span>
+            <span className="text-xs text-slate-400 dark:text-slate-500">{copy.catalog.categoryLabel}</span>
+          </div>
 
           <SubscriptionCatalogTierCompare
             billingCycleIndex={state.billingCycleIndex}

@@ -104,6 +104,7 @@ struct AdminMembershipPlanMutationRequest {
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
 struct AdminMembershipBenefitMutationRequest {
+    #[serde(with = "sdkwork_utils_rust::serde_int64::option")]
     id: Option<i64>,
     name: Option<String>,
     benefit_key: Option<String>,
@@ -111,7 +112,9 @@ struct AdminMembershipBenefitMutationRequest {
     description: Option<String>,
     icon: Option<String>,
     claimed: Option<bool>,
+    #[serde(with = "sdkwork_utils_rust::serde_int64::option")]
     usage_limit: Option<i64>,
+    #[serde(with = "sdkwork_utils_rust::serde_int64::option")]
     used_count: Option<i64>,
 }
 
@@ -872,11 +875,7 @@ fn normalize_plan_benefits(
                 "membership benefit benefitKey",
                 MAX_CODE_LEN,
             )?,
-            r#type: normalize_optional_bounded_text(
-                item.r#type.as_deref(),
-                "membership benefit type",
-                64,
-            )?,
+            r#type: normalize_benefit_type(item.r#type.as_deref())?,
             description: normalize_optional_bounded_text(
                 item.description.as_deref(),
                 "membership benefit description",
@@ -1051,6 +1050,27 @@ fn normalize_optional_bounded_text(
         )));
     }
     Ok(Some(value.to_owned()))
+}
+
+/// Benefit type vocabulary shared with the database CHECK constraint and the
+/// admin form options: points | feature | queue | quota | service.
+///
+/// `discount` was offered by older admin forms but is not part of the
+/// vocabulary; it is normalised to `service` so legacy rows keep saving
+/// instead of failing the CHECK constraint (which used to surface as a
+/// misleading 50301 SERVICE_UNAVAILABLE).
+fn normalize_benefit_type(value: Option<&str>) -> Result<Option<String>, ApiProblem> {
+    let Some(value) = value.map(str::trim).filter(|value| !value.is_empty()) else {
+        return Ok(None);
+    };
+    let normalized = value.to_ascii_lowercase();
+    match normalized.as_str() {
+        "points" | "feature" | "queue" | "quota" | "service" => Ok(Some(normalized)),
+        "discount" => Ok(Some("service".to_owned())),
+        _ => Err(ApiProblem::bad_request(format!(
+            "membership benefit type must be points, feature, queue, quota, or service"
+        ))),
+    }
 }
 
 fn normalize_money(value: Option<&str>, field_name: &str) -> Result<String, ApiProblem> {

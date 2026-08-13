@@ -4,7 +4,12 @@ const POSTGRES_SOURCE: &str = include_str!("../src/postgres.rs");
 fn postgres_paid_order_fulfillment_keeps_concurrency_and_replay_guards() {
     assert!(POSTGRES_SOURCE.contains("SELECT pg_advisory_xact_lock($1)"));
     assert!(POSTGRES_SOURCE.contains("AND mp.source_order_id = $4"));
-    assert!(POSTGRES_SOURCE.contains("starts_at = CASE WHEN $6 THEN starts_at ELSE $7 END"));
+    assert!(POSTGRES_SOURCE
+        .contains("starts_at = CASE WHEN $6 THEN starts_at ELSE $7::timestamptz END"));
+    // Bound timestamp strings must carry an explicit timestamptz cast so
+    // PostgreSQL does not reject text -> timestamptz in UPDATE SET clauses.
+    assert!(POSTGRES_SOURCE.contains("expires_at = $8::timestamptz,"));
+    assert!(POSTGRES_SOURCE.contains("updated_at = $11::timestamptz"));
 }
 
 #[test]

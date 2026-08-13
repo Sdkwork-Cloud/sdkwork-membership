@@ -33,19 +33,20 @@ export interface SdkworkMembershipProblemDetail {
  * here ensures the SDK correctly forwards pagination and filter
  * parameters to the backend.
  *
- * `category` filters the catalog to one plan family (`token` Token Plan,
- * `community` 圈子/community).  Token surfaces pass `'token'` so community
- * catalog data never leaks into the Token Plan purchase flow.
+ * `category` classifies the catalog request. Token surfaces default to
+ * `'token'` so Token Plan queries always transmit the type parameter and
+ * community/circle catalog data never leaks into the Token Plan purchase
+ * flow; pass `'community'` for circle surfaces.
  */
 export function createSdkworkMembershipListQuery(
   page = 1,
   pageSize = SDKWORK_MEMBERSHIP_DEFAULT_LIST_PAGE_SIZE,
-  category?: "token" | "community",
-): { page: number; pageSize: number; category?: "token" | "community" } {
+  category: "token" | "community" = "token",
+): { page: number; pageSize: number; category: "token" | "community" } {
   return {
     page,
     pageSize,
-    ...(category ? { category } : {}),
+    category,
   };
 }
 

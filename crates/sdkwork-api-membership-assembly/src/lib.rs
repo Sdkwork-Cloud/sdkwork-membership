@@ -12,6 +12,10 @@ pub use bootstrap::{
     assemble_backend_business_router_with_pool, ApiAssembly, ApiAssemblyContribution,
     BusinessRouterAssembly,
 };
+/// App-api surface route manifest owned by the dependency assembly.
+pub fn app_api_route_manifest() -> sdkwork_web_core::HttpRouteManifest {
+    sdkwork_routes_membership_app_api::gateway_route_manifest()
+}
 
 pub fn assembly_route_count() -> usize {
     generated::ROUTE_CRATE_COUNT

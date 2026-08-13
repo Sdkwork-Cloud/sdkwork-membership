@@ -17,6 +17,8 @@ UPDATE membership_plan SET name = 'Basic', description = 'For individual creator
 UPDATE membership_plan SET name = 'Standard', description = 'For professional creators, unlock all AI models.', updated_at = CURRENT_TIMESTAMP WHERE id = 'plan-standard';
 UPDATE membership_plan SET name = 'Premium', description = 'For teams and power users, enjoy dedicated channels.', updated_at = CURRENT_TIMESTAMP WHERE id = 'plan-premium';
 UPDATE membership_plan SET name = 'Super', description = 'Ultimate tier with VIP queue, maximum quotas, and exclusive effects.', updated_at = CURRENT_TIMESTAMP WHERE id = 'plan-super';
+-- Community (circle) plan family
+UPDATE membership_plan SET name = 'Community Basic', description = 'Circle membership: join private circles, unlock exclusive content and member-only events.', updated_at = CURRENT_TIMESTAMP WHERE id = 'plan-community-basic';
 
 -- ---------------------------------------------------------------------------
 -- membership_plan_version: version display titles
@@ -26,6 +28,8 @@ UPDATE membership_plan_version SET title = 'Basic', updated_at = CURRENT_TIMESTA
 UPDATE membership_plan_version SET title = 'Standard', updated_at = CURRENT_TIMESTAMP WHERE id = 'plan-standard-v1';
 UPDATE membership_plan_version SET title = 'Premium', updated_at = CURRENT_TIMESTAMP WHERE id = 'plan-premium-v1';
 UPDATE membership_plan_version SET title = 'Super', updated_at = CURRENT_TIMESTAMP WHERE id = 'plan-super-v1';
+-- Community (circle) plan family
+UPDATE membership_plan_version SET title = 'Community Basic', updated_at = CURRENT_TIMESTAMP WHERE id = 'plan-community-basic-v1';
 
 -- ---------------------------------------------------------------------------
 -- membership_benefit_definition: benefit display names and descriptions
@@ -51,6 +55,11 @@ UPDATE membership_benefit_definition SET name = 'Worry-free refund', description
 UPDATE membership_benefit_definition SET name = 'Priority speed-up', description = 'Manual acceleration quota for generation jobs.', updated_at = CURRENT_TIMESTAMP WHERE id = 'seed-benefit-priority-speed-up';
 UPDATE membership_benefit_definition SET name = 'Priority queue', description = 'Priority queue capacity for active members.', updated_at = CURRENT_TIMESTAMP WHERE id = 'benefit-definition-priority_queue';
 UPDATE membership_benefit_definition SET name = 'AI quota', description = 'Exclusive model and AI quota allowance.', updated_at = CURRENT_TIMESTAMP WHERE id = 'seed-benefit-ai-quota';
+
+-- Community (circle) benefits
+UPDATE membership_benefit_definition SET name = 'Private circle access', description = 'Join private circles with member-only entry.', updated_at = CURRENT_TIMESTAMP WHERE id = 'benefit-community-circle-access';
+UPDATE membership_benefit_definition SET name = 'Exclusive circle content', description = 'Unlock circle-exclusive posts, resources, and live replays.', updated_at = CURRENT_TIMESTAMP WHERE id = 'benefit-community-exclusive-content';
+UPDATE membership_benefit_definition SET name = 'Member-only events', description = 'Priority access to member-only events and meetups.', updated_at = CURRENT_TIMESTAMP WHERE id = 'benefit-community-member-events';
 
 -- ---------------------------------------------------------------------------
 -- membership_plan_benefit: grant_quantity display text (text-type cells only)
@@ -86,10 +95,13 @@ UPDATE membership_package_group SET name = 'Annual subscription', description = 
 UPDATE membership_package_group SET name = 'Monthly subscription', description = '1% off', updated_at = CURRENT_TIMESTAMP WHERE id = 'package-group-monthly';
 UPDATE membership_package_group SET name = 'Quarterly subscription', description = '2% off', updated_at = CURRENT_TIMESTAMP WHERE id = 'package-group-quarterly';
 UPDATE membership_package_group SET name = 'Single month purchase', description = NULL, updated_at = CURRENT_TIMESTAMP WHERE id = 'package-group-single';
+-- Community (circle) plan family
+UPDATE membership_package_group SET name = 'Circle annual membership', description = 'Circle member annual plan', updated_at = CURRENT_TIMESTAMP WHERE id = 'package-group-community-annual';
 
 -- ---------------------------------------------------------------------------
 -- membership_package: package display names and descriptions
 -- ---------------------------------------------------------------------------
+UPDATE membership_package SET name = 'Community Basic - Annual', description = 'Circle membership annual plan, private community access', updated_at = CURRENT_TIMESTAMP WHERE id = 'package-community-basic-annual';
 UPDATE membership_package SET name = 'Basic - Annual', description = 'Annual subscription, auto-renew on expiry', updated_at = CURRENT_TIMESTAMP WHERE id = 'package-basic-annual';
 UPDATE membership_package SET name = 'Standard - Annual', description = 'Annual subscription, auto-renew on expiry', updated_at = CURRENT_TIMESTAMP WHERE id = 'package-standard-annual';
 UPDATE membership_package SET name = 'Premium - Annual', description = 'Annual subscription, auto-renew on expiry', updated_at = CURRENT_TIMESTAMP WHERE id = 'package-premium-annual';

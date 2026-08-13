@@ -165,7 +165,7 @@ pub struct AppMembershipBenefitItem {
     #[serde(with = "sdkwork_utils_rust::serde_int64::option")]
     pub used_count: Option<i64>,
     /// Raw text value of the benefit grant quantity. Used for non-numeric
-    /// comparison table cells like "2K", "4K/8K", "8折算力元", "标准生成通道".
+    /// comparison table cells like "2K", "4K/8K", "8折算力积分", "标准生成通道".
     /// When the grant_quantity is a pure number, display_value is None and
     /// usage_limit holds the parsed integer. When it is a text value,
     /// usage_limit is None and display_value holds the raw text.
@@ -396,6 +396,7 @@ pub struct AdminMembershipPlanItem {
     pub rank: i64,
     pub benefits: Vec<AppMembershipBenefitItem>,
     pub status: String,
+    pub description: Option<String>,
     pub created_at: String,
     pub updated_at: String,
 }

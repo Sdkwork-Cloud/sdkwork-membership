@@ -152,36 +152,36 @@ function textValueWithFallback(
 }
 
 const COMPARE_BENEFIT_ROWS: ReadonlyArray<ComparisonBenefitRow> = [
-  // ── 算力元 ──────────────────────────────────────────────
+  // ── 算力积分 ──────────────────────────────────────────────
   {
     benefitKeys: ["platform_free_points"],
-    categoryLabel: "算力元",
-    label: "平台免费算力元",
+    categoryLabel: "算力积分",
+    label: "平台免费算力积分",
     valueForRank: (rank, benefits) =>
       textValueWithFallback(benefits, "platform_free_points", rank, (r) =>
-        r === 0 ? "每日登陆免费算力元" : "每日登录赠送算力元",
+        r === 0 ? "每日登陆免费算力积分" : "每日登录赠送算力积分",
       ),
   },
   {
     benefitKeys: ["purchased_points"],
-    categoryLabel: "算力元",
-    label: "充值购买算力元",
+    categoryLabel: "算力积分",
+    label: "充值购买算力积分",
     valueForRank: (rank, benefits) => booleanValueWithFallback(benefits, "purchased_points", rank),
   },
   {
     benefitKeys: ["daily_points"],
-    categoryLabel: "算力元",
-    label: "订阅会员算力元",
+    categoryLabel: "算力积分",
+    label: "订阅会员算力积分",
     valueForRank: (rank, benefits) => {
       if (rank === SUPER_RANK && !hasActiveBenefit(benefits, "daily_points")) {
-        return "每月7,499算力元";
+        return "每月7,499算力积分";
       }
       if (rank <= 0 && !hasActiveBenefit(benefits, "daily_points")) {
         return "-";
       }
       const benefit = findBenefit(benefits, "daily_points");
       const quantity = toNullableSdkworkMembershipNumber(benefit?.usageLimit);
-      return quantity ? `每月${formatSdkworkMembershipPoints(quantity, "zh-CN")}算力元` : "-";
+      return quantity ? `每月${formatSdkworkMembershipPoints(quantity, "zh-CN")}算力积分` : "-";
     },
   },
   // ── 视频生成 ──────────────────────────────────────────
@@ -197,7 +197,7 @@ const COMPARE_BENEFIT_ROWS: ReadonlyArray<ComparisonBenefitRow> = [
     label: "seedance1.5 Pro模型",
     valueForRank: (rank, benefits) =>
       textValueWithFallback(benefits, "seedance_pro_model", rank, (r) =>
-        r === 0 ? "-" : "8折算力元",
+        r === 0 ? "-" : "8折算力积分",
       ),
   },
   {
@@ -476,9 +476,9 @@ export function mapPackagesToPlanCards(
         pointsAllowanceLabel: `${formatSdkworkMembershipPoints(
           resolveMonthlyPointAllowance(pointAmount, durationDays),
           "zh-CN",
-        )} 算力元/月`,
+        )} 算力积分/月`,
         pointsConversionLabel: priceCny
-          ? `换算¥10=${Math.max(1, Math.round(pointAmount / Math.max(priceCny, 1) * 10))}算力元`
+          ? `换算¥10=${Math.max(1, Math.round(pointAmount / Math.max(priceCny, 1) * 10))}算力积分`
           : "",
         priceLabel,
         subtitle: pkg.description || "",

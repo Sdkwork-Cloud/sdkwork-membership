@@ -2352,6 +2352,13 @@
           },
           "category": {
             "$ref": "#/components/schemas/MembershipCategory"
+          },
+          "description": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Plan description; auto-provisioned placeholders carry an Auto-provisioned marker."
           }
         }
       },
