@@ -14,7 +14,7 @@ export class MembershipsAccessChecksApi {
 
 /** Check whether the current member level grants access to a feature. */
   async create(body: MembershipFeatureAccessCheckCommand, requestOptions?: ApiRequestOptions): Promise<MembershipFeatureAccessCheckResult> {
-    return this.client.request<MembershipFeatureAccessCheckResult>(appApiPath(`/memberships/access/checks`), { signal: requestOptions?.signal, timeout: requestOptions?.timeout, method: 'POST' as any, body, contentType: 'application/json', sdkworkUnwrapKind: 'item' });
+    return this.client.request<MembershipFeatureAccessCheckResult>(appApiPath(`/memberships/access/checks`), { ...(requestOptions?.signal !== undefined ? { signal: requestOptions.signal } : {}), ...(requestOptions?.timeout !== undefined ? { timeout: requestOptions.timeout } : {}), method: 'POST' as any, body, contentType: 'application/json', sdkworkUnwrapKind: 'item' });
   }
 }
 
@@ -28,7 +28,7 @@ export class MembershipsPrivilegesSpeedUpsApi {
 
 /** Memberships privileges speed Ups create. */
   async create(body: CommerceOperationCommand, requestOptions?: ApiRequestOptions): Promise<SdkWorkCommandData> {
-    return this.client.request<SdkWorkCommandData>(appApiPath(`/memberships/privileges/speed_ups`), { signal: requestOptions?.signal, timeout: requestOptions?.timeout, method: 'POST' as any, body, contentType: 'application/json', sdkworkUnwrapKind: 'item' });
+    return this.client.request<SdkWorkCommandData>(appApiPath(`/memberships/privileges/speed_ups`), { ...(requestOptions?.signal !== undefined ? { signal: requestOptions.signal } : {}), ...(requestOptions?.timeout !== undefined ? { timeout: requestOptions.timeout } : {}), method: 'POST' as any, body, contentType: 'application/json', sdkworkUnwrapKind: 'item' });
   }
 }
 
@@ -42,17 +42,15 @@ export class MembershipsPrivilegesUsageApi {
 
 /** Memberships privileges usage retrieve. */
   async retrieve(requestOptions?: ApiRequestOptions): Promise<AppMembershipPrivilegeUsageResponse> {
-    return this.client.request<AppMembershipPrivilegeUsageResponse>(appApiPath(`/memberships/privileges/usage`), { signal: requestOptions?.signal, timeout: requestOptions?.timeout, method: 'GET' as any, sdkworkUnwrapKind: 'item' });
+    return this.client.request<AppMembershipPrivilegeUsageResponse>(appApiPath(`/memberships/privileges/usage`), { ...(requestOptions?.signal !== undefined ? { signal: requestOptions.signal } : {}), ...(requestOptions?.timeout !== undefined ? { timeout: requestOptions.timeout } : {}), method: 'GET' as any, sdkworkUnwrapKind: 'item' });
   }
 }
 
 export class MembershipsPrivilegesApi {
-  private client: HttpClient;
   public readonly usage: MembershipsPrivilegesUsageApi;
   public readonly speedUps: MembershipsPrivilegesSpeedUpsApi;
 
   constructor(client: HttpClient) {
-    this.client = client;
     this.usage = new MembershipsPrivilegesUsageApi(client);
     this.speedUps = new MembershipsPrivilegesSpeedUpsApi(client);
   }
@@ -69,7 +67,7 @@ export class MembershipsPointsDailyRewardsStatusApi {
 
 /** Memberships points daily Rewards status retrieve. */
   async retrieve(requestOptions?: ApiRequestOptions): Promise<AppMembershipDailyRewardStatusResponse> {
-    return this.client.request<AppMembershipDailyRewardStatusResponse>(appApiPath(`/memberships/points/daily_rewards/status`), { signal: requestOptions?.signal, timeout: requestOptions?.timeout, method: 'GET' as any, sdkworkUnwrapKind: 'item' });
+    return this.client.request<AppMembershipDailyRewardStatusResponse>(appApiPath(`/memberships/points/daily_rewards/status`), { ...(requestOptions?.signal !== undefined ? { signal: requestOptions.signal } : {}), ...(requestOptions?.timeout !== undefined ? { timeout: requestOptions.timeout } : {}), method: 'GET' as any, sdkworkUnwrapKind: 'item' });
   }
 }
 
@@ -85,7 +83,7 @@ export class MembershipsPointsDailyRewardsApi {
 
 /** Memberships points daily Rewards create. */
   async create(body: CommerceOperationCommand, requestOptions?: ApiRequestOptions): Promise<AppMembershipDailyRewardResponse> {
-    return this.client.request<AppMembershipDailyRewardResponse>(appApiPath(`/memberships/points/daily_rewards`), { signal: requestOptions?.signal, timeout: requestOptions?.timeout, method: 'POST' as any, body, contentType: 'application/json', sdkworkUnwrapKind: 'item' });
+    return this.client.request<AppMembershipDailyRewardResponse>(appApiPath(`/memberships/points/daily_rewards`), { ...(requestOptions?.signal !== undefined ? { signal: requestOptions.signal } : {}), ...(requestOptions?.timeout !== undefined ? { timeout: requestOptions.timeout } : {}), method: 'POST' as any, body, contentType: 'application/json', sdkworkUnwrapKind: 'item' });
   }
 }
 
@@ -110,7 +108,7 @@ export class MembershipsPointsHistoryApi {
       { name: 'page_size', value: params?.pageSize, style: 'form', explode: true, allowReserved: false },
       { name: 'cursor', value: params?.cursor, style: 'form', explode: true, allowReserved: false },
     ]);
-    return this.client.request<SdkWorkPageDataPointsHistory>(appendQueryString(appApiPath(`/memberships/points/history`), query), { signal: requestOptions?.signal, timeout: requestOptions?.timeout, method: 'GET' as any, sdkworkUnwrapKind: 'page' });
+    return this.client.request<SdkWorkPageDataPointsHistory>(appendQueryString(appApiPath(`/memberships/points/history`), query), { ...(requestOptions?.signal !== undefined ? { signal: requestOptions.signal } : {}), ...(requestOptions?.timeout !== undefined ? { timeout: requestOptions.timeout } : {}), method: 'GET' as any, sdkworkUnwrapKind: 'page' });
   }
 }
 
@@ -124,18 +122,16 @@ export class MembershipsPointsBalanceApi {
 
 /** Memberships points balance retrieve. */
   async retrieve(requestOptions?: ApiRequestOptions): Promise<AppMembershipPointsBalanceResponse> {
-    return this.client.request<AppMembershipPointsBalanceResponse>(appApiPath(`/memberships/points/balance`), { signal: requestOptions?.signal, timeout: requestOptions?.timeout, method: 'GET' as any, sdkworkUnwrapKind: 'item' });
+    return this.client.request<AppMembershipPointsBalanceResponse>(appApiPath(`/memberships/points/balance`), { ...(requestOptions?.signal !== undefined ? { signal: requestOptions.signal } : {}), ...(requestOptions?.timeout !== undefined ? { timeout: requestOptions.timeout } : {}), method: 'GET' as any, sdkworkUnwrapKind: 'item' });
   }
 }
 
 export class MembershipsPointsApi {
-  private client: HttpClient;
   public readonly balance: MembershipsPointsBalanceApi;
   public readonly history: MembershipsPointsHistoryApi;
   public readonly dailyRewards: MembershipsPointsDailyRewardsApi;
 
   constructor(client: HttpClient) {
-    this.client = client;
     this.balance = new MembershipsPointsBalanceApi(client);
     this.history = new MembershipsPointsHistoryApi(client);
     this.dailyRewards = new MembershipsPointsDailyRewardsApi(client);
@@ -153,17 +149,17 @@ export class MembershipsPurchasesApi {
 
 /** Memberships purchases create. */
   async create(body: CommerceOperationCommand, requestOptions?: ApiRequestOptions): Promise<AppMembershipPurchaseOutcome> {
-    return this.client.request<AppMembershipPurchaseOutcome>(appApiPath(`/memberships/purchases`), { signal: requestOptions?.signal, timeout: requestOptions?.timeout, method: 'POST' as any, body, contentType: 'application/json', sdkworkUnwrapKind: 'item' });
+    return this.client.request<AppMembershipPurchaseOutcome>(appApiPath(`/memberships/purchases`), { ...(requestOptions?.signal !== undefined ? { signal: requestOptions.signal } : {}), ...(requestOptions?.timeout !== undefined ? { timeout: requestOptions.timeout } : {}), method: 'POST' as any, body, contentType: 'application/json', sdkworkUnwrapKind: 'item' });
   }
 
 /** Memberships purchases renew. */
   async renew(body: CommerceOperationCommand, requestOptions?: ApiRequestOptions): Promise<AppMembershipPurchaseOutcome> {
-    return this.client.request<AppMembershipPurchaseOutcome>(appApiPath(`/memberships/purchases/renew`), { signal: requestOptions?.signal, timeout: requestOptions?.timeout, method: 'POST' as any, body, contentType: 'application/json', sdkworkUnwrapKind: 'item' });
+    return this.client.request<AppMembershipPurchaseOutcome>(appApiPath(`/memberships/purchases/renew`), { ...(requestOptions?.signal !== undefined ? { signal: requestOptions.signal } : {}), ...(requestOptions?.timeout !== undefined ? { timeout: requestOptions.timeout } : {}), method: 'POST' as any, body, contentType: 'application/json', sdkworkUnwrapKind: 'item' });
   }
 
 /** Memberships purchases upgrade. */
   async upgrade(body: CommerceOperationCommand, requestOptions?: ApiRequestOptions): Promise<AppMembershipPurchaseOutcome> {
-    return this.client.request<AppMembershipPurchaseOutcome>(appApiPath(`/memberships/purchases/upgrade`), { signal: requestOptions?.signal, timeout: requestOptions?.timeout, method: 'POST' as any, body, contentType: 'application/json', sdkworkUnwrapKind: 'item' });
+    return this.client.request<AppMembershipPurchaseOutcome>(appApiPath(`/memberships/purchases/upgrade`), { ...(requestOptions?.signal !== undefined ? { signal: requestOptions.signal } : {}), ...(requestOptions?.timeout !== undefined ? { timeout: requestOptions.timeout } : {}), method: 'POST' as any, body, contentType: 'application/json', sdkworkUnwrapKind: 'item' });
   }
 }
 
@@ -196,12 +192,12 @@ export class MembershipsPackagesApi {
       { name: 'plan_id', value: params?.planId, style: 'form', explode: true, allowReserved: false },
       { name: 'cursor', value: params?.cursor, style: 'form', explode: true, allowReserved: false },
     ]);
-    return this.client.request<SdkWorkPageDataPackages>(appendQueryString(appApiPath(`/memberships/packages`), query), { signal: requestOptions?.signal, timeout: requestOptions?.timeout, method: 'GET' as any, skipAuth: true, sdkworkUnwrapKind: 'page' });
+    return this.client.request<SdkWorkPageDataPackages>(appendQueryString(appApiPath(`/memberships/packages`), query), { ...(requestOptions?.signal !== undefined ? { signal: requestOptions.signal } : {}), ...(requestOptions?.timeout !== undefined ? { timeout: requestOptions.timeout } : {}), method: 'GET' as any, skipAuth: true, sdkworkUnwrapKind: 'page' });
   }
 
 /** Memberships packages retrieve. */
   async retrieve(packageId: string, requestOptions?: ApiRequestOptions): Promise<AppMembershipPackageItem> {
-    return this.client.request<AppMembershipPackageItem>(appApiPath(`/memberships/packages/${serializePathParameter(packageId, { name: 'packageId', style: 'simple', explode: false })}`), { signal: requestOptions?.signal, timeout: requestOptions?.timeout, method: 'GET' as any, skipAuth: true, sdkworkUnwrapKind: 'item' });
+    return this.client.request<AppMembershipPackageItem>(appApiPath(`/memberships/packages/${serializePathParameter(packageId, { name: 'packageId', style: 'simple', explode: false })}`), { ...(requestOptions?.signal !== undefined ? { signal: requestOptions.signal } : {}), ...(requestOptions?.timeout !== undefined ? { timeout: requestOptions.timeout } : {}), method: 'GET' as any, skipAuth: true, sdkworkUnwrapKind: 'item' });
   }
 }
 
@@ -232,7 +228,7 @@ export class MembershipsPackageGroupsPackagesApi {
       { name: 'recommended_only', value: params?.recommendedOnly, style: 'form', explode: true, allowReserved: false },
       { name: 'cursor', value: params?.cursor, style: 'form', explode: true, allowReserved: false },
     ]);
-    return this.client.request<SdkWorkPageDataPackages>(appendQueryString(appApiPath(`/memberships/package_groups/${serializePathParameter(packageGroupId, { name: 'packageGroupId', style: 'simple', explode: false })}/packages`), query), { signal: requestOptions?.signal, timeout: requestOptions?.timeout, method: 'GET' as any, skipAuth: true, sdkworkUnwrapKind: 'page' });
+    return this.client.request<SdkWorkPageDataPackages>(appendQueryString(appApiPath(`/memberships/package_groups/${serializePathParameter(packageGroupId, { name: 'packageGroupId', style: 'simple', explode: false })}/packages`), query), { ...(requestOptions?.signal !== undefined ? { signal: requestOptions.signal } : {}), ...(requestOptions?.timeout !== undefined ? { timeout: requestOptions.timeout } : {}), method: 'GET' as any, skipAuth: true, sdkworkUnwrapKind: 'page' });
   }
 }
 
@@ -267,12 +263,12 @@ export class MembershipsPackageGroupsApi {
       { name: 'recommended_only', value: params?.recommendedOnly, style: 'form', explode: true, allowReserved: false },
       { name: 'cursor', value: params?.cursor, style: 'form', explode: true, allowReserved: false },
     ]);
-    return this.client.request<SdkWorkPageDataPackageGroups>(appendQueryString(appApiPath(`/memberships/package_groups`), query), { signal: requestOptions?.signal, timeout: requestOptions?.timeout, method: 'GET' as any, skipAuth: true, sdkworkUnwrapKind: 'page' });
+    return this.client.request<SdkWorkPageDataPackageGroups>(appendQueryString(appApiPath(`/memberships/package_groups`), query), { ...(requestOptions?.signal !== undefined ? { signal: requestOptions.signal } : {}), ...(requestOptions?.timeout !== undefined ? { timeout: requestOptions.timeout } : {}), method: 'GET' as any, skipAuth: true, sdkworkUnwrapKind: 'page' });
   }
 
 /** Memberships package Groups retrieve. */
   async retrieve(packageGroupId: string, requestOptions?: ApiRequestOptions): Promise<AppMembershipPackageGroupItem> {
-    return this.client.request<AppMembershipPackageGroupItem>(appApiPath(`/memberships/package_groups/${serializePathParameter(packageGroupId, { name: 'packageGroupId', style: 'simple', explode: false })}`), { signal: requestOptions?.signal, timeout: requestOptions?.timeout, method: 'GET' as any, skipAuth: true, sdkworkUnwrapKind: 'item' });
+    return this.client.request<AppMembershipPackageGroupItem>(appApiPath(`/memberships/package_groups/${serializePathParameter(packageGroupId, { name: 'packageGroupId', style: 'simple', explode: false })}`), { ...(requestOptions?.signal !== undefined ? { signal: requestOptions.signal } : {}), ...(requestOptions?.timeout !== undefined ? { timeout: requestOptions.timeout } : {}), method: 'GET' as any, skipAuth: true, sdkworkUnwrapKind: 'item' });
   }
 }
 
@@ -301,7 +297,7 @@ export class MembershipsPlansApi {
       { name: 'page_size', value: params?.pageSize, style: 'form', explode: true, allowReserved: false },
       { name: 'cursor', value: params?.cursor, style: 'form', explode: true, allowReserved: false },
     ]);
-    return this.client.request<SdkWorkPageDataPlans>(appendQueryString(appApiPath(`/memberships/plans`), query), { signal: requestOptions?.signal, timeout: requestOptions?.timeout, method: 'GET' as any, skipAuth: true, sdkworkUnwrapKind: 'page' });
+    return this.client.request<SdkWorkPageDataPlans>(appendQueryString(appApiPath(`/memberships/plans`), query), { ...(requestOptions?.signal !== undefined ? { signal: requestOptions.signal } : {}), ...(requestOptions?.timeout !== undefined ? { timeout: requestOptions.timeout } : {}), method: 'GET' as any, skipAuth: true, sdkworkUnwrapKind: 'page' });
   }
 }
 
@@ -328,7 +324,7 @@ export class MembershipsBenefitsApi {
       { name: 'plan_id', value: params?.planId, style: 'form', explode: true, allowReserved: false },
       { name: 'cursor', value: params?.cursor, style: 'form', explode: true, allowReserved: false },
     ]);
-    return this.client.request<SdkWorkPageDataBenefits>(appendQueryString(appApiPath(`/memberships/benefits`), query), { signal: requestOptions?.signal, timeout: requestOptions?.timeout, method: 'GET' as any, skipAuth: true, sdkworkUnwrapKind: 'page' });
+    return this.client.request<SdkWorkPageDataBenefits>(appendQueryString(appApiPath(`/memberships/benefits`), query), { ...(requestOptions?.signal !== undefined ? { signal: requestOptions.signal } : {}), ...(requestOptions?.timeout !== undefined ? { timeout: requestOptions.timeout } : {}), method: 'GET' as any, skipAuth: true, sdkworkUnwrapKind: 'page' });
   }
 }
 
@@ -342,7 +338,7 @@ export class MembershipsCurrentStatusApi {
 
 /** Memberships current status retrieve. */
   async retrieve(requestOptions?: ApiRequestOptions): Promise<AppMembershipStatusResponse> {
-    return this.client.request<AppMembershipStatusResponse>(appApiPath(`/memberships/current/status`), { signal: requestOptions?.signal, timeout: requestOptions?.timeout, method: 'GET' as any, sdkworkUnwrapKind: 'item' });
+    return this.client.request<AppMembershipStatusResponse>(appApiPath(`/memberships/current/status`), { ...(requestOptions?.signal !== undefined ? { signal: requestOptions.signal } : {}), ...(requestOptions?.timeout !== undefined ? { timeout: requestOptions.timeout } : {}), method: 'GET' as any, sdkworkUnwrapKind: 'item' });
   }
 }
 
@@ -358,12 +354,11 @@ export class MembershipsCurrentApi {
 
 /** Memberships current retrieve. */
   async retrieve(requestOptions?: ApiRequestOptions): Promise<AppMembershipInfoResponse> {
-    return this.client.request<AppMembershipInfoResponse>(appApiPath(`/memberships/current`), { signal: requestOptions?.signal, timeout: requestOptions?.timeout, method: 'GET' as any, sdkworkUnwrapKind: 'item' });
+    return this.client.request<AppMembershipInfoResponse>(appApiPath(`/memberships/current`), { ...(requestOptions?.signal !== undefined ? { signal: requestOptions.signal } : {}), ...(requestOptions?.timeout !== undefined ? { timeout: requestOptions.timeout } : {}), method: 'GET' as any, sdkworkUnwrapKind: 'item' });
   }
 }
 
 export class MembershipsApi {
-  private client: HttpClient;
   public readonly current: MembershipsCurrentApi;
   public readonly benefits: MembershipsBenefitsApi;
   public readonly plans: MembershipsPlansApi;
@@ -375,7 +370,6 @@ export class MembershipsApi {
   public readonly accessChecks: MembershipsAccessChecksApi;
 
   constructor(client: HttpClient) {
-    this.client = client;
     this.current = new MembershipsCurrentApi(client);
     this.benefits = new MembershipsBenefitsApi(client);
     this.plans = new MembershipsPlansApi(client);
