@@ -1,0 +1,5 @@
+specVersion = 1
+kind = "sdkwork.webserver.server"
+id = "membership"
+enabled = false
+description = "sdkwork-membership webserver placeholder (align-application-deploy-layout)"
